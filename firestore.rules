@@ -1,0 +1,120 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function hasUserDoc() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function userData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function userLocationId() {
+      return hasUserDoc() ? userData().locationId : "";
+    }
+
+    function isOwner() {
+      return hasUserDoc()
+        && userData().isOwner == true;
+    }
+
+    function isSuperAdmin() {
+      return hasUserDoc()
+        && (
+          userData().role == "superadmin"
+          || userData().isOwner == true
+        );
+    }
+
+    function isAdmin() {
+      return hasUserDoc()
+        && (
+          userData().role == "admin"
+          || userData().role == "superadmin"
+          || userData().isOwner == true
+        );
+    }
+
+    function canManageLocation(locationId) {
+      return isOwner()
+        || (
+          isSuperAdmin()
+          && locationId == userLocationId()
+        );
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.auth.uid == userId;
+      allow update: if signedIn()
+        && (
+          isSuperAdmin()
+          || (
+            request.auth.uid == userId
+            && request.resource.data.role == resource.data.role
+            && request.resource.data.isOwner == resource.data.isOwner
+          )
+        );
+      allow delete: if isSuperAdmin();
+    }
+
+    match /settings/auth_codes {
+      allow read: if true;
+      allow write: if isSuperAdmin();
+    }
+
+    match /settings/{settingId} {
+      allow read: if signedIn();
+      allow write: if isSuperAdmin();
+    }
+
+    match /events/{eventId} {
+      allow read: if signedIn();
+      allow create: if isAdmin()
+        && canManageLocation(request.resource.data.locationId);
+      allow update, delete: if canManageLocation(resource.data.locationId)
+        || (
+          isAdmin()
+          && resource.data.locationId == userLocationId()
+          && (
+            resource.data.authorEmail == request.auth.token.email
+            || resource.data.author == request.auth.token.email
+          )
+        );
+    }
+
+    match /rooms/{roomId} {
+      allow read: if signedIn();
+      allow create: if canManageLocation(request.resource.data.locationId);
+      allow update, delete: if canManageLocation(resource.data.locationId);
+    }
+
+    match /groups/{groupId} {
+      allow read: if signedIn();
+      allow create: if canManageLocation(request.resource.data.locationId);
+      allow update, delete: if canManageLocation(resource.data.locationId);
+    }
+
+    match /fixedSchedules/{scheduleId} {
+      allow read: if signedIn();
+      allow create: if canManageLocation(request.resource.data.locationId);
+      allow update, delete: if canManageLocation(resource.data.locationId);
+    }
+
+    match /locations/{locationId} {
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update, delete: if isOwner()
+        || (
+          isSuperAdmin()
+          && locationId == userLocationId()
+        );
+    }
+  }
+}
