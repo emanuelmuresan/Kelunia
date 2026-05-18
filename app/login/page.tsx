@@ -1,29 +1,56 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   browserLocalPersistence,
   createUserWithEmailAndPassword,
+  deleteUser,
   sendPasswordResetEmail,
   setPersistence,
   signInWithEmailAndPassword,
 } from "firebase/auth";
-import { addDoc, collection, doc, getDoc, setDoc, Timestamp } from "firebase/firestore";
+import { deleteDoc, doc, getDoc, runTransaction, setDoc, Timestamp } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
-import { UserRole } from "@/context/AuthContext";
+import type { UserRole } from "@/context/AuthContext";
+import { maxUsesForAccessRole, normalizeRole, readOptionalNumber } from "@/lib/access-codes";
+import { defaultLocationName } from "@/lib/config/app";
+import { normalizeAllowedRoomIds, normalizeRoomAccessMode } from "@/lib/room-access";
+import type { RoomAccessMode } from "@/lib/types/domain";
 
-type AuthMode = "login" | "register" | "location" | "reset";
+type AuthMode = "login" | "trial" | "register" | "reset";
 
-const defaultLocationName = "Sala Regatului Iuliu Maniu 13";
+function accessCodeDocumentId(code: string) {
+  return code.trim().toUpperCase().replace(/[^A-Z0-9_-]+/g, "-").replace(/^-+|-+$/g, "");
+}
 
-function normalizeRole(role: unknown): UserRole {
-  if (role === "superadmin" || role === "admin" || role === "viewer" || role === "user") {
-    return role;
+function accessCodeUsage(data: Record<string, unknown>, role: UserRole) {
+  return {
+    active: data.active !== false,
+    maxUses: readOptionalNumber(data.maxUses) ?? maxUsesForAccessRole(role),
+    usedCount: Math.max(0, readOptionalNumber(data.usedCount) ?? 0),
+  };
+}
+
+function assertAccessCodeCanBeUsed(data: Record<string, unknown>, role: UserRole) {
+  const usage = accessCodeUsage(data, role);
+
+  if (!usage.active) {
+    throw new Error("Codul de acces este oprit. Cere un cod nou de la manager.");
   }
 
-  return "viewer";
+  if (usage.maxUses !== null && usage.usedCount >= usage.maxUses) {
+    throw new Error("Codul de acces a fost folosit de numărul maxim de persoane. Cere un cod nou de la manager.");
+  }
+
+  return usage;
+}
+
+function assertLicenseCodeCanBeUsed(exists: boolean, data: Record<string, unknown>) {
+  if (!exists || data.used === true || data.claimed === true || data.active === false || data.deleted === true) {
+    throw new Error("Codul de licență nu este valid sau a fost folosit deja.");
+  }
 }
 
 function readableError(message: string) {
@@ -32,11 +59,15 @@ function readableError(message: string) {
   }
 
   if (message.includes("auth/email-already-in-use")) {
-    return "Există deja un cont cu acest email.";
+    return "Există deja un cont Firebase Authentication cu acest email. Încearcă recuperarea parolei sau șterge utilizatorul din Authentication > Users, nu doar din Firestore.";
   }
 
   if (message.includes("auth/weak-password")) {
     return "Parola trebuie să aibă cel puțin 6 caractere.";
+  }
+
+  if (message.includes("Parolele nu se potrivesc")) {
+    return "Parolele nu se potrivesc.";
   }
 
   return message.replace("Firebase: ", "");
@@ -46,31 +77,252 @@ export default function LoginPage() {
   const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
-  const [groupName, setGroupName] = useState("");
-  const [locationName, setLocationName] = useState(defaultLocationName);
   const [accessCode, setAccessCode] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  async function createProfile(role: UserRole, createdLocationName: string, createdLocationId = "main-location", isOwner = false) {
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const invitationCode = params.get("invite") || params.get("code") || params.get("cod") || "";
+    const invitedEmail = params.get("email") || "";
+    const requestedMode = params.get("mode") || "";
+
+    if (requestedMode === "trial") {
+      setMode("trial");
+    }
+
+    if (invitationCode) {
+      setMode("register");
+      setAccessCode(invitationCode);
+    }
+
+    if (invitedEmail) {
+      setEmail(invitedEmail);
+    }
+  }, []);
+
+  async function createProfile(
+    role: UserRole,
+    createdLocationName: string,
+    createdLocationId = "main-location",
+    assignedGroupName = "",
+    accessCodeId = "",
+    isOwner = false,
+    roomAccess: RoomAccessMode = "all",
+    allowedRoomIds: string[] = []
+  ) {
+    const cleanLocationId = createdLocationId.trim();
+    const cleanGroupName = role === "manager" ? "" : assignedGroupName.trim();
+    const cleanAccessCodeId = accessCodeId.trim();
+    const cleanRoomAccess = role === "manager" ? "all" : roomAccess;
+    const cleanAllowedRoomIds = cleanRoomAccess === "selected" ? normalizeAllowedRoomIds(allowedRoomIds) : [];
+
+    if (!isOwner && !cleanLocationId) {
+      throw new Error("Codul de acces nu are o locație setată.");
+    }
+
+    if (!isOwner && role !== "manager" && !cleanGroupName) {
+      throw new Error("Codul de acces nu are un grup setat. Cere un cod nou de la manager.");
+    }
+
+    const accessCodeRef = !isOwner && cleanAccessCodeId ? doc(db, "accessCodes", cleanAccessCodeId) : null;
+    let profileCreated = false;
+    let resolvedLocationName = createdLocationName.trim() || defaultLocationName;
     const result = await createUserWithEmailAndPassword(auth, email, password);
-    await setDoc(doc(db, "users", result.user.uid), {
-      uid: result.user.uid,
-      email,
-      displayName: displayName.trim() || email,
-      groupName: role === "superadmin" ? "" : groupName.trim(),
-      role,
-      isOwner,
-      locationId: createdLocationId,
-      locationName: createdLocationName,
-      usePin: false,
-      lockOnHide: false,
-      useBiometrics: false,
-      createdAt: Timestamp.now(),
-    });
+    const userRef = doc(db, "users", result.user.uid);
+
+    try {
+      if (!isOwner) {
+        const locationSnap = await getDoc(doc(db, "locations", cleanLocationId));
+
+        if (!locationSnap.exists()) {
+          throw new Error("Locația acestui cod nu mai există. Cere un cod nou de la manager.");
+        }
+
+        const locationData = locationSnap.data() ?? {};
+        resolvedLocationName = String(locationData.name ?? locationData.locationName ?? resolvedLocationName).trim() || resolvedLocationName;
+      }
+
+      const profilePayload = {
+        uid: result.user.uid,
+        email,
+        displayName: displayName.trim() || email,
+        groupName: cleanGroupName,
+        group: cleanGroupName,
+        role,
+        isOwner,
+        locationId: cleanLocationId,
+        locationName: resolvedLocationName,
+        accessCodeId: cleanAccessCodeId,
+        accessCodeRole: role,
+        roomAccess: cleanRoomAccess,
+        allowedRoomIds: cleanAllowedRoomIds,
+        usePin: false,
+        lockOnHide: false,
+        useBiometrics: false,
+        language: "ro",
+        createdAt: Timestamp.now(),
+      };
+
+      if (accessCodeRef) {
+        await runTransaction(db, async (transaction) => {
+          const codeSnap = await transaction.get(accessCodeRef);
+
+          if (!codeSnap.exists()) {
+            throw new Error("Codul de acces nu mai este valid.");
+          }
+
+          const codeData = codeSnap.data() ?? {};
+          const codeRole = normalizeRole(codeData.role);
+          const codeLocationId = String(codeData.locationId ?? "").trim();
+          const codeLocationName = String(codeData.locationName ?? resolvedLocationName).trim() || resolvedLocationName;
+          const codeGroupName = codeRole === "manager" ? "" : String(codeData.groupName ?? "").trim();
+          const codeRoomAccess = codeRole === "manager" ? "all" : normalizeRoomAccessMode(codeData.roomAccess);
+          const codeAllowedRoomIds = codeRoomAccess === "selected" ? normalizeAllowedRoomIds(codeData.allowedRoomIds) : [];
+          const usage = assertAccessCodeCanBeUsed(codeData, codeRole);
+
+          if (
+            codeRole !== role ||
+            codeLocationId !== cleanLocationId ||
+            codeGroupName !== cleanGroupName ||
+            codeRoomAccess !== cleanRoomAccess ||
+            codeAllowedRoomIds.join("|") !== cleanAllowedRoomIds.join("|")
+          ) {
+            throw new Error("Codul de acces a fost schimbat. Încearcă din nou sau cere un cod nou.");
+          }
+
+          transaction.set(userRef, {
+            ...profilePayload,
+            locationName: codeLocationName,
+          });
+
+          transaction.update(accessCodeRef, {
+            active: true,
+            maxUses: usage.maxUses,
+            usedCount: usage.usedCount + 1,
+            lastUsedAt: Timestamp.now(),
+            lastUsedBy: email,
+            lastUsedByUid: result.user.uid,
+          });
+        });
+      } else {
+        await setDoc(userRef, profilePayload);
+      }
+
+      profileCreated = true;
+    } catch (profileError) {
+      if (profileCreated) {
+        await deleteDoc(userRef).catch((deleteProfileError) => {
+          console.warn("Profilul creat incomplet nu a putut fi șters automat:", deleteProfileError);
+        });
+      }
+
+      await deleteUser(result.user).catch((deleteUserError) => {
+        console.warn("Contul creat incomplet nu a putut fi șters automat:", deleteUserError);
+      });
+
+      throw profileError;
+    }
+  }
+
+  async function createTrialProfile() {
+    const result = await createUserWithEmailAndPassword(auth, email, password);
+    const userRef = doc(db, "users", result.user.uid);
+
+    try {
+      await setDoc(userRef, {
+        uid: result.user.uid,
+        email,
+        displayName: displayName.trim() || email,
+        groupName: "",
+        group: "",
+        role: "manager",
+        isOwner: false,
+        locationId: "",
+        locationName: "",
+        pendingLicenseId: "",
+        pendingLicenseCode: "",
+        locationSetupRequired: true,
+        roomAccess: "all",
+        allowedRoomIds: [],
+        usePin: false,
+        lockOnHide: false,
+        useBiometrics: false,
+        language: "ro",
+        createdAt: Timestamp.now(),
+      });
+    } catch (trialError) {
+      await deleteUser(result.user).catch((deleteError) => {
+        console.warn("Contul trial creat incomplet nu a putut fi sters automat:", deleteError);
+      });
+
+      throw trialError;
+    }
+  }
+
+  async function createLicensedProfile(licenseId: string, code: string) {
+    const licenseRef = doc(db, "licenses", licenseId);
+    const preflightLicenseSnap = await getDoc(licenseRef);
+
+    assertLicenseCodeCanBeUsed(preflightLicenseSnap.exists(), preflightLicenseSnap.data() ?? {});
+
+    const result = await createUserWithEmailAndPassword(auth, email, password);
+    const userRef = doc(db, "users", result.user.uid);
+
+    try {
+      await runTransaction(db, async (transaction) => {
+        const licenseSnap = await transaction.get(licenseRef);
+        const licenseData = licenseSnap.data() ?? {};
+
+        assertLicenseCodeCanBeUsed(licenseSnap.exists(), licenseData);
+
+        const licenseLocationName = String(
+          licenseData.intendedLocationName ??
+          licenseData.locationName ??
+          licenseData.officialAddress ??
+          licenseData.intendedAddress ??
+          ""
+        ).trim();
+
+        transaction.set(userRef, {
+          uid: result.user.uid,
+          email,
+          displayName: displayName.trim() || email,
+          groupName: "",
+          group: "",
+          role: "manager",
+          isOwner: false,
+          locationId: "",
+          locationName: licenseLocationName,
+          pendingLicenseId: licenseId,
+          pendingLicenseCode: code,
+          locationSetupRequired: true,
+          roomAccess: "all",
+          allowedRoomIds: [],
+          usePin: false,
+          lockOnHide: false,
+          useBiometrics: false,
+          language: "ro",
+          createdAt: Timestamp.now(),
+        });
+
+        transaction.update(licenseRef, {
+          claimed: true,
+          claimedAt: Timestamp.now(),
+          claimedBy: email,
+          claimedByUid: result.user.uid,
+        });
+      });
+    } catch (licenseError) {
+      await deleteUser(result.user).catch((deleteError) => {
+        console.warn("Contul creat cu licență invalidă nu a putut fi șters automat:", deleteError);
+      });
+      throw licenseError;
+    }
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -84,7 +336,7 @@ export default function LoginPage() {
 
       if (mode === "login") {
         await signInWithEmailAndPassword(auth, email, password);
-        router.push("/");
+        router.push("/dashboard");
         return;
       }
 
@@ -94,49 +346,59 @@ export default function LoginPage() {
         return;
       }
 
-      if (mode === "register") {
-        const codesSnap = await getDoc(doc(db, "settings", "auth_codes"));
-        const codes = codesSnap.data() ?? {};
-        const adminCode = String(codes.adminCode ?? "");
-        const viewerCode = String(codes.viewerCode ?? codes.userCode ?? "");
-        const superadminCode = String(codes.superadminCode ?? "");
-        const locationCodes = Array.isArray(codes.locationCodes) ? codes.locationCodes : [];
-        const matchedLocationCode = locationCodes.find((item) => {
-          const record = item && typeof item === "object" ? (item as Record<string, unknown>) : {};
-          return String(record.code ?? "") === accessCode;
-        }) as Record<string, unknown> | undefined;
-
-        let role: UserRole = "viewer";
-        let createdLocationId = "main-location";
-        let createdLocationName = defaultLocationName;
-
-        if (matchedLocationCode) {
-          role = normalizeRole(matchedLocationCode.role);
-          createdLocationId = String(matchedLocationCode.locationId ?? createdLocationId);
-          createdLocationName = String(matchedLocationCode.locationName ?? createdLocationName);
-        } else if (accessCode && accessCode === superadminCode) {
-          role = "superadmin";
-        } else if (accessCode && accessCode === adminCode) {
-          role = "admin";
-        } else if (accessCode && accessCode === viewerCode) {
-          role = "viewer";
-        } else {
-          throw new Error("Cod de acces invalid.");
+      if (mode === "trial") {
+        if (password !== confirmPassword) {
+          throw new Error("Parolele nu se potrivesc.");
         }
 
-        await createProfile(role, createdLocationName, createdLocationId);
-        router.push("/");
+        await createTrialProfile();
+        router.push("/dashboard");
         return;
       }
 
-      const locationRef = await addDoc(collection(db, "locations"), {
-        name: locationName.trim() || defaultLocationName,
-        ownerEmail: email,
-        createdAt: Timestamp.now(),
-      });
+      if (mode === "register") {
+        if (password !== confirmPassword) {
+          throw new Error("Parolele nu se potrivesc.");
+        }
 
-      await createProfile("superadmin", locationName.trim() || defaultLocationName, locationRef.id, true);
-      router.push("/");
+        const cleanAccessCode = accessCodeDocumentId(accessCode);
+
+        if (!cleanAccessCode) {
+          throw new Error("Cod de acces invalid.");
+        }
+
+        const accessCodeSnap = await getDoc(doc(db, "accessCodes", cleanAccessCode));
+
+        let role: UserRole = "guest";
+        let createdLocationId = "main-location";
+        let createdLocationName = defaultLocationName;
+        let assignedGroupName = "";
+        let roomAccess: RoomAccessMode = "all";
+        let allowedRoomIds: string[] = [];
+
+        if (accessCodeSnap.exists()) {
+          const accessCodeData = accessCodeSnap.data() ?? {};
+          role = normalizeRole(accessCodeData.role);
+          createdLocationId = String(accessCodeData.locationId ?? "").trim();
+          createdLocationName = String(accessCodeData.locationName ?? createdLocationName).trim() || createdLocationName;
+          assignedGroupName = String(accessCodeData.groupName ?? "").trim();
+          roomAccess = role === "manager" ? "all" : normalizeRoomAccessMode(accessCodeData.roomAccess);
+          allowedRoomIds = roomAccess === "selected" ? normalizeAllowedRoomIds(accessCodeData.allowedRoomIds) : [];
+          assertAccessCodeCanBeUsed(accessCodeData, role);
+
+          if (!createdLocationId) {
+            throw new Error("Codul de acces nu are o locație setată.");
+          }
+
+          await createProfile(role, createdLocationName, createdLocationId, assignedGroupName, cleanAccessCode, false, roomAccess, allowedRoomIds);
+          router.push("/dashboard");
+          return;
+        }
+
+        await createLicensedProfile(cleanAccessCode, accessCode.trim());
+        router.push("/dashboard");
+        return;
+      }
     } catch (err) {
       setError(readableError(err instanceof Error ? err.message : "A apărut o eroare."));
     } finally {
@@ -145,20 +407,26 @@ export default function LoginPage() {
   }
 
   const title = {
-    login: "Intră în Kelunia",
+    login: "Login",
+    trial: "Începe trial",
     register: "Cont cu cod",
-    location: "Locație nouă",
     reset: "Recuperare parolă",
   }[mode];
 
   return (
     <main className="auth-shell">
       <section className="auth-brand">
-        <Link href="/" className="back-link">← Calendar</Link>
+        <Link href="/" className="back-link">← Acasă</Link>
         <div>
+          <img className="auth-logo-large" src="/kelunia-logo.png" alt="Kelunia" />
           <span className="eyebrow">Kelunia</span>
           <h1>Kelunia</h1>
-          <p>Programări, săli, grupuri și acces pentru fiecare locație.</p>
+          <p>Un spațiu calm pentru programări, săli și grupuri, cu acces potrivit pentru fiecare locație.</p>
+          <div className="auth-brand-tags" aria-label="Caracteristici">
+            <span>Calendar clar</span>
+            <span>Acces pe roluri</span>
+            <span>PWA instalabilă</span>
+          </div>
         </div>
       </section>
 
@@ -173,8 +441,8 @@ export default function LoginPage() {
 
         <div className="auth-switcher" role="group" aria-label="Tip cont">
           <button className={mode === "login" ? "active" : ""} onClick={() => setMode("login")} type="button">Login</button>
-          <button className={mode === "register" ? "active" : ""} onClick={() => setMode("register")} type="button">Cod</button>
-          <button className={mode === "location" ? "active" : ""} onClick={() => setMode("location")} type="button">Locație</button>
+          <button className={mode === "trial" ? "active" : ""} onClick={() => setMode("trial")} type="button">Trial</button>
+          <button className={mode === "register" ? "active" : ""} onClick={() => setMode("register")} type="button">Am cod</button>
         </div>
 
         {error && <p className="error-line">{error}</p>}
@@ -188,6 +456,7 @@ export default function LoginPage() {
               name="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
+              placeholder="emailul tău, ex. nume@email.com"
               autoComplete="email"
               required
             />
@@ -201,41 +470,65 @@ export default function LoginPage() {
                 name="password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
+                placeholder={mode === "login" ? "parola contului tău" : "minimum 6 caractere"}
                 autoComplete={mode === "login" ? "current-password" : "new-password"}
                 required
               />
             </label>
           )}
 
-          {(mode === "register" || mode === "location") && (
-            <>
-              <label>
-                Nume
-                <input value={displayName} onChange={(event) => setDisplayName(event.target.value)} required />
-              </label>
-              <label>
-                Grup
-                <input value={groupName} onChange={(event) => setGroupName(event.target.value)} />
-              </label>
-            </>
+          {(mode === "register" || mode === "trial") && (
+            <label>
+              Repetă parola
+              <input
+                type="password"
+                name="confirmPassword"
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                placeholder="scrie aceeași parolă încă o dată"
+                autoComplete="new-password"
+                required
+              />
+            </label>
+          )}
+
+          {(mode === "register" || mode === "trial") && (
+            <label>
+              Nume
+              <input
+                value={displayName}
+                onChange={(event) => setDisplayName(event.target.value)}
+                placeholder="numele care va apărea în aplicație"
+                autoComplete="name"
+                required
+              />
+            </label>
           )}
 
           {mode === "register" && (
             <label>
               Cod acces
-              <input value={accessCode} onChange={(event) => setAccessCode(event.target.value)} required />
+              <input
+                value={accessCode}
+                onChange={(event) => setAccessCode(event.target.value)}
+                placeholder="codul primit de la manager sau la licența locației"
+                required
+              />
             </label>
           )}
 
-          {mode === "location" && (
-            <label>
-              Nume locație
-              <input value={locationName} onChange={(event) => setLocationName(event.target.value)} required />
-            </label>
+          {mode === "register" && (
+            <>
+              <p className="muted-note">Dacă acesta este cod de licență, vei deschide locația după ce intri în cont. Dacă este cod primit de la manager, locația este aleasă automat.</p>
+            </>
+          )}
+
+          {mode === "trial" && (
+            <p className="muted-note">Nu ai nevoie de cod. După ce creezi contul, alegi adresa oficială și Kelunia deschide automat locația trial pentru 14 zile.</p>
           )}
 
           <button className="primary-button" disabled={loading} type="submit">
-            {loading ? "Se procesează..." : mode === "login" ? "Intră în cont" : mode === "reset" ? "Trimite email" : "Creează cont"}
+            {loading ? "Se procesează..." : mode === "login" ? "Intră în cont" : mode === "reset" ? "Trimite email" : mode === "trial" ? "Începe trial" : "Creează cont"}
           </button>
         </form>
 

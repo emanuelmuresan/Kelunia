@@ -6,6 +6,11 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isOwnerEmail() {
+      return signedIn()
+        && request.auth.token.email == "emanuelmuresan@gmail.com";
+    }
+
     function hasUserDoc() {
       return signedIn()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid));
@@ -20,68 +25,1988 @@ service cloud.firestore {
     }
 
     function isOwner() {
-      return hasUserDoc()
-        && userData().isOwner == true;
-    }
-
-    function isSuperAdmin() {
-      return hasUserDoc()
-        && (
-          userData().role == "superadmin"
-          || userData().isOwner == true
+      return isOwnerEmail()
+        || (
+          hasUserDoc()
+          && userData().isOwner == true
         );
     }
 
-    function isAdmin() {
+    function isManagerRole(role) {
+      return role == "manager" || role == "superadmin";
+    }
+
+    function isMemberRole(role) {
+      return role == "member" || role == "admin";
+    }
+
+    function isGuestRole(role) {
+      return role == "guest" || role == "viewer" || role == "user";
+    }
+
+    function isLocationSuperAdmin() {
       return hasUserDoc()
+        && isManagerRole(userData().role)
+        && userData().isOwner != true;
+    }
+
+    function isLocationAdmin() {
+      return hasUserDoc()
+        && userData().isOwner != true
         && (
-          userData().role == "admin"
-          || userData().role == "superadmin"
-          || userData().isOwner == true
+          isMemberRole(userData().role)
+          || isManagerRole(userData().role)
         );
     }
 
     function canManageLocation(locationId) {
+      return isLocationSuperAdmin()
+        && locationId == userLocationId();
+    }
+
+    function locationPath(locationId) {
+      return /databases/$(database)/documents/locations/$(locationId);
+    }
+
+    function locationWriteEnabled(locationId) {
       return isOwner()
         || (
-          isSuperAdmin()
-          && locationId == userLocationId()
+          exists(locationPath(locationId))
+          && (
+            !hasKey(get(locationPath(locationId)).data, "billingStatus")
+            || get(locationPath(locationId)).data.billingStatus == "active"
+            || (
+              get(locationPath(locationId)).data.billingStatus == "trialing"
+              && (
+                !hasKey(get(locationPath(locationId)).data, "trialEndsAt")
+                || get(locationPath(locationId)).data.trialEndsAt == null
+                || get(locationPath(locationId)).data.trialEndsAt > request.time
+              )
+            )
+          )
         );
+    }
+
+    function locationPlanAllowsFloorplans(locationId) {
+      return exists(locationPath(locationId))
+        && (
+          get(locationPath(locationId)).data.plan == "trial"
+          || get(locationPath(locationId)).data.plan == "pro"
+          || get(locationPath(locationId)).data.plan == "Pro"
+          || get(locationPath(locationId)).data.plan == "PRO"
+          || get(locationPath(locationId)).data.plan == "business"
+          || get(locationPath(locationId)).data.plan == "Business"
+          || get(locationPath(locationId)).data.plan == "BUSINESS"
+          || get(locationPath(locationId)).data.plan == "plus"
+          || get(locationPath(locationId)).data.plan == "enterprise"
+        );
+    }
+
+    function floorplanWriteEnabled(locationId) {
+      return locationWriteEnabled(locationId)
+        && (
+          isOwner()
+          || locationPlanAllowsFloorplans(locationId)
+        );
+    }
+
+    function canWriteFloorplanLocation(locationId) {
+      return signedIn()
+        && locationId is string
+        && locationId.size() > 0
+        && floorplanWriteEnabled(locationId)
+        && (
+          isOwner()
+          || canManageLocation(locationId)
+          || (
+            hasUserDoc()
+            && isManagerRole(userData().role)
+            && userLocationId() == locationId
+          )
+          || (
+            exists(locationPath(locationId))
+            && get(locationPath(locationId)).data.ownerEmail == request.auth.token.email
+          )
+        );
+    }
+
+    function canEditFloorplanLocation(locationId) {
+      return signedIn()
+        && locationId is string
+        && locationId.size() > 0
+        && exists(locationPath(locationId))
+        && floorplanWriteEnabled(locationId)
+        && (
+          isOwner()
+          || (
+            hasUserDoc()
+            && userData().isOwner != true
+            && isManagerRole(userData().role)
+            && userData().locationId == locationId
+          )
+          || get(locationPath(locationId)).data.ownerEmail == request.auth.token.email
+        );
+    }
+
+    function canEditExistingFloorplanItem(data) {
+      return (
+          hasKey(data, "locationId")
+          && canEditFloorplanLocation(data.locationId)
+        )
+        || (
+          hasKey(data, "floorplanId")
+          && data.floorplanId is string
+          && exists(floorplanPath(data.floorplanId))
+          && canEditFloorplanLocation(get(floorplanPath(data.floorplanId)).data.locationId)
+        );
+    }
+
+    function canEditFloorplanItemData(data) {
+      return (
+          hasKey(data, "locationId")
+          && canEditFloorplanLocation(data.locationId)
+        )
+        || (
+          hasKey(data, "floorplanId")
+          && data.floorplanId is string
+          && exists(floorplanPath(data.floorplanId))
+          && canEditFloorplanLocation(get(floorplanPath(data.floorplanId)).data.locationId)
+        );
+    }
+
+    function hasKey(data, key) {
+      return data.keys().hasAny([key]);
+    }
+
+    function validText(value, maxSize) {
+      return value is string
+        && value.size() > 0
+        && value.size() <= maxSize;
+    }
+
+    function validTextOrEmpty(value, maxSize) {
+      return value is string
+        && value.size() <= maxSize;
+    }
+
+    function validOptionalText(data, key, maxSize) {
+      return !hasKey(data, key)
+        || validTextOrEmpty(data[key], maxSize);
+    }
+
+    function validOptionalBool(data, key) {
+      return !hasKey(data, key)
+        || data[key] is bool;
+    }
+
+    function validOptionalTimestamp(data, key) {
+      return !hasKey(data, key)
+        || data[key] is timestamp;
+    }
+
+    function validSoftDeleteFields(data) {
+      return validOptionalBool(data, "deleted")
+        && (!hasKey(data, "deletedAt") || validNullableTimestamp(data.deletedAt))
+        && validOptionalText(data, "deletedBy", 180)
+        && validOptionalText(data, "deletedByUid", 160);
+    }
+
+    function validNullableTimestamp(value) {
+      return value == null
+        || value is timestamp;
+    }
+
+    function validCounterValue(value) {
+      return value is int
+        && value >= 0;
+    }
+
+    function validNumber(value) {
+      return (value is int || value is float);
+    }
+
+    function validPositiveNumber(value) {
+      return validNumber(value)
+        && value > 0;
+    }
+
+    function validOptionalPositiveNumber(data, key) {
+      return !hasKey(data, key)
+        || validPositiveNumber(data[key]);
+    }
+
+    function validNonNegativeNumber(value) {
+      return validNumber(value)
+        && value >= 0;
+    }
+
+    function validCoordinate(value) {
+      return validNumber(value)
+        && value >= -10000
+        && value <= 100000;
+    }
+
+    function validNullableLimit(value) {
+      return value == null
+        || (
+          value is int
+          && value >= 0
+        );
+    }
+
+    function validLocationPlan(value) {
+      return value == "trial"
+        || value == "standard"
+        || value == "pro"
+        || value == "Pro"
+        || value == "PRO"
+        || value == "business"
+        || value == "Business"
+        || value == "BUSINESS"
+        || value == "plus"
+        || value == "enterprise";
+    }
+
+    function validBillingStatus(value) {
+      return value == "trialing"
+        || value == "active"
+        || value == "past_due"
+        || value == "paused"
+        || value == "canceled"
+        || value == "expired";
+    }
+
+    function validUsageCounters(usage) {
+      return usage is map
+        && usage.keys().hasOnly([
+          "bookingCount",
+          "roomCount",
+          "groupCount",
+          "fixedScheduleCount",
+          "accessCodeCount",
+          "memberCount"
+        ])
+        && (!hasKey(usage, "bookingCount") || validCounterValue(usage.bookingCount))
+        && (!hasKey(usage, "roomCount") || validCounterValue(usage.roomCount))
+        && (!hasKey(usage, "groupCount") || validCounterValue(usage.groupCount))
+        && (!hasKey(usage, "fixedScheduleCount") || validCounterValue(usage.fixedScheduleCount))
+        && (!hasKey(usage, "accessCodeCount") || validCounterValue(usage.accessCodeCount))
+        && (!hasKey(usage, "memberCount") || validCounterValue(usage.memberCount));
+    }
+
+    function validPlanLimits(limits) {
+      return limits is map
+        && limits.keys().hasOnly([
+          "maxMembers",
+          "maxManagers",
+          "maxRooms",
+          "maxGroups",
+          "maxActiveBookings"
+        ])
+        && (!hasKey(limits, "maxMembers") || validNullableLimit(limits.maxMembers))
+        && (!hasKey(limits, "maxManagers") || (limits.maxManagers is int && limits.maxManagers >= 0))
+        && (!hasKey(limits, "maxRooms") || validNullableLimit(limits.maxRooms))
+        && (!hasKey(limits, "maxGroups") || validNullableLimit(limits.maxGroups))
+        && (!hasKey(limits, "maxActiveBookings") || validNullableLimit(limits.maxActiveBookings));
+    }
+
+    function validDateKey(value) {
+      return value is string
+        && value.size() == 10;
+    }
+
+    function validTime(value) {
+      return value is string
+        && value.size() == 5;
+    }
+
+    function validAccessRole(role) {
+      return isGuestRole(role)
+        || isMemberRole(role)
+        || isManagerRole(role);
+    }
+
+    function validAccessGroup(role, groupName) {
+      return (
+          isManagerRole(role)
+          && groupName == ""
+        )
+        || (
+          !isManagerRole(role)
+          && validText(groupName, 120)
+        );
+    }
+
+    function validAccessUsage(role, maxUses, usedCount, active) {
+      return active is bool
+        && usedCount is int
+        && usedCount >= 0
+        && (
+          (
+            isManagerRole(role)
+            && maxUses is int
+            && maxUses == 1
+          )
+          || (
+            isMemberRole(role)
+            && maxUses is int
+            && maxUses == 10
+          )
+          || (
+            isGuestRole(role)
+            && maxUses == null
+          )
+        );
+    }
+
+    function validRoomAccessData(role, data) {
+      return (
+          !hasKey(data, "roomAccess")
+          && !hasKey(data, "allowedRoomIds")
+        )
+        || (
+          data.roomAccess == "all"
+          && data.allowedRoomIds is list
+          && data.allowedRoomIds.size() == 0
+        )
+        || (
+          !isManagerRole(role)
+          && data.roomAccess == "selected"
+          && data.allowedRoomIds is list
+          && data.allowedRoomIds.size() > 0
+          && data.allowedRoomIds.size() <= 100
+        );
+    }
+
+    function roomAccessAllows(roomId) {
+      return isOwner()
+        || isLocationSuperAdmin()
+        || !hasKey(userData(), "roomAccess")
+        || userData().roomAccess == "all"
+        || (
+          roomId is string
+          && roomId.size() > 0
+          && userData().allowedRoomIds is list
+          && userData().allowedRoomIds.hasAny([roomId])
+        );
+    }
+
+    function accessCodePath(codeId) {
+      return /databases/$(database)/documents/accessCodes/$(codeId);
+    }
+
+    function licensePath(licenseId) {
+      return /databases/$(database)/documents/licenses/$(licenseId);
+    }
+
+    function existingCodeUsedCount(codeId) {
+      return get(accessCodePath(codeId)).data.usedCount is int
+        ? get(accessCodePath(codeId)).data.usedCount
+        : 0;
+    }
+
+    function validAccessUseUpdate(codeId) {
+      return signedIn()
+        && exists(accessCodePath(codeId))
+        && resource.data.code == codeId
+        && resource.data.active != false
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.groupName == resource.data.groupName
+        && request.resource.data.locationId == resource.data.locationId
+        && request.resource.data.locationName == resource.data.locationName
+        && request.resource.data.code == resource.data.code
+        && validAccessUsage(
+          resource.data.role,
+          request.resource.data.maxUses,
+          request.resource.data.usedCount,
+          request.resource.data.active
+        )
+        && request.resource.data.usedCount == existingCodeUsedCount(codeId) + 1
+        && (
+          request.resource.data.maxUses == null
+          || existingCodeUsedCount(codeId) < request.resource.data.maxUses
+        )
+        && request.resource.data.lastUsedByUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "active",
+          "maxUses",
+          "usedCount",
+          "lastUsedAt",
+          "lastUsedBy",
+          "lastUsedByUid"
+        ]);
+    }
+
+    function canSoftDeleteAccessCode() {
+      return isOwner()
+        ? true
+        : (
+          isLocationSuperAdmin()
+          && hasKey(resource.data, "locationId")
+          && resource.data.locationId is string
+          && resource.data.locationId == userLocationId()
+          && locationWriteEnabled(resource.data.locationId)
+        );
+    }
+
+    function validAccessCodeSoftDeleteUpdate() {
+      return signedIn()
+        && canSoftDeleteAccessCode()
+        && (
+          !hasKey(resource.data, "locationId")
+          || request.resource.data.locationId == resource.data.locationId
+        )
+        && (
+          !hasKey(resource.data, "code")
+          || request.resource.data.code == resource.data.code
+        )
+        && request.resource.data.active == false
+        && request.resource.data.deleted == true
+        && validSoftDeleteFields(request.resource.data)
+        && validOptionalText(request.resource.data, "updatedBy", 180)
+        && validOptionalTimestamp(request.resource.data, "updatedAt")
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "active",
+          "deleted",
+          "deletedAt",
+          "deletedBy",
+          "deletedByUid",
+          "updatedBy",
+          "updatedAt"
+        ]);
+    }
+
+    function validAccessCodeForUserCreate(data, userId) {
+      let codeId = data.accessCodeId;
+      let code = get(accessCodePath(codeId)).data;
+      let after = getAfter(accessCodePath(codeId)).data;
+      return codeId is string
+        && codeId.size() > 0
+        && exists(accessCodePath(codeId))
+        && code.active != false
+        && data.role == code.role
+        && data.accessCodeRole == code.role
+        && data.locationId == code.locationId
+        && data.locationName == code.locationName
+        && data.groupName == code.groupName
+        && data.group == code.groupName
+        && validAccessGroup(code.role, code.groupName)
+        && (
+          (
+            !hasKey(code, "roomAccess")
+            && data.roomAccess == "all"
+            && data.allowedRoomIds is list
+            && data.allowedRoomIds.size() == 0
+          )
+          || (
+            data.roomAccess == code.roomAccess
+            && data.allowedRoomIds == code.allowedRoomIds
+            && validRoomAccessData(code.role, data)
+          )
+        )
+        && validAccessUsage(code.role, after.maxUses, after.usedCount, after.active)
+        && after.usedCount == existingCodeUsedCount(codeId) + 1
+        && (
+          after.maxUses == null
+          || existingCodeUsedCount(codeId) < after.maxUses
+        )
+        && after.lastUsedByUid == userId;
+    }
+
+    function validLicenseForUserCreate(data, userId) {
+      let licenseId = data.pendingLicenseId;
+      let license = get(licensePath(licenseId)).data;
+      let after = getAfter(licensePath(licenseId)).data;
+      return licenseId is string
+        && licenseId.size() > 0
+        && exists(licensePath(licenseId))
+        && license.used != true
+        && license.claimed != true
+        && license.active != false
+        && license.deleted != true
+        && after.claimed == true
+        && after.claimedByUid == userId;
+    }
+
+    function validTrialUserCreate(data) {
+      return data.isOwner == false
+        && data.locationSetupRequired == true
+        && isManagerRole(data.role)
+        && data.locationId == ""
+        && data.locationName == ""
+        && data.groupName == ""
+        && data.group == ""
+        && data.pendingLicenseId == ""
+        && data.pendingLicenseCode == ""
+        && data.roomAccess == "all"
+        && data.allowedRoomIds is list
+        && data.allowedRoomIds.size() == 0
+        && (!hasKey(data, "accessCodeId") || data.accessCodeId == "");
+    }
+
+    function hasPendingLocationSetup() {
+      return hasUserDoc()
+        && isManagerRole(userData().role)
+        && userData().isOwner != true
+        && userData().locationSetupRequired == true
+        && userData().locationId == "";
+    }
+
+    function hasPendingLicense() {
+      return hasPendingLocationSetup()
+        && userData().pendingLicenseId is string
+        && userData().pendingLicenseId != "";
+    }
+
+    function hasPendingTrialSetup() {
+      return hasPendingLocationSetup()
+        && (
+          !hasKey(userData(), "pendingLicenseId")
+          || userData().pendingLicenseId == ""
+        );
+    }
+
+    function validUserDataShape(data) {
+      return data.keys().hasOnly([
+          "uid",
+          "email",
+          "displayName",
+          "groupName",
+          "group",
+          "role",
+          "isOwner",
+          "locationId",
+          "locationName",
+          "accessCodeId",
+          "accessCodeRole",
+          "roomAccess",
+          "allowedRoomIds",
+          "pendingLicenseId",
+          "pendingLicenseCode",
+          "locationSetupRequired",
+          "usePin",
+          "pinHash",
+          "pinSet",
+          "lockOnHide",
+          "useBiometrics",
+          "language",
+          "notifyGroupBookings",
+          "notifyWeekBefore",
+          "notifyDayBefore",
+          "createdAt"
+        ])
+        && validOptionalText(data, "uid", 160)
+        && validOptionalText(data, "email", 180)
+        && validOptionalText(data, "displayName", 120)
+        && validOptionalText(data, "groupName", 120)
+        && validOptionalText(data, "group", 120)
+        && validAccessRole(data.role)
+        && data.isOwner is bool
+        && validTextOrEmpty(data.locationId, 160)
+        && validTextOrEmpty(data.locationName, 180)
+        && validOptionalText(data, "accessCodeId", 80)
+        && (!hasKey(data, "accessCodeRole") || validAccessRole(data.accessCodeRole))
+        && validRoomAccessData(data.role, data)
+        && validOptionalText(data, "pendingLicenseId", 120)
+        && validOptionalText(data, "pendingLicenseCode", 120)
+        && validOptionalBool(data, "locationSetupRequired")
+        && validOptionalBool(data, "usePin")
+        && validOptionalText(data, "pinHash", 180)
+        && validOptionalBool(data, "pinSet")
+        && validOptionalBool(data, "lockOnHide")
+        && validOptionalBool(data, "useBiometrics")
+        && (!hasKey(data, "language") || data.language == "ro")
+        && validOptionalBool(data, "notifyGroupBookings")
+        && validOptionalBool(data, "notifyWeekBefore")
+        && validOptionalBool(data, "notifyDayBefore")
+        && validOptionalTimestamp(data, "createdAt");
+    }
+
+    function validUserCreate(userId) {
+      return signedIn()
+        && request.auth.uid == userId
+        && validUserDataShape(request.resource.data)
+        && request.resource.data.uid == userId
+        && request.resource.data.email == request.auth.token.email
+        && (
+          (
+            isOwnerEmail()
+            && request.resource.data.isOwner == true
+            && isManagerRole(request.resource.data.role)
+            && request.resource.data.locationId == ""
+            && request.resource.data.groupName == ""
+            && request.resource.data.accessCodeId == ""
+          )
+          || (
+            request.resource.data.isOwner == false
+            && request.resource.data.locationSetupRequired == true
+            && isManagerRole(request.resource.data.role)
+            && request.resource.data.locationId == ""
+            && request.resource.data.groupName == ""
+            && (
+              validTrialUserCreate(request.resource.data)
+              || validLicenseForUserCreate(request.resource.data, userId)
+            )
+          )
+          || (
+            request.resource.data.isOwner == false
+            && request.resource.data.locationSetupRequired != true
+            && validAccessCodeForUserCreate(request.resource.data, userId)
+          )
+        );
+    }
+
+    function validOwnerSyncUpdate(userId) {
+      return isOwnerEmail()
+        && request.auth.uid == userId
+        && request.resource.data.role == "manager"
+        && request.resource.data.isOwner == true;
+    }
+
+    function validOwnUserUpdate(userId) {
+      return request.auth.uid == userId
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.isOwner == resource.data.isOwner
+        && request.resource.data.locationId == resource.data.locationId
+        && (
+          (
+            !hasKey(resource.data, "roomAccess")
+            && request.resource.data.roomAccess == "all"
+          )
+          || request.resource.data.roomAccess == resource.data.roomAccess
+        )
+        && (
+          (
+            !hasKey(resource.data, "allowedRoomIds")
+            && request.resource.data.allowedRoomIds is list
+            && request.resource.data.allowedRoomIds.size() == 0
+          )
+          || request.resource.data.allowedRoomIds == resource.data.allowedRoomIds
+        );
+    }
+
+    function validLocationSetupUserUpdate(userId) {
+      return request.auth.uid == userId
+        && isManagerRole(resource.data.role)
+        && resource.data.isOwner != true
+        && resource.data.locationSetupRequired == true
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.isOwner == resource.data.isOwner
+        && request.resource.data.locationSetupRequired == false
+        && request.resource.data.locationId != ""
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "locationId",
+          "locationName",
+          "locationSetupRequired",
+          "pendingLicenseId",
+          "pendingLicenseCode"
+        ]);
+    }
+
+    function validManagerUserUpdate() {
+      return (isOwner() || isLocationSuperAdmin())
+        && (
+          isOwner()
+          || resource.data.locationId == userLocationId()
+        )
+        && resource.data.isOwner != true
+        && request.resource.data.locationId == resource.data.locationId
+        && request.resource.data.isOwner == resource.data.isOwner
+        && validUserDataShape(request.resource.data);
+    }
+
+    function validEventData(data) {
+      return data.keys().hasOnly([
+          "group",
+          "congregatie",
+          "room",
+          "roomId",
+          "location",
+          "startDate",
+          "endDate",
+          "startTime",
+          "endTime",
+          "orar",
+          "reason",
+          "motiv",
+          "authorEmail",
+          "authorName",
+          "updatedBy",
+          "locationId",
+          "locationName",
+          "updatedAt",
+          "createdAt",
+          "deleted",
+          "deletedAt",
+          "deletedBy",
+          "deletedByUid"
+        ])
+        && validText(data.group, 120)
+        && data.congregatie == data.group
+        && validText(data.room, 120)
+        && validOptionalText(data, "roomId", 160)
+        && data.location == data.room
+        && validDateKey(data.startDate)
+        && validDateKey(data.endDate)
+        && data.endDate >= data.startDate
+        && validTime(data.startTime)
+        && validTime(data.endTime)
+        && validText(data.orar, 32)
+        && validTextOrEmpty(data.reason, 300)
+        && data.motiv == data.reason
+        && validText(data.authorEmail, 180)
+        && validText(data.authorName, 120)
+        && validTextOrEmpty(data.updatedBy, 180)
+        && validText(data.locationId, 160)
+        && validTextOrEmpty(data.locationName, 180)
+        && data.updatedAt is timestamp
+        && validOptionalTimestamp(data, "createdAt")
+        && validSoftDeleteFields(data);
+    }
+
+    function validSpaceData(data) {
+      return data.keys().hasOnly([
+          "name",
+          "floorLabel",
+          "locationId",
+          "locationName",
+          "createdBy",
+          "createdAt",
+          "updatedBy",
+          "updatedAt",
+          "deleted",
+          "deletedAt",
+          "deletedBy",
+          "deletedByUid"
+        ])
+        && validText(data.name, 120)
+        && validOptionalText(data, "floorLabel", 80)
+        && validText(data.locationId, 160)
+        && validTextOrEmpty(data.locationName, 180)
+        && validOptionalText(data, "createdBy", 180)
+        && validOptionalTimestamp(data, "createdAt")
+        && validOptionalText(data, "updatedBy", 180)
+        && validOptionalTimestamp(data, "updatedAt")
+        && validSoftDeleteFields(data);
+    }
+
+    function validFixedScheduleData(data) {
+      return data.keys().hasOnly([
+          "dayIndex",
+          "group",
+          "room",
+          "startTime",
+          "endTime",
+          "title",
+          "locationId",
+          "locationName",
+          "createdAt",
+          "updatedBy",
+          "updatedAt",
+          "deleted",
+          "deletedAt",
+          "deletedBy",
+          "deletedByUid"
+        ])
+        && data.dayIndex is int
+        && data.dayIndex >= 0
+        && data.dayIndex <= 6
+        && validText(data.group, 120)
+        && validText(data.room, 120)
+        && validTime(data.startTime)
+        && validTime(data.endTime)
+        && validText(data.title, 160)
+        && validText(data.locationId, 160)
+        && validTextOrEmpty(data.locationName, 180)
+        && validOptionalTimestamp(data, "createdAt")
+        && validTextOrEmpty(data.updatedBy, 180)
+        && data.updatedAt is timestamp
+        && validSoftDeleteFields(data);
+    }
+
+    function validFloorplanItemType(value) {
+      return value == "room"
+        || value == "circle"
+        || value == "asset"
+        || value == "wall"
+        || value == "door"
+        || value == "window"
+        || value == "text";
+    }
+
+    function validFloorplanAssetType(value) {
+      return value == "table"
+        || value == "chair"
+        || value == "desk"
+        || value == "sofa"
+        || value == "bed"
+        || value == "tv"
+        || value == "sink"
+        || value == "toilet"
+        || value == "cabinet"
+        || value == "appliance"
+        || value == "equipment"
+        || value == "storage"
+        || value == "custom";
+    }
+
+    function validFloorplanItemStatus(value) {
+      return value == "available"
+        || value == "occupied"
+        || value == "maintenance"
+        || value == "broken";
+    }
+
+    function floorplanPath(floorplanId) {
+      return /databases/$(database)/documents/floorplans/$(floorplanId);
+    }
+
+    function floorplanBelongsToLocation(floorplanId, locationId) {
+      return floorplanId is string
+        && floorplanId.size() > 0
+        && exists(floorplanPath(floorplanId))
+        && get(floorplanPath(floorplanId)).data.locationId == locationId;
+    }
+
+    function validFloorplanReference(data) {
+      return validText(data.floorplanId, 160)
+        && (
+          !exists(floorplanPath(data.floorplanId))
+          || floorplanBelongsToLocation(data.floorplanId, data.locationId)
+          || canWriteFloorplanLocation(data.locationId)
+        );
+    }
+
+    function validOptionalNumber(data, key) {
+      return !hasKey(data, key)
+        || validNumber(data[key]);
+    }
+
+    function validOptionalCoordinate(data, key) {
+      return !hasKey(data, key)
+        || validCoordinate(data[key]);
+    }
+
+    function validOptionalNumberList(data, key, maxSize) {
+      return !hasKey(data, key)
+        || (
+          data[key] is list
+          && data[key].size() <= maxSize
+        );
+    }
+
+    function validOptionalStringList(data, key, maxSize) {
+      return !hasKey(data, key)
+        || (
+          data[key] is list
+          && data[key].size() <= maxSize
+        );
+    }
+
+    function validOptionalItemMetadata(data) {
+      return !hasKey(data, "metadata")
+        || data.metadata is map;
+    }
+
+    function validFloorplanItemCreateOrUpdate(data) {
+      return validFloorplanItemData(data)
+        || (
+          data.keys().hasOnly([
+            "locationId",
+            "locationName",
+            "floorplanId",
+            "type",
+            "name",
+            "label",
+            "x",
+            "y",
+            "startX",
+            "startY",
+            "endX",
+            "endY",
+            "width",
+            "height",
+            "radius",
+            "rotation",
+            "color",
+            "icon",
+            "category",
+            "linkedRoomId",
+            "linkedAssetId",
+            "roomId",
+            "groupId",
+            "wallId",
+            "attachedWallId",
+            "assetType",
+            "status",
+            "notes",
+            "photoUrl",
+            "photoPath",
+            "documentUrl",
+            "documentPath",
+            "documentName",
+            "points",
+            "tags",
+            "zIndex",
+            "locked",
+            "visible",
+            "metadata",
+            "createdBy",
+            "createdByUid",
+            "createdAt",
+            "updatedBy",
+            "updatedByUid",
+            "updatedAt",
+            "deleted",
+            "deletedAt",
+            "deletedBy",
+            "deletedByUid"
+          ])
+          && validText(data.locationId, 160)
+          && validOptionalText(data, "locationName", 300)
+          && validFloorplanReference(data)
+          && validFloorplanItemType(data.type)
+          && validOptionalText(data, "name", 160)
+          && validOptionalText(data, "label", 160)
+          && validCoordinate(data.x)
+          && validCoordinate(data.y)
+          && validOptionalCoordinate(data, "startX")
+          && validOptionalCoordinate(data, "startY")
+          && validOptionalCoordinate(data, "endX")
+          && validOptionalCoordinate(data, "endY")
+          && validPositiveNumber(data.width)
+          && validPositiveNumber(data.height)
+          && validOptionalPositiveNumber(data, "radius")
+          && validOptionalNumber(data, "rotation")
+          && validOptionalText(data, "color", 32)
+          && validOptionalText(data, "icon", 80)
+          && validOptionalText(data, "category", 80)
+          && validOptionalText(data, "linkedRoomId", 160)
+          && validOptionalText(data, "linkedAssetId", 160)
+          && validOptionalText(data, "roomId", 160)
+          && validOptionalText(data, "groupId", 160)
+          && validOptionalText(data, "wallId", 160)
+          && validOptionalText(data, "attachedWallId", 160)
+          && (!hasKey(data, "assetType") || validFloorplanAssetType(data.assetType))
+          && (!hasKey(data, "status") || validFloorplanItemStatus(data.status))
+          && validOptionalText(data, "notes", 1000)
+          && validOptionalText(data, "photoUrl", 2000)
+          && validOptionalText(data, "photoPath", 600)
+          && validOptionalText(data, "documentUrl", 2000)
+          && validOptionalText(data, "documentPath", 600)
+          && validOptionalText(data, "documentName", 240)
+          && validOptionalNumberList(data, "points", 300)
+          && validOptionalStringList(data, "tags", 50)
+          && validOptionalNumber(data, "zIndex")
+          && validOptionalBool(data, "locked")
+          && validOptionalBool(data, "visible")
+          && validOptionalItemMetadata(data)
+          && validOptionalText(data, "createdBy", 180)
+          && validOptionalText(data, "createdByUid", 160)
+          && validOptionalTimestamp(data, "createdAt")
+          && validOptionalText(data, "updatedBy", 180)
+          && validOptionalText(data, "updatedByUid", 160)
+          && validOptionalTimestamp(data, "updatedAt")
+          && validSoftDeleteFields(data)
+        );
+    }
+
+    function validFloorplanData(data) {
+      return data.keys().hasOnly([
+          "name",
+          "floorLabel",
+          "locationId",
+          "locationName",
+          "backgroundUrl",
+          "backgroundPath",
+          "width",
+          "height",
+          "widthMeters",
+          "heightMeters",
+          "pixelsPerMeter",
+          "showMeasurements",
+          "createdBy",
+          "createdAt",
+          "updatedBy",
+          "updatedAt",
+          "deleted",
+          "deletedAt",
+          "deletedBy",
+          "deletedByUid"
+        ])
+        && validText(data.name, 120)
+        && validOptionalText(data, "floorLabel", 80)
+        && validText(data.locationId, 160)
+        && validOptionalText(data, "locationName", 180)
+        && validOptionalText(data, "backgroundUrl", 2000)
+        && validOptionalText(data, "backgroundPath", 600)
+        && validPositiveNumber(data.width)
+        && validPositiveNumber(data.height)
+        && validOptionalPositiveNumber(data, "widthMeters")
+        && validOptionalPositiveNumber(data, "heightMeters")
+        && validOptionalPositiveNumber(data, "pixelsPerMeter")
+        && validOptionalBool(data, "showMeasurements")
+        && validOptionalText(data, "createdBy", 180)
+        && validOptionalTimestamp(data, "createdAt")
+        && validOptionalText(data, "updatedBy", 180)
+        && data.updatedAt is timestamp
+        && validSoftDeleteFields(data);
+    }
+
+    function validFloorplanMinimum(data) {
+      return validText(data.locationId, 160)
+        && validText(data.name, 180)
+        && validOptionalText(data, "locationName", 300)
+        && validOptionalText(data, "floorLabel", 80)
+        && validOptionalText(data, "backgroundUrl", 2000)
+        && validOptionalText(data, "backgroundPath", 600)
+        && validPositiveNumber(data.width)
+        && validPositiveNumber(data.height)
+        && validOptionalPositiveNumber(data, "widthMeters")
+        && validOptionalPositiveNumber(data, "heightMeters")
+        && validOptionalPositiveNumber(data, "pixelsPerMeter")
+        && validOptionalBool(data, "showMeasurements")
+        && validOptionalText(data, "createdBy", 180)
+        && validOptionalTimestamp(data, "createdAt")
+        && validOptionalText(data, "updatedBy", 180)
+        && validOptionalTimestamp(data, "updatedAt")
+        && validSoftDeleteFields(data);
+    }
+
+    function validFloorplanItemData(data) {
+      return data.keys().hasOnly([
+          "locationId",
+          "locationName",
+          "floorplanId",
+          "type",
+          "name",
+          "x",
+          "y",
+          "startX",
+          "startY",
+          "endX",
+          "endY",
+          "width",
+          "height",
+          "radius",
+          "rotation",
+          "color",
+          "icon",
+          "category",
+          "linkedRoomId",
+          "linkedAssetId",
+          "roomId",
+          "groupId",
+          "wallId",
+          "attachedWallId",
+          "assetType",
+          "status",
+          "notes",
+          "photoUrl",
+          "photoPath",
+          "documentUrl",
+          "documentPath",
+          "documentName",
+          "points",
+          "tags",
+          "zIndex",
+          "locked",
+          "visible",
+          "metadata",
+          "createdBy",
+          "createdByUid",
+          "createdAt",
+          "updatedBy",
+          "updatedByUid",
+          "updatedAt",
+          "deleted",
+          "deletedAt",
+          "deletedBy",
+          "deletedByUid"
+        ])
+        && validText(data.locationId, 160)
+        && validOptionalText(data, "locationName", 300)
+        && validFloorplanReference(data)
+        && validFloorplanItemType(data.type)
+        && validOptionalText(data, "name", 160)
+        && validCoordinate(data.x)
+        && validCoordinate(data.y)
+        && validOptionalCoordinate(data, "startX")
+        && validOptionalCoordinate(data, "startY")
+        && validOptionalCoordinate(data, "endX")
+        && validOptionalCoordinate(data, "endY")
+        && validPositiveNumber(data.width)
+        && validPositiveNumber(data.height)
+        && validOptionalPositiveNumber(data, "radius")
+        && validOptionalNumber(data, "rotation")
+        && validOptionalText(data, "color", 32)
+        && validOptionalText(data, "icon", 80)
+        && validOptionalText(data, "category", 80)
+        && validOptionalText(data, "linkedRoomId", 160)
+        && validOptionalText(data, "linkedAssetId", 160)
+        && validOptionalText(data, "roomId", 160)
+        && validOptionalText(data, "groupId", 160)
+        && validOptionalText(data, "wallId", 160)
+        && validOptionalText(data, "attachedWallId", 160)
+        && (!hasKey(data, "assetType") || validFloorplanAssetType(data.assetType))
+        && (!hasKey(data, "status") || validFloorplanItemStatus(data.status))
+        && validOptionalText(data, "notes", 1000)
+        && validOptionalText(data, "photoUrl", 2000)
+        && validOptionalText(data, "photoPath", 600)
+        && validOptionalText(data, "documentUrl", 2000)
+        && validOptionalText(data, "documentPath", 600)
+        && validOptionalText(data, "documentName", 240)
+        && validOptionalNumberList(data, "points", 300)
+        && validOptionalStringList(data, "tags", 50)
+        && validOptionalNumber(data, "zIndex")
+        && validOptionalBool(data, "locked")
+        && validOptionalBool(data, "visible")
+        && validOptionalItemMetadata(data)
+        && validOptionalText(data, "createdBy", 180)
+        && validOptionalText(data, "createdByUid", 160)
+        && validOptionalTimestamp(data, "createdAt")
+        && validOptionalText(data, "updatedBy", 180)
+        && validOptionalText(data, "updatedByUid", 160)
+        && validOptionalTimestamp(data, "updatedAt")
+        && validSoftDeleteFields(data);
+    }
+
+    function validFloorplanItemMinimum(data) {
+      return validText(data.locationId, 160)
+        && validText(data.floorplanId, 160)
+        && validFloorplanItemType(data.type)
+        && validCoordinate(data.x)
+        && validCoordinate(data.y)
+        && validPositiveNumber(data.width)
+        && validPositiveNumber(data.height)
+        && validOptionalText(data, "locationName", 300)
+        && validOptionalText(data, "name", 160)
+        && validOptionalText(data, "label", 160)
+        && validOptionalCoordinate(data, "startX")
+        && validOptionalCoordinate(data, "startY")
+        && validOptionalCoordinate(data, "endX")
+        && validOptionalCoordinate(data, "endY")
+        && validOptionalPositiveNumber(data, "radius")
+        && validOptionalNumber(data, "rotation")
+        && validOptionalText(data, "color", 32)
+        && validOptionalText(data, "icon", 80)
+        && validOptionalText(data, "category", 80)
+        && validOptionalText(data, "linkedRoomId", 160)
+        && validOptionalText(data, "linkedAssetId", 160)
+        && validOptionalText(data, "roomId", 160)
+        && validOptionalText(data, "groupId", 160)
+        && validOptionalText(data, "wallId", 160)
+        && validOptionalText(data, "attachedWallId", 160)
+        && (!hasKey(data, "assetType") || validFloorplanAssetType(data.assetType))
+        && (!hasKey(data, "status") || validFloorplanItemStatus(data.status))
+        && validOptionalText(data, "notes", 1000)
+        && validOptionalText(data, "photoUrl", 2000)
+        && validOptionalText(data, "photoPath", 600)
+        && validOptionalText(data, "documentUrl", 2000)
+        && validOptionalText(data, "documentPath", 600)
+        && validOptionalText(data, "documentName", 240)
+        && validOptionalNumberList(data, "points", 300)
+        && validOptionalStringList(data, "tags", 50)
+        && validOptionalNumber(data, "zIndex")
+        && validOptionalBool(data, "locked")
+        && validOptionalBool(data, "visible")
+        && validOptionalItemMetadata(data)
+        && validOptionalText(data, "createdBy", 180)
+        && validOptionalText(data, "createdByUid", 160)
+        && validOptionalTimestamp(data, "createdAt")
+        && validOptionalText(data, "updatedBy", 180)
+        && validOptionalText(data, "updatedByUid", 160)
+        && validOptionalTimestamp(data, "updatedAt")
+        && validSoftDeleteFields(data);
+    }
+
+    function validSettingsData(data) {
+      return data.keys().hasOnly([
+          "fixedSectionTitle",
+          "fixedPageEnabled",
+          "listViewTitle",
+          "resourcesSectionTitle",
+          "roomsLabel",
+          "groupsLabel",
+          "locationId",
+          "locationName",
+          "updatedBy",
+          "updatedAt"
+        ])
+        && validText(data.fixedSectionTitle, 80)
+        && data.fixedPageEnabled is bool
+        && validText(data.listViewTitle, 80)
+        && validText(data.resourcesSectionTitle, 80)
+        && validText(data.roomsLabel, 60)
+        && validText(data.groupsLabel, 60)
+        && validText(data.locationId, 160)
+        && validTextOrEmpty(data.locationName, 180)
+        && validTextOrEmpty(data.updatedBy, 180)
+        && data.updatedAt is timestamp;
+    }
+
+    function validLocationData(data) {
+      return data.keys().hasOnly([
+          "name",
+          "locationName",
+          "address",
+          "officialAddress",
+          "placeId",
+          "ownerEmail",
+          "createdBy",
+          "createdAt",
+          "updatedBy",
+          "updatedAt",
+          "plan",
+          "billingStatus",
+          "subscriptionId",
+          "subscriptionExpiresAt",
+          "trialEndsAt",
+          "usage",
+          "planLimits",
+          "deleted",
+          "deletedAt",
+          "deletedBy",
+          "deletedByUid"
+        ])
+        && validText(data.name, 180)
+        && validOptionalText(data, "locationName", 180)
+        && validOptionalText(data, "address", 300)
+        && validOptionalText(data, "officialAddress", 300)
+        && validOptionalText(data, "placeId", 180)
+        && validOptionalText(data, "ownerEmail", 180)
+        && validOptionalText(data, "createdBy", 180)
+        && validOptionalTimestamp(data, "createdAt")
+        && validOptionalText(data, "updatedBy", 180)
+        && validOptionalTimestamp(data, "updatedAt")
+        && (!hasKey(data, "plan") || validLocationPlan(data.plan))
+        && (!hasKey(data, "billingStatus") || validBillingStatus(data.billingStatus))
+        && validOptionalText(data, "subscriptionId", 180)
+        && (!hasKey(data, "subscriptionExpiresAt") || validNullableTimestamp(data.subscriptionExpiresAt))
+        && (!hasKey(data, "trialEndsAt") || validNullableTimestamp(data.trialEndsAt))
+        && (!hasKey(data, "usage") || validUsageCounters(data.usage))
+        && (!hasKey(data, "planLimits") || validPlanLimits(data.planLimits))
+        && validSoftDeleteFields(data);
+    }
+
+    function validTrialLocationCreateData(data) {
+      return hasPendingTrialSetup()
+        && data.plan == "standard"
+        && data.billingStatus == "trialing"
+        && data.trialEndsAt is timestamp
+        && data.trialEndsAt > request.time
+        && (!hasKey(data, "subscriptionId") || data.subscriptionId == "")
+        && (!hasKey(data, "subscriptionExpiresAt") || data.subscriptionExpiresAt == null);
+    }
+
+    function validLocationCreate() {
+      return validLocationData(request.resource.data)
+        && (
+          isOwner()
+          || (
+            hasPendingLocationSetup()
+            && request.resource.data.ownerEmail == request.auth.token.email
+            && request.resource.data.createdBy == request.auth.token.email
+            && (
+              hasPendingLicense()
+              || validTrialLocationCreateData(request.resource.data)
+            )
+          )
+        );
+    }
+
+    function validOwnerLocationLicenseUpdate() {
+      return signedIn()
+        && isOwner()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "name",
+          "plan",
+          "billingStatus",
+          "subscriptionExpiresAt",
+          "trialEndsAt",
+          "updatedBy",
+          "updatedAt"
+        ])
+        && (
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(["name"])
+          || validText(request.resource.data.name, 180)
+        )
+        && (
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(["plan"])
+          || validLocationPlan(request.resource.data.plan)
+        )
+        && (
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(["billingStatus"])
+          || validBillingStatus(request.resource.data.billingStatus)
+        )
+        && (
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(["subscriptionExpiresAt"])
+          || validNullableTimestamp(request.resource.data.subscriptionExpiresAt)
+        )
+        && (
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(["trialEndsAt"])
+          || validNullableTimestamp(request.resource.data.trialEndsAt)
+        )
+        && (
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(["updatedBy"])
+          || validTextOrEmpty(request.resource.data.updatedBy, 180)
+        )
+        && (
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(["updatedAt"])
+          || request.resource.data.updatedAt is timestamp
+        );
+    }
+
+    function validLicenseData(data) {
+      return data.keys().hasOnly([
+          "code",
+          "plan",
+          "billingStatus",
+          "intendedLocationName",
+          "intendedAddress",
+          "officialAddress",
+          "placeId",
+          "active",
+          "claimed",
+          "claimedAt",
+          "claimedBy",
+          "claimedByUid",
+          "used",
+          "usedAt",
+          "usedBy",
+          "usedByUid",
+          "locationId",
+          "locationName",
+          "trialEndsAt",
+          "subscriptionId",
+          "subscriptionExpiresAt",
+          "createdBy",
+          "createdByUid",
+          "createdAt",
+          "updatedBy",
+          "updatedAt",
+          "deleted",
+          "deletedAt",
+          "deletedBy",
+          "deletedByUid"
+        ])
+        && validText(data.code, 80)
+        && validLocationPlan(data.plan)
+        && validBillingStatus(data.billingStatus)
+        && validOptionalText(data, "intendedLocationName", 180)
+        && validText(data.intendedAddress, 300)
+        && validOptionalText(data, "officialAddress", 300)
+        && validOptionalText(data, "placeId", 180)
+        && data.active is bool
+        && data.claimed is bool
+        && validOptionalTimestamp(data, "claimedAt")
+        && validOptionalText(data, "claimedBy", 180)
+        && validOptionalText(data, "claimedByUid", 160)
+        && data.used is bool
+        && validOptionalTimestamp(data, "usedAt")
+        && validOptionalText(data, "usedBy", 180)
+        && validOptionalText(data, "usedByUid", 160)
+        && validOptionalText(data, "locationId", 160)
+        && validOptionalText(data, "locationName", 180)
+        && (!hasKey(data, "trialEndsAt") || validNullableTimestamp(data.trialEndsAt))
+        && validOptionalText(data, "subscriptionId", 180)
+        && (!hasKey(data, "subscriptionExpiresAt") || validNullableTimestamp(data.subscriptionExpiresAt))
+        && validOptionalText(data, "createdBy", 180)
+        && validOptionalText(data, "createdByUid", 160)
+        && validOptionalTimestamp(data, "createdAt")
+        && validOptionalText(data, "updatedBy", 180)
+        && validOptionalTimestamp(data, "updatedAt")
+        && validSoftDeleteFields(data);
+    }
+
+    function validLicenseActiveToggleUpdate() {
+      return signedIn()
+        && isOwner()
+        && request.resource.data.active is bool
+        && validOptionalText(request.resource.data, "updatedBy", 180)
+        && validOptionalTimestamp(request.resource.data, "updatedAt")
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "active",
+          "updatedBy",
+          "updatedAt"
+        ]);
+    }
+
+    function validAuditEntityType(entityType) {
+      return entityType == "booking"
+        || entityType == "fixedSchedule"
+        || entityType == "room"
+        || entityType == "group"
+        || entityType == "accessCode"
+        || entityType == "user"
+        || entityType == "location"
+        || entityType == "license"
+        || entityType == "settings"
+        || entityType == "floorplan"
+        || entityType == "floorplanItem";
+    }
+
+    function validAuditAction(action) {
+      return action == "create"
+        || action == "update"
+        || action == "delete";
+    }
+
+    function validAuditSnapshot(value) {
+      return value == null
+        || value is map;
+    }
+
+    function validAuditLogData(data) {
+      return data.keys().hasOnly([
+          "locationId",
+          "locationName",
+          "entityType",
+          "entityId",
+          "action",
+          "actorUid",
+          "actorEmail",
+          "actorName",
+          "before",
+          "after",
+          "createdAt"
+        ])
+        && validText(data.locationId, 160)
+        && validTextOrEmpty(data.locationName, 180)
+        && validAuditEntityType(data.entityType)
+        && validText(data.entityId, 180)
+        && validAuditAction(data.action)
+        && data.actorUid == request.auth.uid
+        && data.actorEmail == request.auth.token.email
+        && validText(data.actorName, 120)
+        && validAuditSnapshot(data.before)
+        && validAuditSnapshot(data.after)
+        && data.createdAt is timestamp;
+    }
+
+    function validCommunityApplicationStatus(status) {
+      return status == "new"
+        || status == "reviewed"
+        || status == "replied"
+        || status == "approved"
+        || status == "declined";
+    }
+
+    function validCommunityApplicationSource(source) {
+      return source == "landing-community"
+        || source == "landing-newsletter"
+        || source == "landing-contact";
+    }
+
+    function validCommunityApplicationData(data) {
+      return data.keys().hasOnly([
+          "email",
+          "organizationName",
+          "details",
+          "status",
+          "source",
+          "createdAt"
+        ])
+        && validText(data.email, 180)
+        && validText(data.organizationName, 180)
+        && validText(data.details, 2000)
+        && data.status == "new"
+        && validCommunityApplicationSource(data.source)
+        && data.createdAt == request.time;
+    }
+
+    function validCommunityApplicationOwnerUpdate() {
+      return signedIn()
+        && isOwner()
+        && request.resource.data.keys().hasOnly([
+          "email",
+          "organizationName",
+          "details",
+          "status",
+          "source",
+          "createdAt",
+          "reviewedAt",
+          "reviewedBy",
+          "reviewedByUid",
+          "lastReplyAt",
+          "updatedAt",
+          "updatedBy",
+          "updatedByUid"
+        ])
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.organizationName == resource.data.organizationName
+        && request.resource.data.details == resource.data.details
+        && request.resource.data.source == resource.data.source
+        && request.resource.data.createdAt == resource.data.createdAt
+        && validCommunityApplicationStatus(request.resource.data.status)
+        && validOptionalTimestamp(request.resource.data, "reviewedAt")
+        && validOptionalText(request.resource.data, "reviewedBy", 180)
+        && validOptionalText(request.resource.data, "reviewedByUid", 160)
+        && validOptionalTimestamp(request.resource.data, "lastReplyAt")
+        && validOptionalTimestamp(request.resource.data, "updatedAt")
+        && validOptionalText(request.resource.data, "updatedBy", 180)
+        && validOptionalText(request.resource.data, "updatedByUid", 160)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "status",
+          "reviewedAt",
+          "reviewedBy",
+          "reviewedByUid",
+          "lastReplyAt",
+          "updatedAt",
+          "updatedBy",
+          "updatedByUid"
+        ]);
+    }
+
+    function validCommunityApplicationMessageData(applicationId, data) {
+      return signedIn()
+        && isOwner()
+        && data.keys().hasOnly([
+          "applicationId",
+          "body",
+          "direction",
+          "deliveryStatus",
+          "fromEmail",
+          "fromUid",
+          "toEmail",
+          "createdAt",
+          "sentAt",
+          "failedAt",
+          "resendEmailId",
+          "errorMessage"
+        ])
+        && data.applicationId == applicationId
+        && validText(data.body, 4000)
+        && data.direction == "outbound"
+        && data.deliveryStatus == "pending"
+        && data.fromEmail == request.auth.token.email
+        && data.fromUid == request.auth.uid
+        && validText(data.toEmail, 180)
+        && data.createdAt == request.time
+        && !hasKey(data, "sentAt")
+        && !hasKey(data, "failedAt")
+        && !hasKey(data, "resendEmailId")
+        && !hasKey(data, "errorMessage");
+    }
+
+    function validNewsletterSubscriberPublicWrite(subscriberId, data) {
+      return data.keys().hasOnly([
+          "email",
+          "emailKey",
+          "source",
+          "status",
+          "unsubscribed",
+          "createdAt",
+          "updatedAt"
+        ])
+        && validText(data.email, 180)
+        && validText(data.emailKey, 240)
+        && data.emailKey == subscriberId
+        && data.source == "landing-newsletter"
+        && data.status == "active"
+        && data.unsubscribed == false
+        && data.createdAt == request.time
+        && data.updatedAt == request.time;
+    }
+
+    function validNewsletterCampaignCreate(data) {
+      return signedIn()
+        && isOwner()
+        && data.keys().hasOnly([
+          "subject",
+          "body",
+          "status",
+          "recipientEmail",
+          "createdAt",
+          "createdBy",
+          "createdByUid"
+        ])
+        && validText(data.subject, 180)
+        && validText(data.body, 6000)
+        && validOptionalText(data, "recipientEmail", 180)
+        && data.status == "pending"
+        && data.createdAt == request.time
+        && data.createdBy == request.auth.token.email
+        && data.createdByUid == request.auth.uid;
+    }
+
+    function validLicenseEmailRequestCreate(data) {
+      return signedIn()
+        && isOwner()
+        && data.keys().hasOnly([
+          "licenseId",
+          "code",
+          "toEmail",
+          "message",
+          "status",
+          "createdAt",
+          "createdBy",
+          "createdByUid"
+        ])
+        && validText(data.licenseId, 80)
+        && validText(data.code, 80)
+        && data.licenseId == data.code
+        && exists(licensePath(data.licenseId))
+        && get(licensePath(data.licenseId)).data.active == true
+        && get(licensePath(data.licenseId)).data.claimed != true
+        && get(licensePath(data.licenseId)).data.used != true
+        && get(licensePath(data.licenseId)).data.deleted != true
+        && validText(data.toEmail, 180)
+        && validTextOrEmpty(data.message, 2000)
+        && data.status == "pending"
+        && data.createdAt == request.time
+        && data.createdBy == request.auth.token.email
+        && data.createdByUid == request.auth.uid;
+    }
+
+    function validSubscriptionData(data) {
+      return data.keys().hasOnly([
+          "locationId",
+          "locationName",
+          "plan",
+          "billingStatus",
+          "provider",
+          "providerCustomerId",
+          "providerSubscriptionId",
+          "currentPeriodStart",
+          "currentPeriodEnd",
+          "cancelAtPeriodEnd",
+          "createdAt",
+          "updatedAt",
+          "updatedBy"
+        ])
+        && validText(data.locationId, 160)
+        && validTextOrEmpty(data.locationName, 180)
+        && validLocationPlan(data.plan)
+        && validBillingStatus(data.billingStatus)
+        && validOptionalText(data, "provider", 80)
+        && validOptionalText(data, "providerCustomerId", 180)
+        && validOptionalText(data, "providerSubscriptionId", 180)
+        && (!hasKey(data, "currentPeriodStart") || validNullableTimestamp(data.currentPeriodStart))
+        && (!hasKey(data, "currentPeriodEnd") || validNullableTimestamp(data.currentPeriodEnd))
+        && (!hasKey(data, "cancelAtPeriodEnd") || data.cancelAtPeriodEnd is bool)
+        && validOptionalTimestamp(data, "createdAt")
+        && validOptionalTimestamp(data, "updatedAt")
+        && validOptionalText(data, "updatedBy", 180);
     }
 
     match /users/{userId} {
-      allow read: if signedIn();
-      allow create: if signedIn() && request.auth.uid == userId;
-      allow update: if signedIn()
+      allow read: if signedIn()
         && (
-          isSuperAdmin()
+          isOwner()
+          || request.auth.uid == userId
+          || resource.data.locationId == userLocationId()
+        );
+
+      allow create: if validUserCreate(userId);
+
+      allow update: if signedIn()
+        && validUserDataShape(request.resource.data)
+        && (
+          validOwnerSyncUpdate(userId)
+          || validOwnUserUpdate(userId)
+          || validLocationSetupUserUpdate(userId)
+          || validManagerUserUpdate()
+        );
+
+      allow delete: if resource.data.isOwner != true
+        && (
+          isOwner()
           || (
-            request.auth.uid == userId
-            && request.resource.data.role == resource.data.role
-            && request.resource.data.isOwner == resource.data.isOwner
+            isLocationSuperAdmin()
+            && resource.data.locationId == userLocationId()
           )
         );
-      allow delete: if isSuperAdmin();
     }
 
     match /settings/auth_codes {
-      allow read: if true;
-      allow write: if isSuperAdmin();
+      allow read, write: if false;
+    }
+
+    match /accessCodes/{codeId} {
+      allow get: if true;
+      allow list: if signedIn()
+        && (
+          isOwner()
+          || (
+            isLocationSuperAdmin()
+            && resource.data.locationId == userLocationId()
+          )
+        );
+      allow create: if (
+          isOwner()
+          || (
+            isLocationSuperAdmin()
+            && request.resource.data.locationId == userLocationId()
+          )
+        )
+        && locationWriteEnabled(request.resource.data.locationId)
+        && request.resource.data.code == codeId
+        && validAccessRole(request.resource.data.role)
+        && validAccessGroup(request.resource.data.role, request.resource.data.groupName)
+        && validAccessUsage(
+          request.resource.data.role,
+          request.resource.data.maxUses,
+          request.resource.data.usedCount,
+          request.resource.data.active
+        )
+        && request.resource.data.keys().hasOnly([
+          "code",
+          "role",
+          "groupName",
+          "roomAccess",
+          "allowedRoomIds",
+          "locationId",
+          "locationName",
+          "maxUses",
+          "usedCount",
+          "active",
+          "createdBy",
+          "createdAt",
+          "deleted"
+        ])
+        && validText(request.resource.data.locationName, 180)
+        && validRoomAccessData(request.resource.data.role, request.resource.data)
+        && validTextOrEmpty(request.resource.data.createdBy, 180)
+        && request.resource.data.createdAt is timestamp
+        && validSoftDeleteFields(request.resource.data);
+      allow update: if validAccessCodeSoftDeleteUpdate()
+        || (
+          (
+            isOwner()
+            || (
+              isLocationSuperAdmin()
+              && resource.data.locationId == userLocationId()
+            )
+          )
+          && locationWriteEnabled(resource.data.locationId)
+          && request.resource.data.locationId == resource.data.locationId
+          && request.resource.data.code == resource.data.code
+          && validAccessRole(request.resource.data.role)
+          && validAccessGroup(request.resource.data.role, request.resource.data.groupName)
+          && validRoomAccessData(request.resource.data.role, request.resource.data)
+          && validAccessUsage(
+            request.resource.data.role,
+            request.resource.data.maxUses,
+            request.resource.data.usedCount,
+            request.resource.data.active
+          )
+          && validSoftDeleteFields(request.resource.data)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            "role",
+            "groupName",
+            "roomAccess",
+            "allowedRoomIds",
+            "maxUses",
+            "usedCount",
+            "active",
+            "updatedBy",
+            "updatedAt",
+            "deleted",
+            "deletedAt",
+            "deletedBy",
+            "deletedByUid"
+          ])
+        )
+        || validAccessUseUpdate(codeId);
+      allow delete: if (
+          isOwner()
+          || (
+            isLocationSuperAdmin()
+            && resource.data.locationId == userLocationId()
+          )
+        )
+        && locationWriteEnabled(resource.data.locationId);
     }
 
     match /settings/{settingId} {
-      allow read: if signedIn();
-      allow write: if isSuperAdmin();
+      allow read: if signedIn()
+        && settingId != "auth_codes"
+        && (
+          isOwner()
+          || resource.data.locationId == userLocationId()
+        );
+      allow create, update: if settingId != "auth_codes"
+        && (
+          isOwner()
+          || isLocationSuperAdmin()
+        )
+        && validSettingsData(request.resource.data)
+        && (
+          isOwner()
+          || request.resource.data.locationId == userLocationId()
+        )
+        && locationWriteEnabled(request.resource.data.locationId);
+      allow delete: if settingId != "auth_codes"
+        && (
+          isOwner()
+          || (
+            isLocationSuperAdmin()
+            && resource.data.locationId == userLocationId()
+          )
+        );
+    }
+
+    match /licenses/{licenseId} {
+      allow get: if (
+          signedIn()
+          && (
+            isOwner()
+            || !hasUserDoc()
+            || hasPendingLicense()
+            || resource.data.claimedByUid == request.auth.uid
+          )
+        )
+        || (
+          !signedIn()
+          && resource.data.active == true
+          && resource.data.used != true
+          && resource.data.claimed != true
+          && resource.data.deleted != true
+        );
+      allow list: if signedIn() && isOwner();
+      allow create: if signedIn()
+        && isOwner()
+        && request.resource.data.code == licenseId
+        && validLicenseData(request.resource.data);
+      allow delete: if signedIn() && isOwner();
+      allow update: if validLicenseActiveToggleUpdate()
+        || (
+          signedIn()
+          && isOwner()
+          && validLicenseData(request.resource.data)
+        )
+        || (
+          signedIn()
+          && (
+            !hasUserDoc()
+            || (
+              hasPendingLicense()
+              && userData().pendingLicenseId == licenseId
+            )
+          )
+          && resource.data.used != true
+          && resource.data.claimed != true
+          && resource.data.active != false
+          && resource.data.deleted != true
+          && request.resource.data.claimed == true
+          && request.resource.data.claimedByUid == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            "claimed",
+            "claimedAt",
+            "claimedBy",
+            "claimedByUid"
+          ])
+        )
+        || (
+          signedIn()
+          && resource.data.claimedByUid == request.auth.uid
+          && resource.data.used != true
+          && resource.data.active != false
+          && resource.data.deleted != true
+          && request.resource.data.used == true
+          && request.resource.data.usedByUid == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            "used",
+            "usedAt",
+            "usedBy",
+            "usedByUid",
+            "locationId",
+            "locationName",
+            "intendedAddress",
+            "officialAddress"
+          ])
+        );
+    }
+
+    match /communityApplications/{applicationId} {
+      allow create: if validCommunityApplicationData(request.resource.data);
+      allow read: if signedIn() && isOwner();
+      allow update: if validCommunityApplicationOwnerUpdate();
+      allow delete: if signedIn() && isOwner();
+
+      match /messages/{messageId} {
+        allow read: if signedIn() && isOwner();
+        allow create: if validCommunityApplicationMessageData(applicationId, request.resource.data);
+        allow update: if false;
+        allow delete: if signedIn() && isOwner();
+      }
+    }
+
+    match /newsletterSubscribers/{subscriberId} {
+      allow create, update: if validNewsletterSubscriberPublicWrite(subscriberId, request.resource.data)
+        || (signedIn() && isOwner());
+      allow read, delete: if signedIn() && isOwner();
+    }
+
+    match /newsletterCampaigns/{campaignId} {
+      allow read: if signedIn() && isOwner();
+      allow create: if validNewsletterCampaignCreate(request.resource.data);
+      allow update: if false;
+      allow delete: if signedIn() && isOwner();
+
+      match /deliveries/{deliveryId} {
+        allow read: if signedIn() && isOwner();
+        allow write: if false;
+      }
+    }
+
+    match /licenseEmailRequests/{requestId} {
+      allow read: if signedIn() && isOwner();
+      allow create: if validLicenseEmailRequestCreate(request.resource.data);
+      allow update: if false;
+      allow delete: if signedIn() && isOwner();
+    }
+
+    match /subscriptions/{subscriptionId} {
+      allow read: if signedIn()
+        && (
+          isOwner()
+          || (
+            resource.data.locationId == userLocationId()
+            && isLocationSuperAdmin()
+          )
+        );
+      allow create, update: if signedIn()
+        && isOwner()
+        && validSubscriptionData(request.resource.data);
+      allow delete: if signedIn() && isOwner();
     }
 
     match /events/{eventId} {
-      allow read: if signedIn();
-      allow create: if isAdmin()
-        && canManageLocation(request.resource.data.locationId);
-      allow update, delete: if canManageLocation(resource.data.locationId)
+      allow read: if signedIn()
+        && (
+          isOwner()
+          || resource.data.locationId == userLocationId()
+        );
+      allow create: if isLocationAdmin()
+        && validEventData(request.resource.data)
+        && request.resource.data.locationId == userLocationId()
+        && roomAccessAllows(request.resource.data.roomId)
+        && locationWriteEnabled(request.resource.data.locationId);
+      allow update: if validEventData(request.resource.data)
+        && locationWriteEnabled(resource.data.locationId)
+        && roomAccessAllows(request.resource.data.roomId)
+        && (
+          (
+            canManageLocation(resource.data.locationId)
+            && request.resource.data.locationId == resource.data.locationId
+          )
+          || (
+            isLocationAdmin()
+            && resource.data.locationId == userLocationId()
+            && request.resource.data.locationId == resource.data.locationId
+            && (
+              resource.data.authorEmail == request.auth.token.email
+              || resource.data.author == request.auth.token.email
+            )
+          )
+        );
+      allow delete: if (canManageLocation(resource.data.locationId) && locationWriteEnabled(resource.data.locationId))
         || (
-          isAdmin()
+          isLocationAdmin()
           && resource.data.locationId == userLocationId()
+          && locationWriteEnabled(resource.data.locationId)
           && (
             resource.data.authorEmail == request.auth.token.email
             || resource.data.author == request.auth.token.email
@@ -90,31 +2015,99 @@ service cloud.firestore {
     }
 
     match /rooms/{roomId} {
-      allow read: if signedIn();
-      allow create: if canManageLocation(request.resource.data.locationId);
-      allow update, delete: if canManageLocation(resource.data.locationId);
+      allow read: if signedIn()
+        && (
+          isOwner()
+          || resource.data.locationId == userLocationId()
+        );
+      allow create: if canManageLocation(request.resource.data.locationId)
+        && locationWriteEnabled(request.resource.data.locationId)
+        && validSpaceData(request.resource.data);
+      allow update: if canManageLocation(resource.data.locationId)
+        && locationWriteEnabled(resource.data.locationId)
+        && request.resource.data.locationId == resource.data.locationId
+        && validSpaceData(request.resource.data);
+      allow delete: if canManageLocation(resource.data.locationId)
+        && locationWriteEnabled(resource.data.locationId);
     }
 
     match /groups/{groupId} {
-      allow read: if signedIn();
-      allow create: if canManageLocation(request.resource.data.locationId);
-      allow update, delete: if canManageLocation(resource.data.locationId);
+      allow read: if signedIn()
+        && (
+          isOwner()
+          || resource.data.locationId == userLocationId()
+        );
+      allow create: if canManageLocation(request.resource.data.locationId)
+        && locationWriteEnabled(request.resource.data.locationId)
+        && validSpaceData(request.resource.data);
+      allow update: if canManageLocation(resource.data.locationId)
+        && locationWriteEnabled(resource.data.locationId)
+        && request.resource.data.locationId == resource.data.locationId
+        && validSpaceData(request.resource.data);
+      allow delete: if canManageLocation(resource.data.locationId)
+        && locationWriteEnabled(resource.data.locationId);
     }
 
     match /fixedSchedules/{scheduleId} {
-      allow read: if signedIn();
-      allow create: if canManageLocation(request.resource.data.locationId);
-      allow update, delete: if canManageLocation(resource.data.locationId);
+      allow read: if signedIn()
+        && (
+          isOwner()
+          || resource.data.locationId == userLocationId()
+        );
+      allow create: if canManageLocation(request.resource.data.locationId)
+        && locationWriteEnabled(request.resource.data.locationId)
+        && validFixedScheduleData(request.resource.data);
+      allow update: if canManageLocation(resource.data.locationId)
+        && locationWriteEnabled(resource.data.locationId)
+        && request.resource.data.locationId == resource.data.locationId
+        && validFixedScheduleData(request.resource.data);
+      allow delete: if canManageLocation(resource.data.locationId)
+        && locationWriteEnabled(resource.data.locationId);
+    }
+
+    match /floorplans/{floorplanId} {
+      allow read, write: if false;
+    }
+
+    match /floorplanItems/{itemId} {
+      allow read, write: if false;
+    }
+
+    match /auditLogs/{logId} {
+      allow read: if signedIn()
+        && (
+          isOwner()
+          || (
+            isLocationSuperAdmin()
+            && resource.data.locationId == userLocationId()
+          )
+        );
+      allow create: if signedIn()
+        && validAuditLogData(request.resource.data)
+        && (
+          isOwner()
+          || request.resource.data.locationId == userLocationId()
+        );
+      allow update, delete: if false;
     }
 
     match /locations/{locationId} {
-      allow read: if signedIn();
-      allow create: if signedIn();
-      allow update, delete: if isOwner()
-        || (
-          isSuperAdmin()
-          && locationId == userLocationId()
+      allow get: if signedIn()
+        && (
+          isOwner()
+          || locationId == userLocationId()
+          || !hasUserDoc()
+          || hasPendingLocationSetup()
         );
+      allow list: if signedIn() && isOwner();
+      allow create: if signedIn()
+        && validLocationCreate();
+      allow update: if validOwnerLocationLicenseUpdate()
+        || (
+          (isOwner() || (canManageLocation(locationId) && locationWriteEnabled(locationId)))
+          && validLocationData(request.resource.data)
+        );
+      allow delete: if isOwner() || (canManageLocation(locationId) && locationWriteEnabled(locationId));
     }
   }
 }

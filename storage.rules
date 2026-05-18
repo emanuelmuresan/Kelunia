@@ -1,0 +1,75 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userPath() {
+      return /databases/(default)/documents/users/$(request.auth.uid);
+    }
+
+    function hasUserDoc() {
+      return signedIn()
+        && firestore.exists(userPath());
+    }
+
+    function userData() {
+      return firestore.get(userPath()).data;
+    }
+
+    function isOwner() {
+      return signedIn()
+        && (
+          request.auth.token.email == "emanuelmuresan@gmail.com"
+          || (
+            hasUserDoc()
+            && userData().isOwner == true
+          )
+        );
+    }
+
+    function isManager() {
+      return hasUserDoc()
+        && userData().isOwner != true
+        && (
+          userData().role == "manager"
+          || userData().role == "superadmin"
+        );
+    }
+
+    function canReadLocation(locationId) {
+      return isOwner()
+        || (
+          hasUserDoc()
+          && userData().locationId == locationId
+        );
+    }
+
+    function canWriteLocation(locationId) {
+      return isOwner()
+        || (
+          isManager()
+          && userData().locationId == locationId
+        );
+    }
+
+    function validFloorplanFile() {
+      return request.resource != null
+        && request.resource.size <= 15 * 1024 * 1024
+        && (
+          request.resource.contentType.matches("image/.*")
+          || request.resource.contentType == "application/pdf"
+        );
+    }
+
+    match /locations/{locationId}/floorplans/{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

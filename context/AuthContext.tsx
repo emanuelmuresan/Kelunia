@@ -3,9 +3,12 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged, User } from "firebase/auth";
-import { collection, doc, getDoc, getDocs, query, setDoc, where } from "firebase/firestore";
+import { doc, getDoc, setDoc, type DocumentData, type DocumentReference } from "firebase/firestore";
+import { normalizeAllowedRoomIds, normalizeRoomAccessMode } from "@/lib/room-access";
+import type { RoomAccessMode } from "@/lib/types/domain";
 
-export type UserRole = "superadmin" | "admin" | "viewer" | "user";
+export type UserRole = "manager" | "member" | "guest";
+export type AppLanguage = "ro";
 
 export interface UserProfile {
   uid: string;
@@ -20,6 +23,15 @@ export interface UserProfile {
   hasPin: boolean;
   lockOnHide: boolean;
   useBiometrics: boolean;
+  pendingLicenseId: string;
+  locationSetupRequired: boolean;
+  accessCodeId: string;
+  roomAccess: RoomAccessMode;
+  allowedRoomIds: string[];
+  language: AppLanguage;
+  notifyGroupBookings: boolean;
+  notifyWeekBefore: boolean;
+  notifyDayBefore: boolean;
 }
 
 interface AuthContextType {
@@ -33,8 +45,12 @@ interface AuthContextType {
   loading: boolean;
 }
 
-const defaultLocationName = "Sala Regatului Iuliu Maniu 13";
-const configuredSuperAdminEmails = (process.env.NEXT_PUBLIC_SUPERADMIN_EMAILS ?? "")
+const defaultLocationName = "Kelunia";
+const configuredOwnerEmails = (
+  process.env.NEXT_PUBLIC_OWNER_EMAILS ??
+  process.env.NEXT_PUBLIC_SUPERADMIN_EMAILS ??
+  ""
+)
   .split(",")
   .map((email) => email.trim().toLowerCase())
   .filter(Boolean);
@@ -42,7 +58,7 @@ const configuredSuperAdminEmails = (process.env.NEXT_PUBLIC_SUPERADMIN_EMAILS ??
 const AuthContext = createContext<AuthContextType>({
   user: null,
   profile: null,
-  role: "viewer",
+  role: "guest",
   isAdmin: false,
   isSuperAdmin: false,
   isOwner: false,
@@ -51,57 +67,31 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 function normalizeRole(role: unknown): UserRole {
-  if (role === "superadmin" || role === "admin" || role === "viewer" || role === "user") {
-    return role;
+  if (role === "manager" || role === "superadmin") {
+    return "manager";
   }
 
-  return "viewer";
+  if (role === "member" || role === "admin") {
+    return "member";
+  }
+
+  if (role === "guest" || role === "viewer" || role === "user") {
+    return "guest";
+  }
+
+  return "guest";
 }
 
-function isConfiguredSuperAdmin(email: string) {
-  return configuredSuperAdminEmails.includes(email.toLowerCase());
+function normalizeLanguage(language: unknown): AppLanguage {
+  return language === "ro" ? "ro" : "ro";
+}
+
+function isConfiguredOwner(email: string) {
+  return configuredOwnerEmails.includes(email.toLowerCase());
 }
 
 function isOwnerProfile(data: Record<string, unknown>, email: string) {
-  const groupName = String(data.groupName ?? data.group ?? "").trim();
-  const ownerEmail = String(data.ownerEmail ?? "").trim().toLowerCase();
-  const role = normalizeRole(data.role);
-
-  return (
-    Boolean(data.isOwner || data.owner || data.isLocationOwner) ||
-    ownerEmail === email.toLowerCase() ||
-    isConfiguredSuperAdmin(email) ||
-    (role === "admin" && groupName.length === 0)
-  );
-}
-
-async function isLegacyFirstAdmin(uid: string, role: UserRole) {
-  if (role !== "admin") {
-    return false;
-  }
-
-  try {
-    const superAdmins = await getDocs(query(collection(db, "users"), where("role", "==", "superadmin")));
-    return superAdmins.empty || superAdmins.docs.every((item) => item.id === uid);
-  } catch (error) {
-    console.warn("Nu am putut verifica superadminii existenți:", error);
-    return false;
-  }
-}
-
-async function isLocationOwner(locationId: string, email: string) {
-  if (!locationId) {
-    return false;
-  }
-
-  try {
-    const locationSnap = await getDoc(doc(db, "locations", locationId));
-    const ownerEmail = String(locationSnap.data()?.ownerEmail ?? "").trim().toLowerCase();
-    return ownerEmail.length > 0 && ownerEmail === email.toLowerCase();
-  } catch (error) {
-    console.warn("Nu am putut verifica proprietarul locației:", error);
-    return false;
-  }
+  return Boolean(data.isOwner) || isConfiguredOwner(email);
 }
 
 function buildFallbackProfile(userData: User): UserProfile {
@@ -110,7 +100,7 @@ function buildFallbackProfile(userData: User): UserProfile {
     email: userData.email ?? "",
     displayName: userData.displayName ?? userData.email ?? "Utilizator",
     groupName: "",
-    role: "viewer",
+    role: "guest",
     locationId: "main-location",
     locationName: defaultLocationName,
     isOwner: false,
@@ -118,7 +108,33 @@ function buildFallbackProfile(userData: User): UserProfile {
     hasPin: false,
     lockOnHide: false,
     useBiometrics: false,
+    pendingLicenseId: "",
+    locationSetupRequired: false,
+    accessCodeId: "",
+    roomAccess: "all",
+    allowedRoomIds: [],
+    language: "ro",
+    notifyGroupBookings: false,
+    notifyWeekBefore: true,
+    notifyDayBefore: true,
   };
+}
+
+function wait(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+async function waitForUserDocument(userDocRef: DocumentReference<DocumentData>) {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    await wait(150);
+    const userSnap = await getDoc(userDocRef);
+
+    if (userSnap.exists()) {
+      return userSnap;
+    }
+  }
+
+  return null;
 }
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -141,27 +157,97 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       try {
         const userDocRef = doc(db, "users", userData.uid);
-        const userSnap = await getDoc(userDocRef);
+        let userSnap = await getDoc(userDocRef);
         const fallback = buildFallbackProfile(userData);
 
         if (!userSnap.exists()) {
+          if (isConfiguredOwner(fallback.email)) {
+            const ownerFallback: UserProfile = {
+              ...fallback,
+              role: "manager",
+              isOwner: true,
+              locationId: "",
+              locationName: defaultLocationName,
+              groupName: "",
+            };
+
+            setDoc(
+              userDocRef,
+              {
+                uid: userData.uid,
+                email: fallback.email,
+                displayName: fallback.displayName,
+                groupName: "",
+                role: "manager",
+                isOwner: true,
+                locationId: "",
+                locationName: defaultLocationName,
+                usePin: false,
+                lockOnHide: false,
+                useBiometrics: false,
+                pendingLicenseId: "",
+                locationSetupRequired: false,
+                accessCodeId: "",
+                roomAccess: "all",
+                allowedRoomIds: [],
+                language: "ro",
+                notifyGroupBookings: false,
+                notifyWeekBefore: true,
+                notifyDayBefore: true,
+              },
+              { merge: true }
+            ).catch((error) => {
+              console.warn("Profilul de owner nu a putut fi recreat automat:", error);
+            });
+
+            setProfile(ownerFallback);
+            setLoading(false);
+            return;
+          }
+
+          const delayedUserSnap = await waitForUserDocument(userDocRef);
+
+          if (!delayedUserSnap) {
+            setProfile(fallback);
+            setLoading(false);
+            return;
+          }
+
+          userSnap = delayedUserSnap;
+        }
+
+        const data = userSnap.data();
+
+        if (!data) {
           setProfile(fallback);
           setLoading(false);
           return;
         }
 
-        const data = userSnap.data();
         const email = String(data.email ?? fallback.email);
         const rawRole = normalizeRole(data.role);
-        const locationId = String(data.locationId ?? "main-location");
-        const ownerProfile =
-          isOwnerProfile(data, email) ||
-          (await isLocationOwner(locationId, email)) ||
-          (await isLegacyFirstAdmin(userData.uid, rawRole));
-        const role = ownerProfile ? "superadmin" : rawRole;
+        const ownerProfile = isOwnerProfile(data, email);
+        const locationId = ownerProfile ? "" : String(data.locationId ?? "main-location");
+        const role = ownerProfile ? "manager" : rawRole;
 
-        if (ownerProfile && data.role !== "superadmin") {
-          setDoc(userDocRef, { role: "superadmin", isOwner: true }, { merge: true }).catch((error) => {
+        if (
+          ownerProfile &&
+          (normalizeRole(data.role) !== "manager" ||
+            data.isOwner !== true ||
+            data.locationId ||
+            data.groupName)
+        ) {
+          setDoc(
+            userDocRef,
+            {
+              role: "manager",
+              isOwner: true,
+              locationId: "",
+              locationName: defaultLocationName,
+              groupName: "",
+            },
+            { merge: true }
+          ).catch((error) => {
             console.warn("Rolul de proprietar nu a putut fi sincronizat:", error);
           });
         }
@@ -170,7 +256,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           uid: userData.uid,
           email,
           displayName: String(data.displayName ?? data.name ?? fallback.displayName),
-          groupName: role === "superadmin" ? "" : String(data.groupName ?? data.group ?? ""),
+          groupName: ownerProfile ? "" : String(data.groupName ?? data.group ?? ""),
           role,
           locationId,
           locationName: String(data.locationName ?? defaultLocationName),
@@ -179,6 +265,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           hasPin: Boolean(data.pinHash || data.pinSet),
           lockOnHide: Boolean(data.lockOnHide),
           useBiometrics: Boolean(data.useBiometrics),
+          pendingLicenseId: String(data.pendingLicenseId ?? ""),
+          locationSetupRequired: Boolean(data.locationSetupRequired),
+          accessCodeId: String(data.accessCodeId ?? ""),
+          roomAccess: normalizeRoomAccessMode(data.roomAccess),
+          allowedRoomIds: normalizeAllowedRoomIds(data.allowedRoomIds),
+          language: normalizeLanguage(data.language),
+          notifyGroupBookings: Boolean(data.notifyGroupBookings),
+          notifyWeekBefore: data.notifyWeekBefore !== false,
+          notifyDayBefore: data.notifyDayBefore !== false,
         });
       } catch (error) {
         console.error("Eroare la citirea profilului:", error);
@@ -191,11 +286,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => unsubscribe();
   }, []);
 
-  const role = profile?.role ?? "viewer";
+  const role = profile?.role ?? "guest";
   const isOwner = Boolean(profile?.isOwner);
-  const isSuperAdmin = isOwner || role === "superadmin";
-  const isAdmin = role === "superadmin" || role === "admin";
-  const isViewer = !isAdmin;
+  const isSuperAdmin = role === "manager";
+  const isAdmin = role === "manager" || role === "member";
+  const isViewer = role === "guest";
 
   return (
     <AuthContext.Provider value={{ user, profile, role, isAdmin, isSuperAdmin, isOwner, isViewer, loading }}>

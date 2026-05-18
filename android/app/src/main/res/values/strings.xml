@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Kelunia</string>
+    <string name="title_activity_main">Kelunia</string>
+    <string name="package_name">com.kelunia.app</string>
+    <string name="custom_url_scheme">com.kelunia.app</string>
+</resources>

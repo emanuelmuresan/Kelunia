@@ -5,7 +5,7 @@ import PwaRegister from "./pwa-register";
 
 export const metadata: Metadata = {
   title: "Kelunia",
-  description: "Aplicație pentru programări, săli, grupuri și administrarea unei locații.",
+  description: "Kelunia organizeaza programari, sali, locatii, echipe si programari recurente intr-un singur loc.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#2563eb",
+  themeColor: "#1787ff",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",

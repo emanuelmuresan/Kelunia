@@ -1,37 +1,40 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Kelunia
 
-## Getting Started
+Kelunia este aplicatia pentru programari pe locatie. Versiunea curenta este gandita ca v1 Standard: calendar, lista programari, programari fixe, sali, grupuri, coduri de acces, audit de baza, PWA si pregatire Capacitor pentru Android.
 
-First, run the development server:
+## Comenzi locale
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Ruleaza `npm install` dupa ce copiezi proiectul sau dupa ce apar dependinte noi, ca `package-lock.json` si pluginurile Capacitor sa fie sincronizate. Pentru development se foloseste `npm run dev`. Pentru web si Capacitor, `npm run build` produce export static in `out/`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Android cu Capacitor
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run cap:sync:android
+npm run cap:open:android
+```
 
-## Learn More
+`cap:sync:android` trebuie rulat dupa modificarile web importante, ca Android Studio sa primeasca ultima versiune din `out/`.
 
-To learn more about Next.js, take a look at the following resources:
+## Firebase
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Regulile sunt in `firestore.rules` si `storage.rules`, iar `firebase.json` este setat sa le publice pe ambele. Dupa schimbari la reguli sau indexuri, publica-le din proiectul Firebase:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+firebase deploy --only firestore:rules,firestore:indexes,storage
+```
 
-## Deploy on Vercel
+## Directia pe versiuni
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- v1 Standard: programari, sali, grupuri, notificari locale, recurring/fixe, audit de baza, PWA si Android.
+- v2 Pro: echipamente, planuri interactive, analytics basic si documente in Storage.
+- v3 Business: dashboard multi-locatie, permisiuni avansate, billing automat, invoicing, API si AI scheduling.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-"# Kelunia" 
+## Note de arhitectura
+
+Documentatia de lucru este in `docs/`. Pagina principala trebuie sa ramana cat mai mult compozitie UI; citirile live, regulile de scheduling, permisiunile si licensing-ul trebuie mutate in `features/` si `lib/`.
