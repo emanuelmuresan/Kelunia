@@ -6,8 +6,17 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isOwnerEmail() {
+    function emailVerified() {
       return signedIn()
+        && request.auth.token.email_verified == true;
+    }
+
+    function signedInVerified() {
+      return emailVerified();
+    }
+
+    function isOwnerEmail() {
+      return signedInVerified()
         && request.auth.token.email == "emanuelmuresan@gmail.com";
     }
 
@@ -45,13 +54,15 @@ service cloud.firestore {
     }
 
     function isLocationSuperAdmin() {
-      return hasUserDoc()
+      return signedInVerified()
+        && hasUserDoc()
         && isManagerRole(userData().role)
         && userData().isOwner != true;
     }
 
     function isLocationAdmin() {
-      return hasUserDoc()
+      return signedInVerified()
+        && hasUserDoc()
         && userData().isOwner != true
         && (
           isMemberRole(userData().role)
@@ -111,7 +122,7 @@ service cloud.firestore {
     }
 
     function canWriteFloorplanLocation(locationId) {
-      return signedIn()
+      return signedInVerified()
         && locationId is string
         && locationId.size() > 0
         && floorplanWriteEnabled(locationId)
@@ -131,7 +142,7 @@ service cloud.firestore {
     }
 
     function canEditFloorplanLocation(locationId) {
-      return signedIn()
+      return signedInVerified()
         && locationId is string
         && locationId.size() > 0
         && exists(locationPath(locationId))
@@ -450,7 +461,7 @@ service cloud.firestore {
     }
 
     function validAccessCodeSoftDeleteUpdate() {
-      return signedIn()
+      return signedInVerified()
         && canSoftDeleteAccessCode()
         && (
           !hasKey(resource.data, "locationId")
@@ -593,6 +604,7 @@ service cloud.firestore {
           "notifyGroupBookings",
           "notifyWeekBefore",
           "notifyDayBefore",
+          "verificationEmailSentAt",
           "createdAt"
         ])
         && validOptionalText(data, "uid", 160)
@@ -619,6 +631,7 @@ service cloud.firestore {
         && validOptionalBool(data, "notifyGroupBookings")
         && validOptionalBool(data, "notifyWeekBefore")
         && validOptionalBool(data, "notifyDayBefore")
+        && validOptionalTimestamp(data, "verificationEmailSentAt")
         && validOptionalTimestamp(data, "createdAt");
     }
 
@@ -657,14 +670,16 @@ service cloud.firestore {
     }
 
     function validOwnerSyncUpdate(userId) {
-      return isOwnerEmail()
+      return signedInVerified()
+        && isOwnerEmail()
         && request.auth.uid == userId
         && request.resource.data.role == "manager"
         && request.resource.data.isOwner == true;
     }
 
     function validOwnUserUpdate(userId) {
-      return request.auth.uid == userId
+      return signedInVerified()
+        && request.auth.uid == userId
         && request.resource.data.role == resource.data.role
         && request.resource.data.isOwner == resource.data.isOwner
         && request.resource.data.locationId == resource.data.locationId
@@ -686,7 +701,8 @@ service cloud.firestore {
     }
 
     function validLocationSetupUserUpdate(userId) {
-      return request.auth.uid == userId
+      return signedInVerified()
+        && request.auth.uid == userId
         && isManagerRole(resource.data.role)
         && resource.data.isOwner != true
         && resource.data.locationSetupRequired == true
@@ -1316,7 +1332,7 @@ service cloud.firestore {
     }
 
     function validOwnerLocationLicenseUpdate() {
-      return signedIn()
+      return signedInVerified()
         && isOwner()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           "name",
@@ -1420,7 +1436,7 @@ service cloud.firestore {
     }
 
     function validLicenseActiveToggleUpdate() {
-      return signedIn()
+      return signedInVerified()
         && isOwner()
         && request.resource.data.active is bool
         && validOptionalText(request.resource.data, "updatedBy", 180)
@@ -1516,7 +1532,7 @@ service cloud.firestore {
     }
 
     function validCommunityApplicationOwnerUpdate() {
-      return signedIn()
+      return signedInVerified()
         && isOwner()
         && request.resource.data.keys().hasOnly([
           "email",
@@ -1559,7 +1575,7 @@ service cloud.firestore {
     }
 
     function validCommunityApplicationMessageData(applicationId, data) {
-      return signedIn()
+      return signedInVerified()
         && isOwner()
         && data.keys().hasOnly([
           "applicationId",
@@ -1610,7 +1626,7 @@ service cloud.firestore {
     }
 
     function validNewsletterCampaignCreate(data) {
-      return signedIn()
+      return signedInVerified()
         && isOwner()
         && data.keys().hasOnly([
           "subject",
@@ -1631,7 +1647,7 @@ service cloud.firestore {
     }
 
     function validLicenseEmailRequestCreate(data) {
-      return signedIn()
+      return signedInVerified()
         && isOwner()
         && data.keys().hasOnly([
           "licenseId",
@@ -1691,7 +1707,7 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read: if signedIn()
+      allow read: if signedInVerified()
         && (
           isOwner()
           || request.auth.uid == userId
@@ -1700,7 +1716,7 @@ service cloud.firestore {
 
       allow create: if validUserCreate(userId);
 
-      allow update: if signedIn()
+      allow update: if signedInVerified()
         && validUserDataShape(request.resource.data)
         && (
           validOwnerSyncUpdate(userId)
@@ -1709,7 +1725,8 @@ service cloud.firestore {
           || validManagerUserUpdate()
         );
 
-      allow delete: if resource.data.isOwner != true
+      allow delete: if signedInVerified()
+        && resource.data.isOwner != true
         && (
           isOwner()
           || (
@@ -1725,7 +1742,7 @@ service cloud.firestore {
 
     match /accessCodes/{codeId} {
       allow get: if true;
-      allow list: if signedIn()
+      allow list: if signedInVerified()
         && (
           isOwner()
           || (
@@ -1820,7 +1837,7 @@ service cloud.firestore {
     }
 
     match /settings/{settingId} {
-      allow read: if signedIn()
+      allow read: if signedInVerified()
         && settingId != "auth_codes"
         && (
           isOwner()
@@ -1849,10 +1866,9 @@ service cloud.firestore {
 
     match /licenses/{licenseId} {
       allow get: if (
-          signedIn()
+          signedInVerified()
           && (
             isOwner()
-            || !hasUserDoc()
             || hasPendingLicense()
             || resource.data.claimedByUid == request.auth.uid
           )
@@ -1864,15 +1880,15 @@ service cloud.firestore {
           && resource.data.claimed != true
           && resource.data.deleted != true
         );
-      allow list: if signedIn() && isOwner();
-      allow create: if signedIn()
+      allow list: if signedInVerified() && isOwner();
+      allow create: if signedInVerified()
         && isOwner()
         && request.resource.data.code == licenseId
         && validLicenseData(request.resource.data);
-      allow delete: if signedIn() && isOwner();
+      allow delete: if signedInVerified() && isOwner();
       allow update: if validLicenseActiveToggleUpdate()
         || (
-          signedIn()
+          signedInVerified()
           && isOwner()
           && validLicenseData(request.resource.data)
         )
@@ -1899,7 +1915,7 @@ service cloud.firestore {
           ])
         )
         || (
-          signedIn()
+          signedInVerified()
           && resource.data.claimedByUid == request.auth.uid
           && resource.data.used != true
           && resource.data.active != false
@@ -1921,45 +1937,45 @@ service cloud.firestore {
 
     match /communityApplications/{applicationId} {
       allow create: if validCommunityApplicationData(request.resource.data);
-      allow read: if signedIn() && isOwner();
+      allow read: if signedInVerified() && isOwner();
       allow update: if validCommunityApplicationOwnerUpdate();
-      allow delete: if signedIn() && isOwner();
+      allow delete: if signedInVerified() && isOwner();
 
       match /messages/{messageId} {
-        allow read: if signedIn() && isOwner();
+        allow read: if signedInVerified() && isOwner();
         allow create: if validCommunityApplicationMessageData(applicationId, request.resource.data);
         allow update: if false;
-        allow delete: if signedIn() && isOwner();
+        allow delete: if signedInVerified() && isOwner();
       }
     }
 
     match /newsletterSubscribers/{subscriberId} {
       allow create, update: if validNewsletterSubscriberPublicWrite(subscriberId, request.resource.data)
-        || (signedIn() && isOwner());
-      allow read, delete: if signedIn() && isOwner();
+        || (signedInVerified() && isOwner());
+      allow read, delete: if signedInVerified() && isOwner();
     }
 
     match /newsletterCampaigns/{campaignId} {
-      allow read: if signedIn() && isOwner();
+      allow read: if signedInVerified() && isOwner();
       allow create: if validNewsletterCampaignCreate(request.resource.data);
       allow update: if false;
-      allow delete: if signedIn() && isOwner();
+      allow delete: if signedInVerified() && isOwner();
 
       match /deliveries/{deliveryId} {
-        allow read: if signedIn() && isOwner();
+        allow read: if signedInVerified() && isOwner();
         allow write: if false;
       }
     }
 
     match /licenseEmailRequests/{requestId} {
-      allow read: if signedIn() && isOwner();
+      allow read: if signedInVerified() && isOwner();
       allow create: if validLicenseEmailRequestCreate(request.resource.data);
       allow update: if false;
-      allow delete: if signedIn() && isOwner();
+      allow delete: if signedInVerified() && isOwner();
     }
 
     match /subscriptions/{subscriptionId} {
-      allow read: if signedIn()
+      allow read: if signedInVerified()
         && (
           isOwner()
           || (
@@ -1967,14 +1983,14 @@ service cloud.firestore {
             && isLocationSuperAdmin()
           )
         );
-      allow create, update: if signedIn()
+      allow create, update: if signedInVerified()
         && isOwner()
         && validSubscriptionData(request.resource.data);
-      allow delete: if signedIn() && isOwner();
+      allow delete: if signedInVerified() && isOwner();
     }
 
     match /events/{eventId} {
-      allow read: if signedIn()
+      allow read: if signedInVerified()
         && (
           isOwner()
           || resource.data.locationId == userLocationId()
@@ -2015,7 +2031,7 @@ service cloud.firestore {
     }
 
     match /rooms/{roomId} {
-      allow read: if signedIn()
+      allow read: if signedInVerified()
         && (
           isOwner()
           || resource.data.locationId == userLocationId()
@@ -2032,7 +2048,7 @@ service cloud.firestore {
     }
 
     match /groups/{groupId} {
-      allow read: if signedIn()
+      allow read: if signedInVerified()
         && (
           isOwner()
           || resource.data.locationId == userLocationId()
@@ -2049,7 +2065,7 @@ service cloud.firestore {
     }
 
     match /fixedSchedules/{scheduleId} {
-      allow read: if signedIn()
+      allow read: if signedInVerified()
         && (
           isOwner()
           || resource.data.locationId == userLocationId()
@@ -2074,7 +2090,7 @@ service cloud.firestore {
     }
 
     match /auditLogs/{logId} {
-      allow read: if signedIn()
+      allow read: if signedInVerified()
         && (
           isOwner()
           || (
@@ -2082,7 +2098,7 @@ service cloud.firestore {
             && resource.data.locationId == userLocationId()
           )
         );
-      allow create: if signedIn()
+      allow create: if signedInVerified()
         && validAuditLogData(request.resource.data)
         && (
           isOwner()
@@ -2092,15 +2108,15 @@ service cloud.firestore {
     }
 
     match /locations/{locationId} {
-      allow get: if signedIn()
+      allow get: if signedInVerified()
         && (
           isOwner()
           || locationId == userLocationId()
           || !hasUserDoc()
           || hasPendingLocationSetup()
         );
-      allow list: if signedIn() && isOwner();
-      allow create: if signedIn()
+      allow list: if signedInVerified() && isOwner();
+      allow create: if signedInVerified()
         && validLocationCreate();
       allow update: if validOwnerLocationLicenseUpdate()
         || (

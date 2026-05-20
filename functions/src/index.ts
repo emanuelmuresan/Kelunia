@@ -1,8 +1,10 @@
 import { initializeApp } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { logger } from "firebase-functions";
 import { defineSecret, defineString } from "firebase-functions/params";
-import { onDocumentCreated } from "firebase-functions/v2/firestore";
+import { onDocumentCreated, onDocumentWritten } from "firebase-functions/v2/firestore";
+import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { Resend } from "resend";
 
 initializeApp();
@@ -43,6 +45,27 @@ type LicenseEmailRequest = {
   toEmail?: string;
 };
 
+type UserRole = "manager" | "member" | "guest";
+
+type UserProfile = {
+  isOwner?: boolean;
+  locationId?: string;
+  locationSetupRequired?: boolean;
+  role?: string;
+};
+
+function normalizeRole(role: unknown): UserRole {
+  if (role === "manager" || role === "superadmin") {
+    return "manager";
+  }
+
+  if (role === "member" || role === "admin") {
+    return "member";
+  }
+
+  return "guest";
+}
+
 function emailText(applicationId: string, message: CommunityMessage) {
   return [
     message.body ?? "",
@@ -59,6 +82,17 @@ function cleanEmail(value: unknown) {
 
 function validEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function userClaimsFromProfile(profile: UserProfile) {
+  const isOwner = profile.isOwner === true;
+
+  return {
+    isOwner,
+    locationId: isOwner ? "" : String(profile.locationId ?? ""),
+    locationSetupRequired: profile.locationSetupRequired === true,
+    role: isOwner ? "manager" : normalizeRole(profile.role),
+  };
 }
 
 function deliveryIdForEmail(email: string) {
@@ -138,6 +172,188 @@ function licenseEmailHtml(request: LicenseEmailRequest) {
     "</div>",
   ].join("");
 }
+
+function verificationEmailText(link: string) {
+  return [
+    "Bun venit în Kelunia.",
+    "",
+    "Confirmă adresa de email ca să poți intra în aplicație:",
+    link,
+    "",
+    "Dacă nu ai creat tu acest cont, poți ignora acest mesaj.",
+    "",
+    "---",
+    "Kelunia",
+  ].join("\n");
+}
+
+function verificationEmailHtml(link: string) {
+  return [
+    '<div style="font-family:Arial,sans-serif;line-height:1.6;color:#172033;max-width:640px">',
+    '<h1 style="font-size:22px;margin:0 0 18px;color:#0f766e">Kelunia</h1>',
+    '<p>Confirmă adresa de email ca să poți intra în aplicație.</p>',
+    `<p><a href="${escapeHtml(link)}" style="display:inline-block;background:#0f766e;color:#fff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:700">Confirmă emailul</a></p>`,
+    `<p style="font-size:13px;color:#667085;margin-top:18px">Dacă butonul nu merge, deschide acest link: ${escapeHtml(link)}</p>`,
+    '<p style="font-size:13px;color:#667085;margin-top:18px">Dacă nu ai creat tu acest cont, poți ignora acest mesaj.</p>',
+    "</div>",
+  ].join("");
+}
+
+function passwordResetEmailText(link: string) {
+  return [
+    "Ai cerut resetarea parolei pentru contul Kelunia.",
+    "",
+    "Alege o parolă nouă aici:",
+    link,
+    "",
+    "Dacă nu ai cerut tu resetarea, poți ignora acest mesaj.",
+    "",
+    "---",
+    "Kelunia",
+  ].join("\n");
+}
+
+function passwordResetEmailHtml(link: string) {
+  return [
+    '<div style="font-family:Arial,sans-serif;line-height:1.6;color:#172033;max-width:640px">',
+    '<h1 style="font-size:22px;margin:0 0 18px;color:#0f766e">Kelunia</h1>',
+    '<p>Ai cerut resetarea parolei pentru contul Kelunia.</p>',
+    `<p><a href="${escapeHtml(link)}" style="display:inline-block;background:#0f766e;color:#fff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:700">Resetează parola</a></p>`,
+    `<p style="font-size:13px;color:#667085;margin-top:18px">Dacă butonul nu merge, deschide acest link: ${escapeHtml(link)}</p>`,
+    '<p style="font-size:13px;color:#667085;margin-top:18px">Dacă nu ai cerut tu resetarea, poți ignora acest mesaj.</p>',
+    "</div>",
+  ].join("");
+}
+
+export const sendAuthVerificationEmail = onCall(
+  {
+    region: "europe-west1",
+    secrets: [resendApiKey],
+  },
+  async (request) => {
+    if (!request.auth?.uid) {
+      throw new HttpsError("unauthenticated", "Trebuie să fii autentificat pentru verificarea emailului.");
+    }
+
+    const user = await getAuth().getUser(request.auth.uid);
+
+    if (!user.email) {
+      throw new HttpsError("failed-precondition", "Contul nu are email setat.");
+    }
+
+    if (user.emailVerified) {
+      return { alreadyVerified: true, sent: false };
+    }
+
+    const link = await getAuth().generateEmailVerificationLink(user.email, {
+      url: appUrl("/login"),
+      handleCodeInApp: false,
+    });
+
+    const resend = new Resend(resendApiKey.value());
+    const result = await resend.emails.send({
+      from: emailFrom.value(),
+      to: [user.email],
+      subject: "Confirmă emailul pentru Kelunia",
+      text: verificationEmailText(link),
+      html: verificationEmailHtml(link),
+    });
+
+    if (result.error) {
+      logger.error("Auth verification email failed", {
+        uid: user.uid,
+        email: user.email,
+        error: result.error,
+      });
+      throw new HttpsError("internal", result.error.message);
+    }
+
+    await getFirestore().doc(`users/${user.uid}`).set(
+      {
+        verificationEmailSentAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    return { alreadyVerified: false, sent: true };
+  }
+);
+
+export const sendAuthPasswordResetEmail = onCall(
+  {
+    region: "europe-west1",
+    secrets: [resendApiKey],
+  },
+  async (request) => {
+    const email = cleanEmail(request.data?.email);
+
+    if (!validEmail(email)) {
+      throw new HttpsError("invalid-argument", "Email invalid.");
+    }
+
+    let link = "";
+
+    try {
+      link = await getAuth().generatePasswordResetLink(email, {
+        url: appUrl("/login"),
+        handleCodeInApp: false,
+      });
+    } catch (error) {
+      if ((error as { code?: string }).code === "auth/user-not-found") {
+        return { sent: true };
+      }
+
+      logger.error("Password reset link generation failed", { email, error });
+      throw new HttpsError("internal", "Linkul de resetare nu a putut fi generat.");
+    }
+
+    const resend = new Resend(resendApiKey.value());
+    const result = await resend.emails.send({
+      from: emailFrom.value(),
+      to: [email],
+      subject: "Resetează parola Kelunia",
+      text: passwordResetEmailText(link),
+      html: passwordResetEmailHtml(link),
+    });
+
+    if (result.error) {
+      logger.error("Password reset email failed", {
+        email,
+        error: result.error,
+      });
+      throw new HttpsError("internal", result.error.message);
+    }
+
+    return { sent: true };
+  }
+);
+
+export const syncUserSecurityClaims = onDocumentWritten(
+  {
+    document: "users/{userId}",
+    region: "europe-west1",
+  },
+  async (event) => {
+    const { userId } = event.params;
+    const after = event.data?.after;
+
+    try {
+      if (!after?.exists) {
+        await getAuth().setCustomUserClaims(userId, {});
+        logger.info("Cleared user security claims", { userId });
+        return;
+      }
+
+      const profile = after.data() as UserProfile;
+      const claims = userClaimsFromProfile(profile);
+
+      await getAuth().setCustomUserClaims(userId, claims);
+      logger.info("Synced user security claims", { userId, claims });
+    } catch (error) {
+      logger.error("User security claims sync failed", { userId, error });
+    }
+  }
+);
 
 async function newsletterRecipients(recipientEmail = "") {
   const db = getFirestore();

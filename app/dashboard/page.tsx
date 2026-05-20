@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { TouchEvent } from "react";
+import { useRouter } from "next/navigation";
 import { registerPlugin } from "@capacitor/core";
 import { signOut } from "firebase/auth";
 import {
@@ -138,7 +139,8 @@ function isInteractiveSwipeTarget(target: EventTarget | null) {
 }
 
 export default function KeluniaPage() {
-  const { user, profile, role, isSuperAdmin, isOwner } = useAuth();
+  const { user, profile, role, isSuperAdmin, isOwner, loading: authLoading } = useAuth();
+  const router = useRouter();
 
   const [activeView, setActiveView] = useState<AppView>("calendar");
   const [calendarMode, setCalendarMode] = useState<CalendarMode>("month");
@@ -186,6 +188,17 @@ export default function KeluniaPage() {
   const [unlockError, setUnlockError] = useState("");
   const [biometricWorking, setBiometricWorking] = useState(false);
   const { isOnline, setIsOnline } = useOnlineStatus();
+
+  useEffect(() => {
+    if (!authLoading && user && !user.emailVerified) {
+      void signOut(auth).finally(() => router.replace("/login"));
+      return;
+    }
+
+    if (!authLoading && !user) {
+      router.replace("/login");
+    }
+  }, [authLoading, router, user]);
 
   const today = dateKey(new Date());
   const {
@@ -1705,6 +1718,22 @@ export default function KeluniaPage() {
 
     event.preventDefault();
     navigateBySwipe(deltaX < 0 ? 1 : -1);
+  }
+
+  if (authLoading) {
+    return (
+      <div className="loading-screen">
+        <div className="loading-logo">
+          <img src="/icon-192.png" alt="Kelunia" />
+        </div>
+        <h1>Kelunia</h1>
+        <p>Se încarcă...</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
   }
 
   return (

@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
-  appId: "com.kelunia.app",
+  appId: "com.emanuelmuresan.kelunia",
   appName: "Kelunia",
   webDir: "out",
   server: {

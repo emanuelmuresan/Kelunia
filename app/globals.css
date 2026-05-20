@@ -23,14 +23,24 @@
 }
 
 html {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
   background: var(--bg);
   color: var(--ink);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 body {
+  width: 100%;
+  max-width: 100%;
   margin: 0;
   min-height: 100vh;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  overflow-x: hidden;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(246, 249, 255, 0.92) 42%),
     var(--bg);
@@ -38,8 +48,17 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
+}
+
+@media (pointer: coarse) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
 }
 
 button,
@@ -57,8 +76,10 @@ img {
 
 .kelunia-shell {
   width: min(1180px, calc(100% - 28px));
+  max-width: calc(100vw - 28px - env(safe-area-inset-left) - env(safe-area-inset-right));
   margin: 0 auto;
   padding: 24px 0 12px;
+  overflow-x: clip;
 }
 
 .app-topbar {
@@ -359,7 +380,10 @@ img {
   flex-wrap: nowrap;
   gap: 8px;
   margin: 12px 0;
+  max-width: 100%;
   overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
 }
 
@@ -773,6 +797,8 @@ img {
 
 .content-card,
 .floorplan-editor {
+  min-width: 0;
+  max-width: 100%;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fff;
@@ -2490,14 +2516,14 @@ img {
 }
 
 .auth-shell {
-  width: min(1080px, calc(100% - 28px));
+  width: min(460px, calc(100% - 28px));
+  max-width: calc(100vw - 28px - env(safe-area-inset-left) - env(safe-area-inset-right));
   min-height: calc(100vh - 48px);
   margin: 0 auto;
   padding: 24px 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(360px, 440px);
-  align-items: center;
-  gap: 24px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
 }
 
 .auth-brand {
@@ -2549,6 +2575,7 @@ img {
 }
 
 .auth-card {
+  width: 100%;
   padding: 22px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -2559,19 +2586,22 @@ img {
 .auth-card-head {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 12px;
+  margin-top: 18px;
+  text-align: left;
 }
 
 .auth-card-head img {
-  width: 48px;
-  height: 48px;
+  width: 76px;
+  height: 76px;
   border-radius: 8px;
   object-fit: cover;
 }
 
 .auth-card-head h2 {
   margin: 3px 0 0;
-  font-size: 1.45rem;
+  font-size: 1.8rem;
   letter-spacing: 0;
 }
 
@@ -2709,7 +2739,8 @@ img {
 
 @media (max-width: 720px) {
   .kelunia-shell {
-    width: min(100% - 18px, 1180px);
+    width: min(1180px, calc(100% - 18px));
+    max-width: calc(100vw - 18px - env(safe-area-inset-left) - env(safe-area-inset-right));
     padding-top: 12px;
   }
 
@@ -2740,7 +2771,8 @@ img {
 
   .app-tabs {
     gap: 6px;
-    overflow-x: visible;
+    overflow-x: auto;
+    overflow-y: hidden;
   }
 
   .app-tabs button,
@@ -2927,7 +2959,8 @@ img {
 
 @media (max-width: 430px) {
   .kelunia-shell {
-    width: min(100% - 12px, 1180px);
+    width: min(1180px, calc(100% - 12px));
+    max-width: calc(100vw - 12px - env(safe-area-inset-left) - env(safe-area-inset-right));
   }
 
   .app-topbar,
@@ -2960,12 +2993,40 @@ img {
   }
 
   .auth-shell {
-    width: min(100% - 12px, 1080px);
+    width: min(460px, calc(100% - 18px));
+    max-width: calc(100vw - 18px - env(safe-area-inset-left) - env(safe-area-inset-right));
+    min-height: auto;
+    padding: 10px 0 18px;
   }
 
-  .auth-brand,
   .auth-card {
-    padding: 16px;
+    padding: 14px;
+  }
+
+  .auth-card-head {
+    gap: 10px;
+    margin-top: 12px;
+  }
+
+  .auth-card-head img {
+    width: 64px;
+    height: 64px;
+  }
+
+  .auth-card-head h2 {
+    font-size: 1.55rem;
+  }
+
+  .auth-switcher {
+    margin: 14px 0;
+  }
+
+  .auth-form {
+    gap: 10px;
+  }
+
+  .auth-form input {
+    min-height: 40px;
   }
 }
 
@@ -2976,7 +3037,8 @@ img {
 
   .app-tabs {
     gap: 6px;
-    overflow-x: visible;
+    overflow-x: auto;
+    overflow-y: hidden;
   }
 
   .app-tabs button,
@@ -3086,6 +3148,9 @@ img {
 }
 
 .landing-shell {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
   color: var(--ink);
   background: #f6f9ff;
 }
@@ -3099,6 +3164,7 @@ img {
   justify-content: space-between;
   gap: 14px;
   width: min(1180px, calc(100% - 28px));
+  max-width: calc(100vw - 28px - env(safe-area-inset-left) - env(safe-area-inset-right));
   margin: 0 auto;
   padding: 14px 0;
   background: rgba(246, 249, 255, 0.92);
@@ -3110,7 +3176,7 @@ img {
   align-items: center;
   gap: 10px;
   color: var(--ink);
-  font-size: 1.06rem;
+  font-size: 1.14rem;
   font-weight: 820;
   text-decoration: none;
 }
@@ -3130,11 +3196,11 @@ img {
 }
 
 .landing-hero {
-  min-height: 72vh;
+  min-height: 58vh;
   display: flex;
   align-items: center;
   margin-top: -70px;
-  padding: 118px max(20px, calc((100vw - 1180px) / 2)) 72px;
+  padding: 104px max(20px, calc((100% - 1180px) / 2)) 54px;
   background:
     linear-gradient(90deg, rgba(246, 249, 255, 0.98) 0%, rgba(246, 249, 255, 0.86) 48%, rgba(246, 249, 255, 0.2) 100%),
     url("/kelunia-logo.png") right center / min(62vw, 860px) auto no-repeat,
@@ -3157,8 +3223,8 @@ img {
 .landing-hero h1 {
   max-width: 720px;
   margin-top: 12px;
-  font-size: clamp(2.35rem, 6vw, 5.25rem);
-  line-height: 0.98;
+  font-size: clamp(2.2rem, 5.1vw, 4.35rem);
+  line-height: 1.02;
 }
 
 .landing-hero p {
@@ -3175,6 +3241,7 @@ img {
 
 .landing-section {
   width: min(1180px, calc(100% - 28px));
+  max-width: calc(100vw - 28px - env(safe-area-inset-left) - env(safe-area-inset-right));
   margin: 0 auto;
   padding: 64px 0;
 }
@@ -3383,6 +3450,7 @@ img {
   justify-content: space-between;
   gap: 22px;
   width: min(1180px, calc(100% - 28px));
+  max-width: calc(100vw - 28px - env(safe-area-inset-left) - env(safe-area-inset-right));
   margin: 0 auto;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -3656,7 +3724,7 @@ img {
 .owner-tool-actions .primary-button,
 .owner-tool-actions .secondary-button {
   flex: 1 1 128px;
-  min-width: max-content;
+  min-width: 0;
 }
 
 .badge-pill.success,
@@ -3756,6 +3824,7 @@ img {
 
 .landing-final {
   width: min(1180px, calc(100% - 28px));
+  max-width: calc(100vw - 28px - env(safe-area-inset-left) - env(safe-area-inset-right));
   margin: 0 auto 56px;
   padding: 44px;
   border: 1px solid var(--line);
@@ -3777,15 +3846,14 @@ img {
   .landing-hero {
     min-height: auto;
     margin-top: 0;
-    padding: 22px max(16px, calc((100vw - 1180px) / 2)) 38px;
+    padding: 16px max(16px, calc((100% - 1180px) / 2)) 30px;
     background:
       linear-gradient(180deg, rgba(246, 249, 255, 0.97) 0%, rgba(246, 249, 255, 0.9) 100%),
-      url("/kelunia-logo.png") center 8px / min(440px, 92vw) auto no-repeat,
       #f6f9ff;
   }
 
   .landing-hero-content {
-    padding-top: 148px;
+    padding-top: 0;
   }
 
   .landing-section {
@@ -3804,7 +3872,8 @@ img {
   .landing-newsletter {
     align-items: stretch;
     flex-direction: column;
-    width: min(100% - 28px, 1180px);
+    width: min(1180px, calc(100% - 28px));
+    max-width: calc(100vw - 28px - env(safe-area-inset-left) - env(safe-area-inset-right));
   }
 }
 
@@ -3815,44 +3884,55 @@ img {
   }
 
   .landing-nav {
-    flex-direction: column;
+    flex-direction: row;
+    align-items: center;
     gap: 8px;
-    width: min(100% - 20px, 1180px);
+    width: min(1180px, calc(100% - 20px));
+    max-width: calc(100vw - 20px - env(safe-area-inset-left) - env(safe-area-inset-right));
+  }
+
+  .landing-brand img {
+    width: 42px;
+    height: 42px;
+  }
+
+  .landing-brand {
+    gap: 8px;
+    font-size: 1.18rem;
   }
 
   .landing-nav-actions > * {
-    flex: 1;
+    flex: 0 0 auto;
     min-height: 38px;
     padding-inline: 10px;
   }
 
   .landing-hero-content {
-    padding-top: 98px;
+    padding-top: 6px;
   }
 
   .landing-hero {
-    padding-top: 14px;
-    padding-bottom: 30px;
+    padding-top: 10px;
+    padding-bottom: 24px;
     background:
       linear-gradient(180deg, rgba(246, 249, 255, 0.98) 0%, rgba(246, 249, 255, 0.92) 100%),
-      url("/kelunia-logo.png") center 0 / min(320px, 88vw) auto no-repeat,
       #f6f9ff;
   }
 
   .landing-hero h1 {
     margin-top: 8px;
-    font-size: clamp(2rem, 12vw, 3.1rem);
-    line-height: 1.02;
+    font-size: clamp(1.85rem, 9vw, 2.45rem);
+    line-height: 1.08;
   }
 
   .landing-hero p {
-    margin-top: 14px;
-    font-size: 1rem;
-    line-height: 1.5;
+    margin-top: 10px;
+    font-size: 0.98rem;
+    line-height: 1.45;
   }
 
   .landing-hero-actions {
-    margin-top: 18px;
+    margin-top: 14px;
     gap: 8px;
   }
 
@@ -3861,8 +3941,9 @@ img {
   }
 
   .landing-section {
-    width: min(100% - 20px, 1180px);
-    padding: 32px 0;
+    width: min(1180px, calc(100% - 20px));
+    max-width: calc(100vw - 20px - env(safe-area-inset-left) - env(safe-area-inset-right));
+    padding: 24px 0;
   }
 
   .landing-section-head {
@@ -3871,8 +3952,8 @@ img {
 
   .landing-section h2,
   .landing-final h2 {
-    font-size: clamp(1.55rem, 8vw, 2.2rem);
-    line-height: 1.08;
+    font-size: clamp(1.35rem, 6.8vw, 1.9rem);
+    line-height: 1.12;
   }
 
   .landing-section-head p {
@@ -3923,7 +4004,8 @@ img {
 
   .landing-community,
   .landing-newsletter {
-    width: min(100% - 20px, 1180px);
+    width: min(1180px, calc(100% - 20px));
+    max-width: calc(100vw - 20px - env(safe-area-inset-left) - env(safe-area-inset-right));
     padding: 18px;
   }
 
@@ -3944,7 +4026,8 @@ img {
   }
 
   .landing-final {
-    width: min(100% - 20px, 1180px);
+    width: min(1180px, calc(100% - 20px));
+    max-width: calc(100vw - 20px - env(safe-area-inset-left) - env(safe-area-inset-right));
     margin-bottom: 28px;
     padding: 20px;
   }

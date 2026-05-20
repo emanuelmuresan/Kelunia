@@ -6,6 +6,15 @@ service firebase.storage {
       return request.auth != null;
     }
 
+    function emailVerified() {
+      return signedIn()
+        && request.auth.token.email_verified == true;
+    }
+
+    function signedInVerified() {
+      return emailVerified();
+    }
+
     function userPath() {
       return /databases/(default)/documents/users/$(request.auth.uid);
     }
@@ -20,7 +29,7 @@ service firebase.storage {
     }
 
     function isOwner() {
-      return signedIn()
+      return signedInVerified()
         && (
           request.auth.token.email == "emanuelmuresan@gmail.com"
           || (
@@ -31,7 +40,8 @@ service firebase.storage {
     }
 
     function isManager() {
-      return hasUserDoc()
+      return signedInVerified()
+        && hasUserDoc()
         && userData().isOwner != true
         && (
           userData().role == "manager"

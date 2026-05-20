@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { AppEntryRedirect } from "@/components/AppEntryRedirect";
 import { CommunityApplicationSection } from "@/features/landing/components/CommunityApplicationSection";
 import { LandingFinalCta, LandingNewsletterSection } from "@/features/landing/components/LandingContactSections";
 
@@ -177,6 +178,8 @@ function LandingCta({ href, children }: { href: string; children: ReactNode }) {
 export default function LandingPage() {
   return (
     <main className="landing-shell">
+      <AppEntryRedirect />
+
       <nav className="landing-nav" aria-label="Navigare principală">
         <Link href="/" className="landing-brand" aria-label="Kelunia">
           <img src="/icon-192.png" alt="" />
@@ -184,11 +187,8 @@ export default function LandingPage() {
         </Link>
 
         <div className="landing-nav-actions">
-          <Link href="/login" className="secondary-button">
-            Login
-          </Link>
-          <Link href="/dashboard" className="primary-link">
-            Intră în aplicație
+          <Link href="/login" className="primary-link">
+            Autentificare
           </Link>
         </div>
       </nav>
@@ -205,12 +205,12 @@ export default function LandingPage() {
           </p>
 
           <div className="landing-hero-actions">
-            <Link href="/login?mode=trial" className="primary-link">
+            <Link href="/login" className="primary-link">
+              Autentificare
+            </Link>
+            <Link href="/login?mode=trial" className="secondary-button">
               Începe testarea gratuită
             </Link>
-            <a href="#features" className="secondary-button">
-              Vezi cum funcționează
-            </a>
           </div>
         </div>
       </section>

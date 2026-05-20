@@ -5,13 +5,14 @@ import type { User } from "firebase/auth";
 import {
   EmailAuthProvider,
   reauthenticateWithCredential,
-  sendPasswordResetEmail,
   updatePassword,
 } from "firebase/auth";
+import { httpsCallable } from "firebase/functions";
 
 import type { UserProfile } from "@/context/AuthContext";
 import type { AuditAction, AuditEntityType } from "@/lib/audit";
-import { auth } from "@/lib/firebase";
+import { cloudFunctions } from "@/lib/firebase";
+import { passwordSecurityError } from "@/lib/security/password";
 
 type PasswordDraft = {
   current: string;
@@ -41,6 +42,11 @@ type UsePasswordManagementParams = {
 };
 
 const emptyPasswordDraft: PasswordDraft = { current: "", next: "", confirm: "" };
+
+async function sendCustomPasswordResetEmail(email: string) {
+  const sendPasswordReset = httpsCallable(cloudFunctions, "sendAuthPasswordResetEmail");
+  await sendPasswordReset({ email });
+}
 
 export function usePasswordManagement({
   currentLocationId,
@@ -88,8 +94,10 @@ export function usePasswordManagement({
       return;
     }
 
-    if (passwordDraft.next.length < 6) {
-      setPasswordError("Parola nouă trebuie să aibă cel puțin 6 caractere.");
+    const nextPasswordError = passwordSecurityError(passwordDraft.next, user.email);
+
+    if (nextPasswordError) {
+      setPasswordError(nextPasswordError);
       return;
     }
 
@@ -131,7 +139,7 @@ export function usePasswordManagement({
     }
 
     try {
-      await sendPasswordResetEmail(auth, user.email);
+      await sendCustomPasswordResetEmail(user.email);
       setPasswordMessage("Ți-am trimis emailul pentru resetarea parolei.");
     } catch (error) {
       console.error("Emailul de resetare nu a putut fi trimis:", error);

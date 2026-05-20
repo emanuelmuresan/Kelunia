@@ -4,22 +4,37 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  browserLocalPersistence,
   createUserWithEmailAndPassword,
   deleteUser,
-  sendPasswordResetEmail,
-  setPersistence,
   signInWithEmailAndPassword,
+  signOut,
 } from "firebase/auth";
 import { deleteDoc, doc, getDoc, runTransaction, setDoc, Timestamp } from "firebase/firestore";
-import { auth, db } from "@/lib/firebase";
-import type { UserRole } from "@/context/AuthContext";
+import { httpsCallable } from "firebase/functions";
+import { auth, cloudFunctions, db, ensureAuthPersistence } from "@/lib/firebase";
+import { useAuth, type UserRole } from "@/context/AuthContext";
 import { maxUsesForAccessRole, normalizeRole, readOptionalNumber } from "@/lib/access-codes";
 import { defaultLocationName } from "@/lib/config/app";
 import { normalizeAllowedRoomIds, normalizeRoomAccessMode } from "@/lib/room-access";
+import { passwordSecurityError } from "@/lib/security/password";
 import type { RoomAccessMode } from "@/lib/types/domain";
 
 type AuthMode = "login" | "trial" | "register" | "reset";
+
+function isInstalledAppShell() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  const navigatorWithStandalone = window.navigator as Navigator & { standalone?: boolean };
+
+  return (
+    window.location.protocol === "capacitor:" ||
+    window.location.protocol === "ionic:" ||
+    window.matchMedia("(display-mode: standalone)").matches ||
+    navigatorWithStandalone.standalone === true
+  );
+}
 
 function accessCodeDocumentId(code: string) {
   return code.trim().toUpperCase().replace(/[^A-Z0-9_-]+/g, "-").replace(/^-+|-+$/g, "");
@@ -54,6 +69,26 @@ function assertLicenseCodeCanBeUsed(exists: boolean, data: Record<string, unknow
 }
 
 function readableError(message: string) {
+  if (message.includes("auth/too-many-requests")) {
+    return "Prea multe încercări într-un timp scurt. Așteaptă puțin și încearcă din nou.";
+  }
+
+  if (message.includes("Firebase Auth nu poate fi contactat")) {
+    return "iPhone-ul nu poate contacta Firebase Auth. Verifică internetul, dezactivează VPN/Private Relay temporar și încearcă din nou.";
+  }
+
+  if (message.includes("Emailul nu este verificat")) {
+    return "Emailul nu este verificat. Ți-am retrimis emailul de verificare. Verifică inbox-ul și Spam/Promotions.";
+  }
+
+  if (message.includes("Emailul de verificare nu a putut fi trimis")) {
+    return message;
+  }
+
+  if (message.includes("nu a raspuns la timp")) {
+    return "Conexiunea a durat prea mult. Verifică internetul pe iPhone și încearcă din nou.";
+  }
+
   if (message.includes("auth/invalid-credential") || message.includes("auth/wrong-password")) {
     return "Emailul sau parola nu sunt corecte.";
   }
@@ -63,7 +98,7 @@ function readableError(message: string) {
   }
 
   if (message.includes("auth/weak-password")) {
-    return "Parola trebuie să aibă cel puțin 6 caractere.";
+    return "Parola este prea slabă. Folosește cel puțin 8 caractere, cu litere și cifre.";
   }
 
   if (message.includes("Parolele nu se potrivesc")) {
@@ -71,6 +106,73 @@ function readableError(message: string) {
   }
 
   return message.replace("Firebase: ", "");
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string) {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => {
+      window.setTimeout(() => reject(new Error(message)), ms);
+    }),
+  ]);
+}
+
+async function verifyFirebaseAuthConnection() {
+  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+
+  if (!apiKey) {
+    return;
+  }
+
+  const response = await withTimeout(
+    fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: "kelunia-connectivity-check@example.invalid",
+        password: "kelunia-connectivity-check",
+        returnSecureToken: true,
+      }),
+    }),
+    8000,
+    "Firebase Auth nu poate fi contactat la timp."
+  ).catch((error) => {
+    throw new Error(`Firebase Auth nu poate fi contactat: ${error instanceof Error ? error.message : "network error"}`);
+  });
+
+  if (!response.ok && response.status >= 500) {
+    throw new Error("Firebase Auth nu poate fi contactat: server error");
+  }
+}
+
+async function sendVerificationAndSignOut() {
+  await sendCustomVerificationEmail();
+  await signOut(auth);
+}
+
+async function resendVerificationBeforeSignOut() {
+  try {
+    await sendCustomVerificationEmail();
+  } catch (error) {
+    console.error("Emailul de verificare nu a putut fi trimis:", error);
+    throw new Error(
+      "Emailul de verificare nu a putut fi trimis prin Kelunia. Verifică secretul RESEND_API_KEY, EMAIL_FROM și domeniul Resend."
+    );
+  } finally {
+    await signOut(auth).catch((signOutError) => {
+      console.warn("Delogarea după retrimiterea verificării a eșuat:", signOutError);
+    });
+  }
+}
+
+async function sendCustomVerificationEmail() {
+  const sendVerification = httpsCallable(cloudFunctions, "sendAuthVerificationEmail");
+  await sendVerification();
+}
+
+async function sendCustomPasswordResetEmail(email: string) {
+  const sendPasswordReset = httpsCallable(cloudFunctions, "sendAuthPasswordResetEmail");
+  await sendPasswordReset({ email });
 }
 
 export default function LoginPage() {
@@ -83,7 +185,13 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [installedAppShell, setInstalledAppShell] = useState(false);
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
+
+  useEffect(() => {
+    setInstalledAppShell(isInstalledAppShell());
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -104,6 +212,16 @@ export default function LoginPage() {
       setEmail(invitedEmail);
     }
   }, []);
+
+  useEffect(() => {
+    if (!authLoading && user?.emailVerified) {
+      router.replace("/dashboard");
+    }
+
+    if (!authLoading && user && !user.emailVerified) {
+      void signOut(auth);
+    }
+  }, [authLoading, router, user]);
 
   async function createProfile(
     role: UserRole,
@@ -214,6 +332,7 @@ export default function LoginPage() {
       }
 
       profileCreated = true;
+      await sendVerificationAndSignOut();
     } catch (profileError) {
       if (profileCreated) {
         await deleteDoc(userRef).catch((deleteProfileError) => {
@@ -255,7 +374,12 @@ export default function LoginPage() {
         language: "ro",
         createdAt: Timestamp.now(),
       });
+      await sendVerificationAndSignOut();
     } catch (trialError) {
+      await deleteDoc(userRef).catch((deleteProfileError) => {
+        console.warn("Profilul trial creat incomplet nu a putut fi sters automat:", deleteProfileError);
+      });
+
       await deleteUser(result.user).catch((deleteError) => {
         console.warn("Contul trial creat incomplet nu a putut fi sters automat:", deleteError);
       });
@@ -317,7 +441,12 @@ export default function LoginPage() {
           claimedByUid: result.user.uid,
         });
       });
+      await sendVerificationAndSignOut();
     } catch (licenseError) {
+      await deleteDoc(userRef).catch((deleteProfileError) => {
+        console.warn("Profilul creat cu licență invalidă nu a putut fi șters automat:", deleteProfileError);
+      });
+
       await deleteUser(result.user).catch((deleteError) => {
         console.warn("Contul creat cu licență invalidă nu a putut fi șters automat:", deleteError);
       });
@@ -332,16 +461,27 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await setPersistence(auth, browserLocalPersistence);
+      await ensureAuthPersistence();
 
       if (mode === "login") {
-        await signInWithEmailAndPassword(auth, email, password);
+        await verifyFirebaseAuthConnection();
+        const credential = await withTimeout(
+          signInWithEmailAndPassword(auth, email, password),
+          20000,
+          "Autentificarea nu a raspuns la timp."
+        );
+
+        if (!credential.user.emailVerified) {
+          await resendVerificationBeforeSignOut();
+          throw new Error("Emailul nu este verificat.");
+        }
+
         router.push("/dashboard");
         return;
       }
 
       if (mode === "reset") {
-        await sendPasswordResetEmail(auth, email);
+        await sendCustomPasswordResetEmail(email);
         setMessage("Emailul de resetare a fost trimis.");
         return;
       }
@@ -351,14 +491,29 @@ export default function LoginPage() {
           throw new Error("Parolele nu se potrivesc.");
         }
 
+        const passwordError = passwordSecurityError(password, email);
+
+        if (passwordError) {
+          throw new Error(passwordError);
+        }
+
         await createTrialProfile();
-        router.push("/dashboard");
+        setMode("login");
+        setPassword("");
+        setConfirmPassword("");
+        setMessage("Ți-am trimis un email de verificare. Confirmă adresa, apoi intră în cont.");
         return;
       }
 
       if (mode === "register") {
         if (password !== confirmPassword) {
           throw new Error("Parolele nu se potrivesc.");
+        }
+
+        const passwordError = passwordSecurityError(password, email);
+
+        if (passwordError) {
+          throw new Error(passwordError);
         }
 
         const cleanAccessCode = accessCodeDocumentId(accessCode);
@@ -391,12 +546,18 @@ export default function LoginPage() {
           }
 
           await createProfile(role, createdLocationName, createdLocationId, assignedGroupName, cleanAccessCode, false, roomAccess, allowedRoomIds);
-          router.push("/dashboard");
+          setMode("login");
+          setPassword("");
+          setConfirmPassword("");
+          setMessage("Ți-am trimis un email de verificare. Confirmă adresa, apoi intră în cont.");
           return;
         }
 
         await createLicensedProfile(cleanAccessCode, accessCode.trim());
-        router.push("/dashboard");
+        setMode("login");
+        setPassword("");
+        setConfirmPassword("");
+        setMessage("Ți-am trimis un email de verificare. Confirmă adresa, apoi intră în cont.");
         return;
       }
     } catch (err) {
@@ -407,7 +568,7 @@ export default function LoginPage() {
   }
 
   const title = {
-    login: "Login",
+    login: "Intră în cont",
     trial: "Începe trial",
     register: "Cont cu cod",
     reset: "Recuperare parolă",
@@ -415,22 +576,9 @@ export default function LoginPage() {
 
   return (
     <main className="auth-shell">
-      <section className="auth-brand">
-        <Link href="/" className="back-link">← Acasă</Link>
-        <div>
-          <img className="auth-logo-large" src="/kelunia-logo.png" alt="Kelunia" />
-          <span className="eyebrow">Kelunia</span>
-          <h1>Kelunia</h1>
-          <p>Un spațiu calm pentru programări, săli și grupuri, cu acces potrivit pentru fiecare locație.</p>
-          <div className="auth-brand-tags" aria-label="Caracteristici">
-            <span>Calendar clar</span>
-            <span>Acces pe roluri</span>
-            <span>PWA instalabilă</span>
-          </div>
-        </div>
-      </section>
-
       <section className="auth-card">
+        {!installedAppShell && <Link href="/" className="back-link">← Acasă</Link>}
+
         <div className="auth-card-head">
           <img src="/icon-192.png" alt="Kelunia" />
           <div>
@@ -440,7 +588,7 @@ export default function LoginPage() {
         </div>
 
         <div className="auth-switcher" role="group" aria-label="Tip cont">
-          <button className={mode === "login" ? "active" : ""} onClick={() => setMode("login")} type="button">Login</button>
+          <button className={mode === "login" ? "active" : ""} onClick={() => setMode("login")} type="button">Intră</button>
           <button className={mode === "trial" ? "active" : ""} onClick={() => setMode("trial")} type="button">Trial</button>
           <button className={mode === "register" ? "active" : ""} onClick={() => setMode("register")} type="button">Am cod</button>
         </div>
@@ -521,10 +669,6 @@ export default function LoginPage() {
             <>
               <p className="muted-note">Dacă acesta este cod de licență, vei deschide locația după ce intri în cont. Dacă este cod primit de la manager, locația este aleasă automat.</p>
             </>
-          )}
-
-          {mode === "trial" && (
-            <p className="muted-note">Nu ai nevoie de cod. După ce creezi contul, alegi adresa oficială și Kelunia deschide automat locația trial pentru 14 zile.</p>
           )}
 
           <button className="primary-button" disabled={loading} type="submit">

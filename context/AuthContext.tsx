@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { doc, getDoc, setDoc, type DocumentData, type DocumentReference } from "firebase/firestore";
@@ -141,9 +141,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const authStateResolvedRef = useRef(false);
 
   useEffect(() => {
+    const authTimeout = window.setTimeout(() => {
+      if (authStateResolvedRef.current) {
+        return;
+      }
+
+      console.warn("Kelunia auth init timed out; continuing without a resolved Firebase user.");
+      authStateResolvedRef.current = true;
+      setUser(null);
+      setProfile(null);
+      setLoading(false);
+    }, 6000);
+
     const unsubscribe = onAuthStateChanged(auth, async (userData) => {
+      authStateResolvedRef.current = true;
+      window.clearTimeout(authTimeout);
       setLoading(true);
 
       if (!userData) {
@@ -283,7 +298,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      window.clearTimeout(authTimeout);
+      unsubscribe();
+    };
   }, []);
 
   const role = profile?.role ?? "guest";
@@ -294,17 +312,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <AuthContext.Provider value={{ user, profile, role, isAdmin, isSuperAdmin, isOwner, isViewer, loading }}>
-      {loading ? (
-        <div className="loading-screen">
-          <div className="loading-logo">
-            <img src="/icon-192.png" alt="Kelunia" />
-          </div>
-          <h1>Kelunia</h1>
-          <p>Se încarcă...</p>
-        </div>
-      ) : (
-        children
-      )}
+      {children}
     </AuthContext.Provider>
   );
 };
