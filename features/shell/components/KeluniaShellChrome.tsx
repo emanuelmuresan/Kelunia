@@ -40,11 +40,16 @@ export function KeluniaShellChrome({
   return (
     <>
       <header className="app-topbar app-main-topbar">
-        <div>
-          <span className="eyebrow">Kelunia</span>
+        <div className="app-topbar-brand" aria-label="Kelunia">
+          <img src="/icon-192.png" alt="" />
+          <span>Kelunia</span>
+        </div>
+
+        <div className="app-topbar-context">
           {headerTitle && <h1>{headerTitle}</h1>}
           <p>{userLabel ?? "Rezervări clare pentru fiecare spațiu al comunității."}</p>
         </div>
+
         <div className="topbar-actions">
           <InstallAppPrompt />
           {isSignedIn ? (

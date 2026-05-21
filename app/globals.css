@@ -79,23 +79,56 @@ img {
   width: min(1180px, calc(100% - 28px));
   max-width: calc(100vw - 28px - env(safe-area-inset-left) - env(safe-area-inset-right));
   margin: 0 auto;
-  padding: 24px 0 12px;
+  padding: 12px 0 calc(88px + env(safe-area-inset-bottom));
   overflow-x: clip;
 }
 
 .app-topbar {
-  display: block;
+  position: sticky;
+  top: env(safe-area-inset-top);
+  z-index: 30;
+  display: grid;
+  grid-template-columns: minmax(130px, 0.3fr) minmax(0, 1fr) auto;
+  align-items: center;
   gap: 16px;
-  min-height: 96px;
-  padding: 18px 20px;
+  min-height: 76px;
+  padding: 12px 16px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.86);
-  box-shadow: var(--shadow);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 14px 38px rgba(22, 23, 43, 0.1);
+  backdrop-filter: blur(18px);
 }
 
 .app-main-topbar .topbar-actions {
   display: none;
+}
+
+.app-topbar-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  color: var(--ink);
+  font-weight: 860;
+}
+
+.app-topbar-brand img {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  border-radius: 8px;
+}
+
+.app-topbar-brand span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-topbar-context {
+  min-width: 0;
+  text-align: right;
 }
 
 .app-topbar h1,
@@ -109,11 +142,14 @@ img {
 }
 
 .app-topbar h1 {
-  max-width: 760px;
-  margin-top: 3px;
+  max-width: 100%;
+  margin-top: 0;
   color: var(--blue);
-  font-size: clamp(1.35rem, 3.4vw, 2.35rem);
-  line-height: 1.05;
+  font-size: clamp(1.05rem, 2vw, 1.55rem);
+  line-height: 1.08;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .app-topbar p,
@@ -122,6 +158,13 @@ img {
 .empty-state p {
   margin: 6px 0 0;
   color: var(--muted);
+}
+
+.app-topbar p {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.9rem;
 }
 
 .eyebrow {
@@ -376,16 +419,32 @@ img {
 }
 
 .app-tabs {
+  position: fixed;
+  left: 50%;
+  bottom: max(10px, env(safe-area-inset-bottom));
+  z-index: 35;
+  width: min(1180px, calc(100vw - 20px - env(safe-area-inset-left) - env(safe-area-inset-right)));
   display: flex;
   align-items: center;
   flex-wrap: nowrap;
   gap: 8px;
-  margin: 12px 0;
+  margin: 0;
+  padding: 8px;
   max-width: 100%;
   overflow-x: auto;
   overflow-y: hidden;
+  border: 1px solid rgba(188, 206, 238, 0.86);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 18px 48px rgba(22, 23, 43, 0.16);
+  transform: translateX(-50%);
+  backdrop-filter: blur(18px);
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
+  scrollbar-width: none;
+}
+
+.app-tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .swipe-page-region {
@@ -2316,7 +2375,7 @@ img {
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 30;
+  z-index: 60;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2821,6 +2880,32 @@ img {
     align-items: stretch;
   }
 
+  .app-topbar {
+    grid-template-columns: minmax(112px, 0.34fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    min-height: 68px;
+    padding: 10px 12px;
+  }
+
+  .app-topbar-brand {
+    gap: 8px;
+  }
+
+  .app-topbar-brand img {
+    width: 36px;
+    height: 36px;
+    flex-basis: 36px;
+  }
+
+  .app-topbar h1 {
+    font-size: 1.02rem;
+  }
+
+  .app-topbar p {
+    font-size: 0.82rem;
+  }
+
   .topbar-actions,
   .toolbar-actions {
     width: 100%;
@@ -2839,6 +2924,7 @@ img {
 
   .app-tabs {
     gap: 6px;
+    padding: 7px;
     overflow-x: auto;
     overflow-y: hidden;
   }
@@ -3037,6 +3123,31 @@ img {
   .settings-panel,
   .modal-card {
     padding: 14px;
+  }
+
+  .app-topbar {
+    grid-template-columns: minmax(104px, 0.36fr) minmax(0, 1fr);
+    min-height: 64px;
+    padding: 9px 10px;
+  }
+
+  .app-topbar-brand {
+    font-size: 0.94rem;
+  }
+
+  .app-topbar-brand img {
+    width: 34px;
+    height: 34px;
+    flex-basis: 34px;
+  }
+
+  .app-topbar h1 {
+    font-size: 0.98rem;
+  }
+
+  .app-topbar p {
+    margin-top: 4px;
+    font-size: 0.78rem;
   }
 
   .primary-link,
