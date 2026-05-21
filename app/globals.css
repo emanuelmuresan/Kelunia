@@ -79,24 +79,28 @@ img {
   width: min(1180px, calc(100% - 28px));
   max-width: calc(100vw - 28px - env(safe-area-inset-left) - env(safe-area-inset-right));
   margin: 0 auto;
-  padding: 12px 0 calc(88px + env(safe-area-inset-bottom));
+  padding: calc(104px + env(safe-area-inset-top)) 0 calc(88px + env(safe-area-inset-bottom));
   overflow-x: clip;
 }
 
 .app-topbar {
-  position: sticky;
-  top: env(safe-area-inset-top);
+  position: fixed;
+  top: max(8px, env(safe-area-inset-top));
+  left: 50%;
   z-index: 30;
   display: grid;
-  grid-template-columns: minmax(130px, 0.3fr) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(82px, 0.26fr) minmax(0, 1fr) auto;
   align-items: center;
-  gap: 16px;
-  min-height: 76px;
+  gap: 14px;
+  width: min(1180px, calc(100vw - 28px - env(safe-area-inset-left) - env(safe-area-inset-right)));
+  min-height: 88px;
+  margin: 0;
   padding: 12px 16px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.94);
   box-shadow: 0 14px 38px rgba(22, 23, 43, 0.1);
+  transform: translateX(-50%);
   backdrop-filter: blur(18px);
 }
 
@@ -105,25 +109,19 @@ img {
 }
 
 .app-topbar-brand {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: flex-start;
   min-width: 0;
   color: var(--ink);
   font-weight: 860;
 }
 
 .app-topbar-brand img {
-  width: 42px;
-  height: 42px;
-  flex: 0 0 42px;
+  width: 64px;
+  height: 64px;
+  flex: 0 0 64px;
   border-radius: 8px;
-}
-
-.app-topbar-brand span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .app-topbar-context {
@@ -146,10 +144,9 @@ img {
   margin-top: 0;
   color: var(--blue);
   font-size: clamp(1.05rem, 2vw, 1.55rem);
-  line-height: 1.08;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.14;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .app-topbar p,
@@ -161,10 +158,10 @@ img {
 }
 
 .app-topbar p {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  white-space: normal;
   font-size: 0.9rem;
+  line-height: 1.22;
 }
 
 .eyebrow {
@@ -2868,7 +2865,7 @@ img {
   .kelunia-shell {
     width: min(1180px, calc(100% - 18px));
     max-width: calc(100vw - 18px - env(safe-area-inset-left) - env(safe-area-inset-right));
-    padding-top: 12px;
+    padding-top: calc(102px + env(safe-area-inset-top));
   }
 
   .app-topbar,
@@ -2881,29 +2878,32 @@ img {
   }
 
   .app-topbar {
-    grid-template-columns: minmax(112px, 0.34fr) minmax(0, 1fr);
+    grid-template-columns: minmax(72px, 0.28fr) minmax(0, 1fr);
     align-items: center;
     gap: 10px;
-    min-height: 68px;
+    width: min(1180px, calc(100vw - 18px - env(safe-area-inset-left) - env(safe-area-inset-right)));
+    min-height: 86px;
     padding: 10px 12px;
   }
 
   .app-topbar-brand {
-    gap: 8px;
+    justify-content: flex-start;
   }
 
   .app-topbar-brand img {
-    width: 36px;
-    height: 36px;
-    flex-basis: 36px;
+    width: 60px;
+    height: 60px;
+    flex-basis: 60px;
   }
 
   .app-topbar h1 {
     font-size: 1.02rem;
+    line-height: 1.14;
   }
 
   .app-topbar p {
     font-size: 0.82rem;
+    line-height: 1.2;
   }
 
   .topbar-actions,
@@ -3115,6 +3115,7 @@ img {
   .kelunia-shell {
     width: min(1180px, calc(100% - 12px));
     max-width: calc(100vw - 12px - env(safe-area-inset-left) - env(safe-area-inset-right));
+    padding-top: calc(100px + env(safe-area-inset-top));
   }
 
   .app-topbar,
@@ -3126,8 +3127,9 @@ img {
   }
 
   .app-topbar {
-    grid-template-columns: minmax(104px, 0.36fr) minmax(0, 1fr);
-    min-height: 64px;
+    grid-template-columns: minmax(66px, 0.27fr) minmax(0, 1fr);
+    width: min(1180px, calc(100vw - 12px - env(safe-area-inset-left) - env(safe-area-inset-right)));
+    min-height: 84px;
     padding: 9px 10px;
   }
 
@@ -3136,9 +3138,9 @@ img {
   }
 
   .app-topbar-brand img {
-    width: 34px;
-    height: 34px;
-    flex-basis: 34px;
+    width: 58px;
+    height: 58px;
+    flex-basis: 58px;
   }
 
   .app-topbar h1 {
@@ -3962,7 +3964,7 @@ img {
 }
 
 .modal-backdrop-nested {
-  z-index: 45;
+  z-index: 70;
   background: rgba(12, 18, 16, 0.72);
 }
 

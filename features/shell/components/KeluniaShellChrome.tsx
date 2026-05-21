@@ -42,7 +42,6 @@ export function KeluniaShellChrome({
       <header className="app-topbar app-main-topbar">
         <div className="app-topbar-brand" aria-label="Kelunia">
           <img src="/icon-192.png" alt="" />
-          <span>Kelunia</span>
         </div>
 
         <div className="app-topbar-context">
