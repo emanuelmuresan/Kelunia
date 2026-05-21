@@ -602,17 +602,12 @@ export default function LoginPage() {
 
   if (authLoading || user?.emailVerified) {
     return (
-      <main className="auth-shell">
-        <section className="auth-card auth-card-loading">
-          <div className="auth-card-head">
-            <img src="/icon-192.png" alt="Kelunia" />
-            <div>
-              <span>Kelunia</span>
-              <h2>Se deschide aplicația</h2>
-              <p>Pregătim calendarul locației tale.</p>
-            </div>
-          </div>
-        </section>
+      <main className="loading-screen">
+        <div className="loading-logo">
+          <img src="/icon-192.png" alt="Kelunia" />
+        </div>
+        <h1>Kelunia</h1>
+        <p>Se pregătește calendarul...</p>
       </main>
     );
   }

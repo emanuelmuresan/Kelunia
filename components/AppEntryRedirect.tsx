@@ -33,11 +33,11 @@ export function AppEntryRedirect() {
 
   return (
     <div className="app-entry-splash" aria-live="polite">
-      <div className="app-entry-logo">
+      <div className="loading-logo">
         <img src="/icon-192.png" alt="Kelunia" />
       </div>
-      <strong>Kelunia</strong>
-      <span>Se deschide aplicația...</span>
+      <h1>Kelunia</h1>
+      <p>Se pregătește calendarul...</p>
     </div>
   );
 }

@@ -2562,38 +2562,16 @@ img {
   align-items: center;
   justify-content: center;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   padding: max(24px, env(safe-area-inset-top)) 18px max(24px, env(safe-area-inset-bottom));
-  background: #f6f9ff;
-  color: var(--ink);
+  background: var(--teal);
+  color: #fff;
   text-align: center;
 }
 
-.app-entry-logo {
-  width: 104px;
-  height: 104px;
-  display: grid;
-  place-items: center;
-  border-radius: 24px;
-  background: #05070d;
-  box-shadow: 0 18px 46px rgba(10, 18, 30, 0.18);
-}
-
-.app-entry-logo img {
-  width: 88px;
-  height: 88px;
-  border-radius: 18px;
-}
-
-.app-entry-splash strong {
-  margin-top: 4px;
-  font-size: 1.55rem;
-  letter-spacing: 0;
-}
-
-.app-entry-splash span {
-  color: var(--muted);
-  font-size: 0.95rem;
+.app-entry-splash h1,
+.app-entry-splash p {
+  margin: 0;
 }
 
 .kelunia-installed-shell .landing-public-content {
