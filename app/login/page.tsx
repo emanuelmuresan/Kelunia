@@ -68,6 +68,18 @@ function assertLicenseCodeCanBeUsed(exists: boolean, data: Record<string, unknow
   }
 }
 
+function normalizeDisplayName(value: string) {
+  return value.trim().replace(/\s+/g, " ");
+}
+
+function assertFullName(value: string) {
+  const parts = normalizeDisplayName(value).split(" ").filter(Boolean);
+
+  if (parts.length < 2 || parts.some((part) => part.length < 2)) {
+    throw new Error("Scrie numele și prenumele.");
+  }
+}
+
 function readableError(message: string) {
   if (message.includes("auth/too-many-requests")) {
     return "Prea multe încercări într-un timp scurt. Așteaptă puțin și încearcă din nou.";
@@ -103,6 +115,10 @@ function readableError(message: string) {
 
   if (message.includes("Parolele nu se potrivesc")) {
     return "Parolele nu se potrivesc.";
+  }
+
+  if (message.includes("Scrie numele și prenumele")) {
+    return "Scrie numele și prenumele.";
   }
 
   return message.replace("Firebase: ", "");
@@ -268,7 +284,7 @@ export default function LoginPage() {
       const profilePayload = {
         uid: result.user.uid,
         email,
-        displayName: displayName.trim() || email,
+        displayName: normalizeDisplayName(displayName) || email,
         groupName: cleanGroupName,
         group: cleanGroupName,
         role,
@@ -356,7 +372,7 @@ export default function LoginPage() {
       await setDoc(userRef, {
         uid: result.user.uid,
         email,
-        displayName: displayName.trim() || email,
+        displayName: normalizeDisplayName(displayName) || email,
         groupName: "",
         group: "",
         role: "manager",
@@ -415,7 +431,7 @@ export default function LoginPage() {
         transaction.set(userRef, {
           uid: result.user.uid,
           email,
-          displayName: displayName.trim() || email,
+          displayName: normalizeDisplayName(displayName) || email,
           groupName: "",
           group: "",
           role: "manager",
@@ -491,6 +507,8 @@ export default function LoginPage() {
           throw new Error("Parolele nu se potrivesc.");
         }
 
+        assertFullName(displayName);
+
         const passwordError = passwordSecurityError(password, email);
 
         if (passwordError) {
@@ -509,6 +527,8 @@ export default function LoginPage() {
         if (password !== confirmPassword) {
           throw new Error("Parolele nu se potrivesc.");
         }
+
+        assertFullName(displayName);
 
         const passwordError = passwordSecurityError(password, email);
 
@@ -666,11 +686,11 @@ export default function LoginPage() {
 
           {(mode === "register" || mode === "trial") && (
             <label>
-              Nume
+              Nume și prenume
               <input
                 value={displayName}
                 onChange={(event) => setDisplayName(event.target.value)}
-                placeholder="numele care va apărea în aplicație"
+                placeholder="ex. Emanuel Mureșan"
                 autoComplete="name"
                 required
               />

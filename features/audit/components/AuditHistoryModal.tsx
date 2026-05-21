@@ -32,6 +32,17 @@ export function AuditHistoryModal({
     return null;
   }
 
+  function actorLabel(log: AuditLogItem) {
+    const name = log.actorName.trim();
+    const email = log.actorEmail.trim();
+
+    if (name && email && name.toLowerCase() !== email.toLowerCase()) {
+      return `${name} · ${email}`;
+    }
+
+    return name || email || "Utilizator";
+  }
+
   return (
     <div className="modal-backdrop" role="presentation">
       <div
@@ -105,9 +116,7 @@ export function AuditHistoryModal({
                   </strong>
 
                   <span>
-                    {log.actorName ||
-                      log.actorEmail ||
-                      "Utilizator"}
+                    {actorLabel(log)}
                   </span>
                 </div>
 
