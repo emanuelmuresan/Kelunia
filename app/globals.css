@@ -2503,6 +2503,54 @@ img {
   margin: 0;
 }
 
+.app-entry-splash {
+  min-height: 100dvh;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 10px;
+  padding: max(24px, env(safe-area-inset-top)) 18px max(24px, env(safe-area-inset-bottom));
+  background: #f6f9ff;
+  color: var(--ink);
+  text-align: center;
+}
+
+.app-entry-logo {
+  width: 104px;
+  height: 104px;
+  display: grid;
+  place-items: center;
+  border-radius: 24px;
+  background: #05070d;
+  box-shadow: 0 18px 46px rgba(10, 18, 30, 0.18);
+}
+
+.app-entry-logo img {
+  width: 88px;
+  height: 88px;
+  border-radius: 18px;
+}
+
+.app-entry-splash strong {
+  margin-top: 4px;
+  font-size: 1.55rem;
+  letter-spacing: 0;
+}
+
+.app-entry-splash span {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.kelunia-installed-shell .landing-public-content {
+  display: none;
+}
+
+.kelunia-installed-shell .app-entry-splash {
+  display: flex;
+}
+
 .app-footer {
   display: flex;
   justify-content: center;
@@ -2517,13 +2565,13 @@ img {
 }
 
 .auth-shell {
-  width: min(460px, calc(100% - 28px));
+  width: min(430px, calc(100% - 28px));
   max-width: calc(100vw - 28px - env(safe-area-inset-left) - env(safe-area-inset-right));
-  min-height: calc(100vh - 48px);
+  min-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   margin: 0 auto;
-  padding: 24px 0;
+  padding: max(18px, env(safe-area-inset-top)) 0 max(18px, env(safe-area-inset-bottom));
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
 }
 
@@ -2581,30 +2629,48 @@ img {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fff;
-  box-shadow: var(--shadow);
+  box-shadow: 0 18px 48px rgba(22, 23, 43, 0.08);
 }
 
 .auth-card-head {
-  display: flex;
+  display: grid;
+  justify-items: center;
   justify-content: center;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  margin-top: 18px;
-  text-align: left;
+  gap: 10px;
+  margin-top: 8px;
+  text-align: center;
 }
 
 .auth-card-head img {
-  width: 76px;
-  height: 76px;
+  width: 92px;
+  height: 92px;
   border-radius: 8px;
   object-fit: cover;
 }
 
+.auth-card-head span {
+  display: block;
+  color: var(--blue);
+  font-size: 0.86rem;
+  font-weight: 850;
+}
+
 .auth-card-head h2 {
-  margin: 3px 0 0;
-  font-size: 1.8rem;
+  margin: 2px 0 0;
+  font-size: 1.7rem;
   letter-spacing: 0;
+}
+
+.auth-card-head p {
+  max-width: 310px;
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.42;
+}
+
+.auth-card-loading {
+  padding: 28px 22px;
 }
 
 .auth-switcher {
@@ -2995,10 +3061,10 @@ img {
   }
 
   .auth-shell {
-    width: min(460px, calc(100% - 18px));
+    width: min(430px, calc(100% - 18px));
     max-width: calc(100vw - 18px - env(safe-area-inset-left) - env(safe-area-inset-right));
-    min-height: auto;
-    padding: 10px 0 18px;
+    min-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    padding: max(10px, env(safe-area-inset-top)) 0 max(14px, env(safe-area-inset-bottom));
   }
 
   .auth-card {
@@ -3006,17 +3072,17 @@ img {
   }
 
   .auth-card-head {
-    gap: 10px;
-    margin-top: 12px;
+    gap: 8px;
+    margin-top: 6px;
   }
 
   .auth-card-head img {
-    width: 64px;
-    height: 64px;
+    width: 78px;
+    height: 78px;
   }
 
   .auth-card-head h2 {
-    font-size: 1.55rem;
+    font-size: 1.45rem;
   }
 
   .auth-switcher {

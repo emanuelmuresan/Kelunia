@@ -568,11 +568,34 @@ export default function LoginPage() {
   }
 
   const title = {
-    login: "Intră în cont",
-    trial: "Începe trial",
+    login: "Bine ai revenit",
+    trial: "Începe trialul",
     register: "Cont cu cod",
     reset: "Recuperare parolă",
   }[mode];
+  const subtitle = {
+    login: "Intră direct în calendarul locației tale.",
+    trial: "Creează un spațiu de test și confirmă emailul.",
+    register: "Folosește codul primit pentru locația ta.",
+    reset: "Primești un link sigur pentru o parolă nouă.",
+  }[mode];
+
+  if (authLoading || user?.emailVerified) {
+    return (
+      <main className="auth-shell">
+        <section className="auth-card auth-card-loading">
+          <div className="auth-card-head">
+            <img src="/icon-192.png" alt="Kelunia" />
+            <div>
+              <span>Kelunia</span>
+              <h2>Se deschide aplicația</h2>
+              <p>Pregătim calendarul locației tale.</p>
+            </div>
+          </div>
+        </section>
+      </main>
+    );
+  }
 
   return (
     <main className="auth-shell">
@@ -582,8 +605,9 @@ export default function LoginPage() {
         <div className="auth-card-head">
           <img src="/icon-192.png" alt="Kelunia" />
           <div>
-            <span className="eyebrow">Autentificare</span>
+            <span>Kelunia</span>
             <h2>{title}</h2>
+            <p>{subtitle}</p>
           </div>
         </div>
 
@@ -618,7 +642,7 @@ export default function LoginPage() {
                 name="password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                placeholder={mode === "login" ? "parola contului tău" : "minimum 6 caractere"}
+                placeholder={mode === "login" ? "parola contului tău" : "minimum 8 caractere, litere și cifre"}
                 autoComplete={mode === "login" ? "current-password" : "new-password"}
                 required
               />

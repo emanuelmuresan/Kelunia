@@ -28,8 +28,16 @@ export function AppEntryRedirect() {
       return;
     }
 
-    router.replace(user ? "/dashboard" : "/login");
+    router.replace(user?.emailVerified ? "/dashboard" : "/login");
   }, [loading, router, user]);
 
-  return null;
+  return (
+    <div className="app-entry-splash" aria-live="polite">
+      <div className="app-entry-logo">
+        <img src="/icon-192.png" alt="Kelunia" />
+      </div>
+      <strong>Kelunia</strong>
+      <span>Se deschide aplicația...</span>
+    </div>
+  );
 }

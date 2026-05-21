@@ -180,62 +180,63 @@ export default function LandingPage() {
     <main className="landing-shell">
       <AppEntryRedirect />
 
-      <nav className="landing-nav" aria-label="Navigare principală">
-        <Link href="/" className="landing-brand" aria-label="Kelunia">
-          <img src="/icon-192.png" alt="" />
-          <span>Kelunia</span>
-        </Link>
-
-        <div className="landing-nav-actions">
-          <Link href="/login" className="primary-link">
-            Autentificare
+      <div className="landing-public-content">
+        <nav className="landing-nav" aria-label="Navigare principală">
+          <Link href="/" className="landing-brand" aria-label="Kelunia">
+            <img src="/icon-192.png" alt="" />
+            <span>Kelunia</span>
           </Link>
-        </div>
-      </nav>
 
-      <section className="landing-hero">
-        <div className="landing-hero-content">
-          <span className="eyebrow">Mai puțin haos. Mai multă claritate.</span>
-
-          <h1>Administrare simplă pentru spații comune.</h1>
-
-          <p>
-            Kelunia te ajută să gestionezi rezervări, spații, echipe, programări
-            recurente și acces pe roluri, fără haos.
-          </p>
-
-          <div className="landing-hero-actions">
+          <div className="landing-nav-actions">
             <Link href="/login" className="primary-link">
               Autentificare
             </Link>
-            <Link href="/login?mode=trial" className="secondary-button">
-              Începe testarea gratuită
-            </Link>
           </div>
-        </div>
-      </section>
+        </nav>
 
-      <section className="landing-section landing-problems" aria-labelledby="problems-title">
-        <div className="landing-section-head">
-          <span className="eyebrow">De ce Kelunia</span>
-          <h2 id="problems-title">
-            Mai puține mesaje, mai puține conflicte, mai multă claritate.
-          </h2>
-          <p>
-            Când mai mulți oameni folosesc aceleași spații, programările trebuie să
-            fie clare, vizibile și ușor de controlat.
-          </p>
-        </div>
+        <section className="landing-hero">
+          <div className="landing-hero-content">
+            <span className="eyebrow">Mai puțin haos. Mai multă claritate.</span>
 
-        <div className="landing-problem-grid">
-          {problems.map((item) => (
-            <article key={item.title}>
-              <strong>{item.title}</strong>
-              <span>{item.text}</span>
-            </article>
-          ))}
-        </div>
-      </section>
+            <h1>Administrare simplă pentru spații comune.</h1>
+
+            <p>
+              Kelunia te ajută să gestionezi rezervări, spații, echipe, programări
+              recurente și acces pe roluri, fără haos.
+            </p>
+
+            <div className="landing-hero-actions">
+              <Link href="/login" className="primary-link">
+                Autentificare
+              </Link>
+              <Link href="/login?mode=trial" className="secondary-button">
+                Începe testarea gratuită
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        <section className="landing-section landing-problems" aria-labelledby="problems-title">
+          <div className="landing-section-head">
+            <span className="eyebrow">De ce Kelunia</span>
+            <h2 id="problems-title">
+              Mai puține mesaje, mai puține conflicte, mai multă claritate.
+            </h2>
+            <p>
+              Când mai mulți oameni folosesc aceleași spații, programările trebuie să
+              fie clare, vizibile și ușor de controlat.
+            </p>
+          </div>
+
+          <div className="landing-problem-grid">
+            {problems.map((item) => (
+              <article key={item.title}>
+                <strong>{item.title}</strong>
+                <span>{item.text}</span>
+              </article>
+            ))}
+          </div>
+        </section>
 
       <section className="landing-section" id="features" aria-labelledby="features-title">
         <div className="landing-section-head">
@@ -329,6 +330,7 @@ export default function LandingPage() {
       <LandingNewsletterSection />
 
       <LandingFinalCta />
+      </div>
     </main>
   );
 }

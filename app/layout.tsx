@@ -1,6 +1,7 @@
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import PwaRegister from "./pwa-register";
 
 export const metadata: Metadata = {
@@ -33,6 +34,20 @@ export default function RootLayout({
   return (
     <html lang="ro">
       <body>
+        <Script id="kelunia-shell-mode" strategy="beforeInteractive">
+          {`
+            (function () {
+              try {
+                var standalone = window.matchMedia && window.matchMedia("(display-mode: standalone)").matches;
+                var iosStandalone = window.navigator && window.navigator.standalone === true;
+                var nativeShell = window.location.protocol === "capacitor:" || window.location.protocol === "ionic:";
+                document.documentElement.classList.add((standalone || iosStandalone || nativeShell) ? "kelunia-installed-shell" : "kelunia-browser-shell");
+              } catch (error) {
+                document.documentElement.classList.add("kelunia-browser-shell");
+              }
+            })();
+          `}
+        </Script>
         <AuthProvider>
           <PwaRegister />
           {children}
