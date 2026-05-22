@@ -1772,7 +1772,7 @@ export default function KeluniaPage() {
       )}
 
       {displayedView === "calendar" && (
-        <section className="workspace-panel">
+        <section className="workspace-panel calendar-panel">
           <CalendarToolbar
               periodTitle={periodTitle}
               calendarMode={calendarMode}
