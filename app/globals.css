@@ -79,7 +79,7 @@ img {
   width: min(1180px, calc(100% - 28px));
   max-width: calc(100vw - 28px - env(safe-area-inset-left) - env(safe-area-inset-right));
   margin: 0 auto;
-  padding: calc(82px + env(safe-area-inset-top)) 0 calc(72px + env(safe-area-inset-bottom));
+  padding: calc(118px + env(safe-area-inset-top)) 0 calc(72px + env(safe-area-inset-bottom));
   overflow-x: clip;
 }
 
@@ -90,13 +90,13 @@ img {
   right: 0;
   z-index: 30;
   display: grid;
-  grid-template-columns: minmax(82px, 0.26fr) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(110px, 0.28fr) minmax(0, 1fr) auto;
   align-items: center;
   gap: 14px;
   width: 100%;
-  min-height: calc(72px + env(safe-area-inset-top));
+  min-height: calc(108px + env(safe-area-inset-top));
   margin: 0;
-  padding: max(4px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 4px max(16px, env(safe-area-inset-left));
+  padding: max(5px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 5px max(16px, env(safe-area-inset-left));
   border-bottom: 1px solid var(--line);
   background: #fff;
   box-shadow: 0 10px 30px rgba(22, 23, 43, 0.09);
@@ -116,13 +116,19 @@ img {
 }
 
 .app-topbar-brand img {
-  width: 68px;
-  height: 68px;
-  flex: 0 0 68px;
+  width: 98px;
+  height: 98px;
+  flex: 0 0 98px;
   border-radius: 8px;
 }
 
 .app-topbar-context {
+  align-self: stretch;
+  display: flex;
+  min-height: 98px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
   min-width: 0;
   text-align: right;
 }
@@ -141,25 +147,33 @@ img {
   max-width: 100%;
   margin-top: 0;
   color: var(--blue);
-  font-size: clamp(1.05rem, 2vw, 1.55rem);
-  line-height: 1.14;
+  font-size: clamp(1.04rem, 2vw, 1.48rem);
+  line-height: 1.08;
   overflow-wrap: anywhere;
   white-space: normal;
+}
+
+.app-topbar h1 span {
+  display: block;
+}
+
+.app-topbar h1.single-line-title {
+  font-size: clamp(1.28rem, 2.5vw, 1.82rem);
 }
 
 .app-topbar p,
 .section-heading p,
 .empty-line,
 .empty-state p {
-  margin: 6px 0 0;
+  margin: 0;
   color: var(--muted);
 }
 
 .app-topbar p {
   overflow-wrap: anywhere;
   white-space: normal;
-  font-size: 0.9rem;
-  line-height: 1.22;
+  font-size: clamp(0.9rem, 1.7vw, 1.08rem);
+  line-height: 1.18;
 }
 
 .eyebrow {
@@ -2840,7 +2854,7 @@ img {
   .kelunia-shell {
     width: min(1180px, calc(100% - 18px));
     max-width: calc(100vw - 18px - env(safe-area-inset-left) - env(safe-area-inset-right));
-    padding-top: calc(78px + env(safe-area-inset-top));
+    padding-top: calc(114px + env(safe-area-inset-top));
   }
 
   .app-topbar,
@@ -2853,12 +2867,12 @@ img {
   }
 
   .app-topbar {
-    grid-template-columns: minmax(72px, 0.28fr) minmax(0, 1fr);
+    grid-template-columns: minmax(94px, 0.34fr) minmax(0, 1fr);
     align-items: center;
     gap: 10px;
     width: 100%;
-    min-height: calc(72px + env(safe-area-inset-top));
-    padding: max(4px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 4px max(12px, env(safe-area-inset-left));
+    min-height: calc(104px + env(safe-area-inset-top));
+    padding: max(5px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 5px max(12px, env(safe-area-inset-left));
   }
 
   .app-topbar-brand {
@@ -2866,19 +2880,28 @@ img {
   }
 
   .app-topbar-brand img {
-    width: 66px;
-    height: 66px;
-    flex-basis: 66px;
+    width: 94px;
+    height: 94px;
+    flex-basis: 94px;
+  }
+
+  .app-topbar-context {
+    min-height: 94px;
+    gap: 7px;
   }
 
   .app-topbar h1 {
-    font-size: 1.02rem;
-    line-height: 1.14;
+    font-size: 1.06rem;
+    line-height: 1.08;
+  }
+
+  .app-topbar h1.single-line-title {
+    font-size: 1.34rem;
   }
 
   .app-topbar p {
-    font-size: 0.82rem;
-    line-height: 1.2;
+    font-size: 0.9rem;
+    line-height: 1.18;
   }
 
   .topbar-actions,
@@ -3090,7 +3113,7 @@ img {
   .kelunia-shell {
     width: min(1180px, calc(100% - 12px));
     max-width: calc(100vw - 12px - env(safe-area-inset-left) - env(safe-area-inset-right));
-    padding-top: calc(76px + env(safe-area-inset-top));
+    padding-top: calc(108px + env(safe-area-inset-top));
   }
 
   .app-topbar,
@@ -3102,10 +3125,10 @@ img {
   }
 
   .app-topbar {
-    grid-template-columns: minmax(66px, 0.27fr) minmax(0, 1fr);
+    grid-template-columns: minmax(86px, 0.34fr) minmax(0, 1fr);
     width: 100%;
-    min-height: calc(70px + env(safe-area-inset-top));
-    padding: max(3px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) 3px max(10px, env(safe-area-inset-left));
+    min-height: calc(98px + env(safe-area-inset-top));
+    padding: max(5px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) 5px max(10px, env(safe-area-inset-left));
   }
 
   .app-topbar-brand {
@@ -3113,18 +3136,26 @@ img {
   }
 
   .app-topbar-brand img {
-    width: 64px;
-    height: 64px;
-    flex-basis: 64px;
+    width: 86px;
+    height: 86px;
+    flex-basis: 86px;
+  }
+
+  .app-topbar-context {
+    min-height: 86px;
+    gap: 6px;
   }
 
   .app-topbar h1 {
     font-size: 0.98rem;
   }
 
+  .app-topbar h1.single-line-title {
+    font-size: 1.2rem;
+  }
+
   .app-topbar p {
-    margin-top: 4px;
-    font-size: 0.78rem;
+    font-size: 0.8rem;
   }
 
   .primary-link,

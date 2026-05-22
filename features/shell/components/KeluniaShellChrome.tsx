@@ -24,6 +24,17 @@ function tabIconClass(view: AppView) {
   return `tab-icon tab-icon-${view}`;
 }
 
+function splitBalancedTitle(title: string) {
+  const words = title.trim().split(/\s+/).filter(Boolean);
+
+  if (words.length <= 1) {
+    return words;
+  }
+
+  const midpoint = Math.ceil(words.length / 2);
+  return [words.slice(0, midpoint).join(" "), words.slice(midpoint).join(" ")].filter(Boolean);
+}
+
 export function KeluniaShellChrome({
   displayedView,
   headerTitle,
@@ -37,6 +48,8 @@ export function KeluniaShellChrome({
   onNavigate,
   onSignOut,
 }: KeluniaShellChromeProps) {
+  const headerTitleLines = splitBalancedTitle(headerTitle);
+
   return (
     <>
       <header className="app-topbar app-main-topbar">
@@ -45,7 +58,13 @@ export function KeluniaShellChrome({
         </div>
 
         <div className="app-topbar-context">
-          {headerTitle && <h1>{headerTitle}</h1>}
+          {headerTitleLines.length > 0 && (
+            <h1 className={headerTitleLines.length === 1 ? "single-line-title" : undefined}>
+              {headerTitleLines.map((line, index) => (
+                <span key={`${line}-${index}`}>{line}</span>
+              ))}
+            </h1>
+          )}
           <p>{userLabel ?? "Rezervări clare pentru fiecare spațiu al comunității."}</p>
         </div>
 
