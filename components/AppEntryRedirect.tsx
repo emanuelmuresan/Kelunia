@@ -2,33 +2,28 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { isInstalledAppShell } from "@/lib/app-shell";
 import { useAuth } from "@/context/AuthContext";
-
-function isInstalledAppShell() {
-  if (typeof window === "undefined") {
-    return false;
-  }
-
-  const navigatorWithStandalone = window.navigator as Navigator & { standalone?: boolean };
-
-  return (
-    window.location.protocol === "capacitor:" ||
-    window.location.protocol === "ionic:" ||
-    window.matchMedia("(display-mode: standalone)").matches ||
-    navigatorWithStandalone.standalone === true
-  );
-}
 
 export function AppEntryRedirect() {
   const router = useRouter();
   const { user, loading } = useAuth();
 
   useEffect(() => {
-    if (!isInstalledAppShell() || loading) {
+    if (loading) {
       return;
     }
 
-    router.replace(user?.emailVerified ? "/dashboard" : "/login");
+    const redirectInstalledShell = () => {
+      if (isInstalledAppShell()) {
+        router.replace(user?.emailVerified ? "/dashboard" : "/login");
+      }
+    };
+    const delayedRedirect = window.setTimeout(redirectInstalledShell, 250);
+
+    redirectInstalledShell();
+
+    return () => window.clearTimeout(delayedRedirect);
   }, [loading, router, user]);
 
   return (

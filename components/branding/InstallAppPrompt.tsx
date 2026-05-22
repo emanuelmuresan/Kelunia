@@ -1,47 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { isInstalledAppShell, isNativeAppShell, isStandaloneShell } from "@/lib/app-shell";
 
 type InstallOutcome = "accepted" | "dismissed";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: InstallOutcome; platform: string }>;
-}
-
-interface CapacitorWindow extends Window {
-  Capacitor?: {
-    getPlatform?: () => string;
-    isNativePlatform?: () => boolean;
-  };
-}
-
-function isStandaloneMode() {
-  if (typeof window === "undefined") {
-    return false;
-  }
-
-  return window.matchMedia("(display-mode: standalone)").matches || (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
-}
-
-function isNativeApp() {
-  if (typeof window === "undefined") {
-    return false;
-  }
-
-  const capacitor = (window as CapacitorWindow).Capacitor;
-
-  if (capacitor?.isNativePlatform?.()) {
-    return true;
-  }
-
-  const platform = capacitor?.getPlatform?.();
-
-  if (platform && platform !== "web") {
-    return true;
-  }
-
-  return window.location.protocol === "capacitor:" || window.location.protocol === "ionic:";
 }
 
 function isIosDevice() {
@@ -58,7 +24,7 @@ export function InstallAppPrompt() {
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    if (isStandaloneMode() || isNativeApp()) {
+    if (isInstalledAppShell()) {
       setDismissed(true);
       return;
     }
@@ -84,7 +50,7 @@ export function InstallAppPrompt() {
     };
   }, []);
 
-  if (dismissed || isStandaloneMode() || isNativeApp()) {
+  if (dismissed || isStandaloneShell() || isNativeAppShell()) {
     return null;
   }
 

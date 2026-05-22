@@ -1,5 +1,6 @@
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
+import { ShellModeClass } from "@/components/ShellModeClass";
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import PwaRegister from "./pwa-register";
@@ -40,8 +41,16 @@ export default function RootLayout({
               try {
                 var standalone = window.matchMedia && window.matchMedia("(display-mode: standalone)").matches;
                 var iosStandalone = window.navigator && window.navigator.standalone === true;
-                var nativeShell = window.location.protocol === "capacitor:" || window.location.protocol === "ionic:";
+                var capacitor = window.Capacitor;
+                var platform = capacitor && capacitor.getPlatform && capacitor.getPlatform();
+                var nativeShell = window.location.protocol === "capacitor:" || window.location.protocol === "ionic:" || (capacitor && capacitor.isNativePlatform && capacitor.isNativePlatform()) || (platform && platform !== "web");
                 document.documentElement.classList.add((standalone || iosStandalone || nativeShell) ? "kelunia-installed-shell" : "kelunia-browser-shell");
+                if (nativeShell) {
+                  document.documentElement.classList.add("kelunia-native-shell");
+                  if (platform) {
+                    document.documentElement.classList.add("kelunia-" + platform + "-shell");
+                  }
+                }
               } catch (error) {
                 document.documentElement.classList.add("kelunia-browser-shell");
               }
@@ -49,6 +58,7 @@ export default function RootLayout({
           `}
         </Script>
         <AuthProvider>
+          <ShellModeClass />
           <PwaRegister />
           {children}
           <footer className="app-footer">

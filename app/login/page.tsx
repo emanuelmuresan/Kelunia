@@ -12,6 +12,7 @@ import {
 import { deleteDoc, doc, getDoc, runTransaction, setDoc, Timestamp } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { auth, cloudFunctions, db, ensureAuthPersistence } from "@/lib/firebase";
+import { isInstalledAppShell } from "@/lib/app-shell";
 import { useAuth, type UserRole } from "@/context/AuthContext";
 import { maxUsesForAccessRole, normalizeRole, readOptionalNumber } from "@/lib/access-codes";
 import { defaultLocationName } from "@/lib/config/app";
@@ -20,21 +21,6 @@ import { passwordSecurityError } from "@/lib/security/password";
 import type { RoomAccessMode } from "@/lib/types/domain";
 
 type AuthMode = "login" | "trial" | "register" | "reset";
-
-function isInstalledAppShell() {
-  if (typeof window === "undefined") {
-    return false;
-  }
-
-  const navigatorWithStandalone = window.navigator as Navigator & { standalone?: boolean };
-
-  return (
-    window.location.protocol === "capacitor:" ||
-    window.location.protocol === "ionic:" ||
-    window.matchMedia("(display-mode: standalone)").matches ||
-    navigatorWithStandalone.standalone === true
-  );
-}
 
 function accessCodeDocumentId(code: string) {
   return code.trim().toUpperCase().replace(/[^A-Z0-9_-]+/g, "-").replace(/^-+|-+$/g, "");
@@ -206,7 +192,14 @@ export default function LoginPage() {
   const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
-    setInstalledAppShell(isInstalledAppShell());
+    const updateShellMode = () => {
+      setInstalledAppShell(isInstalledAppShell());
+    };
+    const delayedUpdate = window.setTimeout(updateShellMode, 250);
+
+    updateShellMode();
+
+    return () => window.clearTimeout(delayedUpdate);
   }, []);
 
   useEffect(() => {

@@ -4219,3 +4219,126 @@ img {
     padding: 20px;
   }
 }
+
+.kelunia-installed-shell .back-link,
+.kelunia-installed-shell .app-footer {
+  display: none;
+}
+
+.app-tabs button,
+.app-tab-link,
+.app-tab-action,
+.app-tabs .install-button {
+  overflow: hidden;
+}
+
+.tab-label {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kelunia-native-shell body {
+  padding-top: 0;
+  padding-bottom: 0;
+  background: var(--bg);
+}
+
+.kelunia-native-shell {
+  --native-topbar-height: 98px;
+  --native-tabs-height: 62px;
+}
+
+.kelunia-native-shell .kelunia-shell {
+  width: 100%;
+  max-width: 100%;
+  padding: var(--native-topbar-height) max(8px, env(safe-area-inset-right)) var(--native-tabs-height) max(8px, env(safe-area-inset-left));
+}
+
+.kelunia-native-shell .app-topbar {
+  min-height: var(--native-topbar-height, 98px);
+  padding: 0 max(12px, env(safe-area-inset-right)) 0 max(12px, env(safe-area-inset-left));
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(22, 23, 43, 0.1);
+}
+
+.kelunia-native-shell .app-topbar-brand img {
+  width: 88px;
+  height: 88px;
+  flex-basis: 88px;
+}
+
+.kelunia-native-shell .app-topbar-context {
+  min-height: 88px;
+  gap: 6px;
+}
+
+.kelunia-native-shell .app-topbar h1 {
+  font-size: clamp(1rem, 4vw, 1.32rem);
+  line-height: 1.08;
+}
+
+.kelunia-native-shell .app-topbar h1.single-line-title {
+  font-size: clamp(1.22rem, 5vw, 1.58rem);
+}
+
+.kelunia-native-shell .app-topbar p {
+  font-size: clamp(0.78rem, 3vw, 0.94rem);
+  line-height: 1.16;
+}
+
+.kelunia-native-shell .app-tabs {
+  min-height: var(--native-tabs-height, 62px);
+  padding: 6px max(8px, env(safe-area-inset-right)) 6px max(8px, env(safe-area-inset-left));
+  background: #fff;
+  box-shadow: 0 -8px 24px rgba(22, 23, 43, 0.12);
+}
+
+.kelunia-native-shell .app-tabs button,
+.kelunia-native-shell .app-tab-link,
+.kelunia-native-shell .app-tab-action,
+.kelunia-native-shell .app-tabs .install-button {
+  min-height: 48px;
+}
+
+@media (max-width: 430px) {
+  .kelunia-native-shell {
+    --native-topbar-height: 92px;
+    --native-tabs-height: 58px;
+  }
+
+  .kelunia-native-shell .kelunia-shell {
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+
+  .kelunia-native-shell .app-topbar {
+    grid-template-columns: minmax(78px, 0.32fr) minmax(0, 1fr);
+    gap: 8px;
+    padding-left: max(8px, env(safe-area-inset-left));
+    padding-right: max(8px, env(safe-area-inset-right));
+  }
+
+  .kelunia-native-shell .app-topbar-brand img {
+    width: 78px;
+    height: 78px;
+    flex-basis: 78px;
+  }
+
+  .kelunia-native-shell .app-topbar-context {
+    min-height: 78px;
+  }
+
+  .kelunia-native-shell .app-tabs {
+    padding: 5px max(7px, env(safe-area-inset-right)) 5px max(7px, env(safe-area-inset-left));
+  }
+
+  .kelunia-native-shell .app-tabs button,
+  .kelunia-native-shell .app-tab-link,
+  .kelunia-native-shell .app-tab-action,
+  .kelunia-native-shell .app-tabs .install-button {
+    min-height: 48px;
+  }
+}
