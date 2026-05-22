@@ -44,10 +44,7 @@ export function MonthView({
           <div
             className={`month-cell ${cell === today ? "today" : ""} ${cell ? "" : "muted"}`}
             key={`${cell ?? "blank"}-${index}`}
-            onClick={() => {
-              if (!cell) return;
-              onDateSelect(cell);
-            }}
+            onClick={() => cell && onDateSelect(cell)}
           >
             {cell && (
               <>

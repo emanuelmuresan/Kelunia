@@ -21,6 +21,7 @@ import { AccessCodesModal } from "@/features/access-codes/components/AccessCodes
 import { useAccessCodeGroupSync } from "@/features/access-codes/hooks/useAccessCodeGroupSync";
 import { useAccessCodes } from "@/features/access-codes/hooks/useAccessCodes";
 import { BookingModal } from "@/features/bookings/components/BookingModal";
+import { DayBookingsModal } from "@/features/bookings/components/DayBookingsModal";
 import { FixedScheduleModal } from "@/features/fixed-schedules/components/FixedScheduleModal";
 import { KeluniaShellChrome } from "@/features/shell/components/KeluniaShellChrome";
 import type { AuditAction, AuditEntityType } from "@/lib/audit";
@@ -150,6 +151,7 @@ export default function KeluniaPage() {
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [settingsMessage, setSettingsMessage] = useState("");
   const [settingsError, setSettingsError] = useState("");
 
@@ -693,6 +695,39 @@ export default function KeluniaPage() {
     softDeletePayload,
     user,
   });
+  const selectedDayBookings = useMemo(
+    () => (selectedDay ? bookingsForDay(visibleBookingsByRoomAccess, selectedDay) : []),
+    [selectedDay, visibleBookingsByRoomAccess]
+  );
+
+  function openDayBookings(date: string) {
+    setCurrentDate(parseDateKey(date));
+
+    const dayBookings = bookingsForDay(visibleBookingsByRoomAccess, date);
+
+    if (dayBookings.length === 1) {
+      setSelectedDay(null);
+      setSelectedBooking(dayBookings[0]);
+      return;
+    }
+
+    setSelectedDay(date);
+  }
+
+  function createBookingFromDayModal() {
+    if (!selectedDay) {
+      return;
+    }
+
+    const date = selectedDay;
+    setSelectedDay(null);
+    openCreateForm(date, { defaultStartTime: "12:00" });
+  }
+
+  function selectBookingFromDayModal(booking: Booking) {
+    setSelectedDay(null);
+    setSelectedBooking(booking);
+  }
   const {
     openPasswordModal,
     passwordDraft,
@@ -1793,13 +1828,7 @@ export default function KeluniaPage() {
               canManageBookings={canManageBookings}
               isOnline={isOnline}
               profileGroupName={profile?.groupName}
-              onDateSelect={(cell) => {
-                setCurrentDate(parseDateKey(cell));
-
-                if (canManageBookings) {
-                  openCreateForm(cell);
-                }
-              }}
+              onDateSelect={openDayBookings}
               onCreateBooking={openCreateForm}
               onSelectBooking={setSelectedBooking}
             />
@@ -1812,6 +1841,7 @@ export default function KeluniaPage() {
               isOnline={isOnline}
               profileGroupName={profile?.groupName}
               onCreateBooking={openCreateForm}
+              onDateSelect={openDayBookings}
               onSelectBooking={setSelectedBooking}
             />
           ) : (
@@ -1822,6 +1852,7 @@ export default function KeluniaPage() {
               isOnline={isOnline}
               profileGroupName={profile?.groupName}
               onCreateBooking={openCreateForm}
+              onDateSelect={openDayBookings}
               onSelectBooking={setSelectedBooking}
             />
           )}
@@ -2049,6 +2080,16 @@ export default function KeluniaPage() {
         onChange={setFormData}
         onClose={() => setShowBookingModal(false)}
         onSubmit={handleBookingSubmit}
+      />
+
+      <DayBookingsModal
+        date={selectedDay}
+        bookings={selectedDayBookings}
+        canCreate={canManageBookings && isOnline}
+        profileGroupName={profile?.groupName}
+        onAdd={createBookingFromDayModal}
+        onClose={() => setSelectedDay(null)}
+        onSelectBooking={selectBookingFromDayModal}
       />
 
       <BookingDetailsModal

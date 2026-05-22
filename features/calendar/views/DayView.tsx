@@ -10,6 +10,7 @@ type DayViewProps = {
   isOnline: boolean;
   profileGroupName?: string;
   onCreateBooking: (date: string) => void;
+  onDateSelect: (date: string) => void;
   onSelectBooking: (booking: Booking) => void;
 };
 

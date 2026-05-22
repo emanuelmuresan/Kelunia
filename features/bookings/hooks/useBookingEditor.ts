@@ -114,7 +114,7 @@ export function useBookingEditor({
     );
   }
 
-  function openCreateForm(date?: string) {
+  function openCreateForm(date?: string, options?: { defaultStartTime?: string }) {
     if (!canManageBookings) {
       if (licenseAccess.isReadOnly) {
         setSettingsError(licenseAccess.message);
@@ -131,7 +131,7 @@ export function useBookingEditor({
     setFormData({
       ...emptyForm,
       startDate: date ?? "",
-      endDate: date ?? "",
+      startTime: options?.defaultStartTime ?? "",
     });
     setShowBookingModal(true);
   }

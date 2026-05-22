@@ -11,6 +11,7 @@ type AgendaViewProps = {
   isOnline: boolean;
   profileGroupName?: string;
   onCreateBooking: (date: string) => void;
+  onDateSelect: (date: string) => void;
   onSelectBooking: (booking: Booking) => void;
 };
 
@@ -21,6 +22,7 @@ export function AgendaView({
   isOnline,
   profileGroupName,
   onCreateBooking,
+  onDateSelect,
   onSelectBooking,
 }: AgendaViewProps) {
   return (
@@ -30,9 +32,9 @@ export function AgendaView({
 
         return (
           <article
-            className={`agenda-day ${canManageBookings && isOnline ? "clickable-day" : ""}`}
+            className="agenda-day clickable-day"
             key={day}
-            onClick={() => canManageBookings && isOnline && onCreateBooking(day)}
+            onClick={() => onDateSelect(day)}
           >
             <div className="agenda-day-head">
               <div>

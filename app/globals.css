@@ -1755,6 +1755,13 @@ img {
   font-weight: 750;
 }
 
+.booking-form label small {
+  color: #7b8794;
+  font-size: 0.78rem;
+  font-weight: 650;
+  line-height: 1.28;
+}
+
 .toggle-row {
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
@@ -2410,6 +2417,10 @@ img {
   width: min(520px, 100%);
 }
 
+.day-bookings-card {
+  width: min(560px, 100%);
+}
+
 .details-card.own-group-booking {
   border-color: rgba(227, 93, 244, 0.4);
   box-shadow: 0 26px 70px rgba(12, 18, 16, 0.28), inset 4px 0 0 var(--magenta);
@@ -2460,6 +2471,71 @@ img {
 
 .manager-card {
   width: min(820px, 100%);
+}
+
+.day-bookings-list {
+  display: grid;
+  gap: 8px;
+  margin: 18px 0;
+}
+
+.day-bookings-list button {
+  display: grid;
+  grid-template-columns: 98px minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  width: 100%;
+  border: 1px solid #d8e8e4;
+  border-radius: 8px;
+  background: #f3fbf8;
+  color: var(--ink);
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.day-bookings-list button.own-group-booking {
+  border-color: rgba(227, 93, 244, 0.42);
+  background: linear-gradient(135deg, rgba(233, 251, 255, 0.96), rgba(255, 238, 255, 0.96));
+  box-shadow: inset 3px 0 0 var(--magenta);
+}
+
+.day-bookings-list span,
+.day-bookings-list strong,
+.day-bookings-list small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.day-bookings-list span {
+  color: var(--teal-dark);
+  font-weight: 820;
+}
+
+.day-bookings-list strong {
+  font-size: 0.95rem;
+}
+
+.day-bookings-list small {
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 750;
+}
+
+.day-bookings-empty {
+  margin: 18px 0;
+}
+
+@media (max-width: 520px) {
+  .day-bookings-list button {
+    grid-template-columns: 86px minmax(0, 1fr);
+  }
+
+  .day-bookings-list small {
+    grid-column: 2;
+  }
 }
 
 .manager-divider {

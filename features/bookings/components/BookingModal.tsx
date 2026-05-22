@@ -76,13 +76,14 @@ export function BookingModal({
             <input
               type="date"
               value={formData.startDate}
-              onChange={(event) => onChange({ ...formData, startDate: event.target.value, endDate: event.target.value })}
+              onChange={(event) => onChange({ ...formData, startDate: event.target.value })}
               required
             />
           </label>
           <label>
             Data final
             <input type="date" value={formData.endDate} onChange={(event) => onChange({ ...formData, endDate: event.target.value })} />
+            <small>Alege doar dacă rezervarea este pe mai multe zile.</small>
           </label>
           <label>
             Ora început
