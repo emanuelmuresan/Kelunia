@@ -4251,14 +4251,14 @@ img {
 }
 
 .kelunia-native-shell {
-  --native-topbar-height: 98px;
+  --native-topbar-height: 104px;
   --native-tabs-height: 62px;
 }
 
 .kelunia-native-shell .kelunia-shell {
   width: 100%;
   max-width: 100%;
-  padding: var(--native-topbar-height) max(8px, env(safe-area-inset-right)) var(--native-tabs-height) max(8px, env(safe-area-inset-left));
+  padding: calc(var(--native-topbar-height) + 2px) max(8px, env(safe-area-inset-right)) var(--native-tabs-height) max(8px, env(safe-area-inset-left));
 }
 
 .kelunia-native-shell .app-topbar {
@@ -4269,13 +4269,13 @@ img {
 }
 
 .kelunia-native-shell .app-topbar-brand img {
-  width: 88px;
-  height: 88px;
-  flex-basis: 88px;
+  width: 100px;
+  height: 100px;
+  flex-basis: 100px;
 }
 
 .kelunia-native-shell .app-topbar-context {
-  min-height: 88px;
+  min-height: 100px;
   gap: 6px;
 }
 
@@ -4300,6 +4300,18 @@ img {
   box-shadow: 0 -8px 24px rgba(22, 23, 43, 0.12);
 }
 
+.kelunia-native-shell .workspace-panel {
+  padding: 10px 12px 12px;
+}
+
+.kelunia-native-shell .calendar-panel {
+  padding-top: 6px;
+}
+
+.kelunia-native-shell .calendar-toolbar {
+  margin-bottom: 6px;
+}
+
 .kelunia-native-shell .app-tabs button,
 .kelunia-native-shell .app-tab-link,
 .kelunia-native-shell .app-tab-action,
@@ -4309,7 +4321,7 @@ img {
 
 @media (max-width: 430px) {
   .kelunia-native-shell {
-    --native-topbar-height: 92px;
+    --native-topbar-height: 100px;
     --native-tabs-height: 58px;
   }
 
@@ -4319,20 +4331,20 @@ img {
   }
 
   .kelunia-native-shell .app-topbar {
-    grid-template-columns: minmax(78px, 0.32fr) minmax(0, 1fr);
+    grid-template-columns: minmax(94px, 0.34fr) minmax(0, 1fr);
     gap: 8px;
     padding-left: max(8px, env(safe-area-inset-left));
     padding-right: max(8px, env(safe-area-inset-right));
   }
 
   .kelunia-native-shell .app-topbar-brand img {
-    width: 78px;
-    height: 78px;
-    flex-basis: 78px;
+    width: 94px;
+    height: 94px;
+    flex-basis: 94px;
   }
 
   .kelunia-native-shell .app-topbar-context {
-    min-height: 78px;
+    min-height: 94px;
   }
 
   .kelunia-native-shell .app-tabs {
