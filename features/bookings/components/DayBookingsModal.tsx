@@ -1,12 +1,14 @@
 "use client";
 
 import { formatDateLabel } from "@/lib/dates";
+import { groupColorForName, groupColorStyle } from "@/lib/group-colors";
 import { isGroupBooking } from "@/lib/scheduling";
-import type { Booking } from "@/lib/types/domain";
+import type { Booking, GroupItem } from "@/lib/types/domain";
 
 type DayBookingsModalProps = {
   date: string | null;
   bookings: Booking[];
+  groups: GroupItem[];
   canCreate: boolean;
   profileGroupName?: string;
   onAdd: () => void;
@@ -17,6 +19,7 @@ type DayBookingsModalProps = {
 export function DayBookingsModal({
   date,
   bookings,
+  groups,
   canCreate,
   profileGroupName,
   onAdd,
@@ -47,9 +50,10 @@ export function DayBookingsModal({
           <div className="day-bookings-list">
             {bookings.map((booking) => (
               <button
-                className={isGroupBooking(booking, profileGroupName) ? "own-group-booking" : ""}
+                className={`${groupColorForName(groups, booking.group) ? "group-colored-booking " : ""}${isGroupBooking(booking, profileGroupName) ? "own-group-booking" : ""}`}
                 key={booking.id}
                 onClick={() => onSelectBooking(booking)}
+                style={groupColorStyle(groupColorForName(groups, booking.group))}
                 type="button"
               >
                 <span>{booking.startTime} - {booking.endTime}</span>

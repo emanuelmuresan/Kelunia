@@ -171,6 +171,7 @@ export interface SpaceEditor {
   kind: SpaceKind;
   id: string | null;
   name: string;
+  color?: string;
 }
 
 export interface LocationEditor {
@@ -218,6 +219,7 @@ export interface RoomItem {
 export interface GroupItem {
   id: string;
   name: string;
+  color?: string;
 }
 
 export interface FixedSchedule {

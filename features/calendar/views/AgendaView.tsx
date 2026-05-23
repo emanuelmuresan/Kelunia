@@ -2,11 +2,13 @@
 
 import { bookingsForDay, isGroupBooking } from "@/lib/scheduling";
 import { formatDateLabel, parseDateKey } from "@/lib/dates";
-import type { Booking } from "@/lib/types/domain";
+import { groupColorForName, groupColorStyle } from "@/lib/group-colors";
+import type { Booking, GroupItem } from "@/lib/types/domain";
 
 type AgendaViewProps = {
   activePeriodDays: string[];
   bookings: Booking[];
+  groups: GroupItem[];
   canManageBookings: boolean;
   isOnline: boolean;
   profileGroupName?: string;
@@ -18,6 +20,7 @@ type AgendaViewProps = {
 export function AgendaView({
   activePeriodDays,
   bookings,
+  groups,
   canManageBookings,
   isOnline,
   profileGroupName,
@@ -66,7 +69,7 @@ export function AgendaView({
             ) : (
               dayBookings.map((booking) => (
                 <button
-                  className={`agenda-booking ${
+                  className={`agenda-booking ${groupColorForName(groups, booking.group) ? "group-colored-booking " : ""}${
                     isGroupBooking(booking, profileGroupName)
                       ? "own-group-booking"
                       : ""
@@ -76,6 +79,7 @@ export function AgendaView({
                     event.stopPropagation();
                     onSelectBooking(booking);
                   }}
+                  style={groupColorStyle(groupColorForName(groups, booking.group))}
                   type="button"
                 >
                   <span>

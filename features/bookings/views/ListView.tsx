@@ -2,6 +2,7 @@
 
 import type {
   Booking,
+  GroupItem,
   ListFilter,
   SortDirection,
 } from "@/lib/types/domain";
@@ -11,6 +12,7 @@ type ListViewProps = {
   listViewTitle: string;
   listBookings: Booking[];
   visibleListBookings: Booking[];
+  groups: GroupItem[];
   reachedBookingsQueryLimit: boolean;
   listPageSize: number;
   listPage: number;
@@ -35,6 +37,7 @@ export function ListView({
   listViewTitle,
   listBookings,
   visibleListBookings,
+  groups,
   reachedBookingsQueryLimit,
   listPageSize,
   listPage,
@@ -111,6 +114,7 @@ export function ListView({
             <BookingRow
               key={booking.id}
               booking={booking}
+              groups={groups}
               profileGroupName={profileGroupName}
               canEdit={canEditBooking(booking)}
               onOpen={() => onSelectBooking(booking)}

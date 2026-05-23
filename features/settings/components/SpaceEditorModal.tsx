@@ -1,6 +1,7 @@
 "use client";
 
 import type { SpaceEditor } from "@/lib/types/domain";
+import { groupColorPalette, normalizeGroupColor } from "@/lib/group-colors";
 
 type SpaceEditorModalProps = {
   spaceEditor: SpaceEditor | null;
@@ -65,6 +66,35 @@ export function SpaceEditorModal({
               }
             />
           </label>
+
+          {!isRoom && (
+            <label>
+              Culoare
+              <div className="group-color-picker">
+                {groupColorPalette.map((color) => (
+                  <button
+                    aria-label={`Alege culoarea ${color}`}
+                    className={normalizeGroupColor(spaceEditor.color) === color ? "active" : ""}
+                    key={color}
+                    onClick={() => onChange({ ...spaceEditor, color })}
+                    style={{ backgroundColor: color }}
+                    type="button"
+                  />
+                ))}
+                <input
+                  aria-label="Culoare personalizată"
+                  type="color"
+                  value={normalizeGroupColor(spaceEditor.color) || groupColorPalette[0]}
+                  onChange={(event) =>
+                    onChange({
+                      ...spaceEditor,
+                      color: event.target.value,
+                    })
+                  }
+                />
+              </div>
+            </label>
+          )}
 
           {spaceError && <p className="error-line">{spaceError}</p>}
 

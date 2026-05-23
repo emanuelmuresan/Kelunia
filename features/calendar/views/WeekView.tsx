@@ -1,11 +1,12 @@
 "use client";
 
 import { AgendaView } from "./AgendaView";
-import type { Booking } from "@/lib/types/domain";
+import type { Booking, GroupItem } from "@/lib/types/domain";
 
 type WeekViewProps = {
   activePeriodDays: string[];
   bookings: Booking[];
+  groups: GroupItem[];
   canManageBookings: boolean;
   isOnline: boolean;
   profileGroupName?: string;

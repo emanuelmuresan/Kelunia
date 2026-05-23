@@ -2,13 +2,17 @@
 
 import { bookingsForDay, isGroupBooking } from "@/lib/scheduling";
 import { parseDateKey } from "@/lib/dates";
-import type { Booking } from "@/lib/types/domain";
+import { groupColorForName, groupColorStyle } from "@/lib/group-colors";
+import type { Booking, GroupItem } from "@/lib/types/domain";
+
+const visibleBookingsPerMonthCell = 2;
 
 type MonthViewProps = {
   shortDayLabels: string[];
   monthCells: (string | null)[];
   today: string;
   bookings: Booking[];
+  groups: GroupItem[];
   canManageBookings: boolean;
   isOnline: boolean;
   profileGroupName?: string;
@@ -22,6 +26,7 @@ export function MonthView({
   monthCells,
   today,
   bookings,
+  groups,
   canManageBookings,
   isOnline,
   profileGroupName,
@@ -39,6 +44,9 @@ export function MonthView({
 
       {monthCells.map((cell, index) => {
         const dayBookings = cell ? bookingsForDay(bookings, cell) : [];
+        const visibleBookings = dayBookings.slice(0, visibleBookingsPerMonthCell);
+        const hiddenBookings = dayBookings.slice(visibleBookingsPerMonthCell);
+        const hiddenOwnGroupBooking = hiddenBookings.some((booking) => isGroupBooking(booking, profileGroupName));
 
         return (
           <div
@@ -67,23 +75,30 @@ export function MonthView({
                 </div>
 
                 <div className="cell-events">
-                  {dayBookings.slice(0, 3).map((booking) => (
+                  {visibleBookings.map((booking) => {
+                    const groupColor = groupColorForName(groups, booking.group);
+
+                    return (
                     <button
-                      className={isGroupBooking(booking, profileGroupName) ? "own-group-booking" : ""}
+                      className={`${groupColor ? "group-colored-booking " : ""}${isGroupBooking(booking, profileGroupName) ? "own-group-booking" : ""}`}
                       key={booking.id}
                       onClick={(event) => {
                         event.stopPropagation();
                         onSelectBooking(booking);
                       }}
+                      style={groupColorStyle(groupColor)}
                       type="button"
                     >
                       <strong>{booking.startTime}</strong>
                       <span>{booking.group}</span>
                     </button>
-                  ))}
+                    );
+                  })}
 
-                  {dayBookings.length > 3 && (
-                    <small>+{dayBookings.length - 3}</small>
+                  {hiddenBookings.length > 0 && (
+                    <small className={hiddenOwnGroupBooking ? "own-group-booking" : ""}>
+                      +{hiddenBookings.length}
+                    </small>
                   )}
                 </div>
               </>

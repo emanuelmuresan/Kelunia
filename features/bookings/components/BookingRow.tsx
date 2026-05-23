@@ -1,11 +1,13 @@
 "use client";
 
 import { formatDateLabel } from "@/lib/dates";
+import { groupColorForName, groupColorStyle } from "@/lib/group-colors";
 import { isGroupBooking } from "@/lib/scheduling";
-import type { Booking } from "@/lib/types/domain";
+import type { Booking, GroupItem } from "@/lib/types/domain";
 
 type BookingRowProps = {
   booking: Booking;
+  groups: GroupItem[];
   profileGroupName?: string;
   canEdit: boolean;
   onOpen: () => void;
@@ -15,6 +17,7 @@ type BookingRowProps = {
 
 export function BookingRow({
   booking,
+  groups,
   profileGroupName,
   canEdit,
   onOpen,
@@ -24,10 +27,15 @@ export function BookingRow({
   return (
     <article
       className={`booking-row ${
+        groupColorForName(groups, booking.group)
+          ? "group-colored-booking "
+          : ""
+      }${
         isGroupBooking(booking, profileGroupName)
           ? "own-group-booking"
           : ""
       }`}
+      style={groupColorStyle(groupColorForName(groups, booking.group))}
     >
       <button onClick={onOpen} type="button">
         <span className="date-badge">

@@ -1,11 +1,13 @@
 "use client";
 
 import { formatDateLabel } from "@/lib/dates";
+import { groupColorForName, groupColorStyle } from "@/lib/group-colors";
 import { isGroupBooking } from "@/lib/scheduling";
-import type { Booking } from "@/lib/types/domain";
+import type { Booking, GroupItem } from "@/lib/types/domain";
 
 type BookingDetailsModalProps = {
   booking: Booking | null;
+  groups: GroupItem[];
   profileGroupName?: string;
   canEdit: boolean;
   canCreate?: boolean;
@@ -17,6 +19,7 @@ type BookingDetailsModalProps = {
 
 export function BookingDetailsModal({
   booking,
+  groups,
   profileGroupName,
   canEdit,
   canCreate = false,
@@ -33,10 +36,15 @@ export function BookingDetailsModal({
     <div className="modal-backdrop" role="presentation">
       <div
         className={`modal-card details-card ${
+          groupColorForName(groups, booking.group)
+            ? "group-colored-booking "
+            : ""
+        }${
           isGroupBooking(booking, profileGroupName)
             ? "own-group-booking"
             : ""
         }`}
+        style={groupColorStyle(groupColorForName(groups, booking.group))}
         role="dialog"
         aria-modal="true"
         aria-label="Detalii programare"

@@ -18,6 +18,7 @@ import {
   roomsQueryLimit,
 } from "@/lib/queries/resources";
 import { compareFixedSchedules } from "@/lib/scheduling";
+import { normalizeGroupColor } from "@/lib/group-colors";
 import { isSoftDeleted } from "@/lib/soft-delete";
 import type { FixedSchedule, GroupItem, RoomItem } from "@/lib/types/domain";
 
@@ -83,7 +84,14 @@ export function useLocationResources({
         setGroups(
           snapshot.docs
             .filter((item) => !isSoftDeleted(item.data()))
-            .map((item) => ({ id: item.id, name: String(item.data().name ?? "") }))
+            .map((item) => {
+              const data = item.data();
+              return {
+                id: item.id,
+                name: String(data.name ?? ""),
+                color: normalizeGroupColor(data.color),
+              };
+            })
         );
         setGroupsLoaded(true);
         setGroupsReadError("");

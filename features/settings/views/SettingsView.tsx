@@ -1100,7 +1100,10 @@ export function SettingsView({
                   ) : (
                     groups.map((group) => (
                       <div className="mini-row" key={group.id}>
-                        <span>{group.name}</span>
+                        <span className="group-name-with-swatch">
+                          {group.color && <i aria-hidden="true" style={{ backgroundColor: group.color }} />}
+                          {group.name}
+                        </span>
                         {canEditCurrentLocation && (
                           <div className="row-actions">
                             <button onClick={() => onOpenSpaceEditor("group", group)} type="button" aria-label="Editează grupul">

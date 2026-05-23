@@ -44,6 +44,7 @@ import {
   shortDayLabels,
 } from "@/lib/config/app";
 import { dateKey, formatAuditTimestamp, parseDateKey } from "@/lib/dates";
+import { normalizeGroupColor } from "@/lib/group-colors";
 import { initialLocationBillingFields } from "@/lib/licensing";
 import {
   canUseNativeNotifications,
@@ -1138,7 +1139,12 @@ export default function KeluniaPage() {
       return;
     }
 
-    setSpaceEditor({ kind, id: item?.id ?? null, name: item?.name ?? "" });
+    setSpaceEditor({
+      kind,
+      id: item?.id ?? null,
+      name: item?.name ?? "",
+      color: kind === "group" ? normalizeGroupColor((item as GroupItem | undefined)?.color) : "",
+    });
     setSpaceError("");
     setSettingsError("");
     setSettingsMessage("");
@@ -1175,6 +1181,7 @@ export default function KeluniaPage() {
         locationName,
         updatedBy: user?.email ?? "",
         updatedAt: Timestamp.now(),
+        ...(spaceEditor.kind === "group" ? { color: normalizeGroupColor(spaceEditor.color) } : {}),
       };
 
       if (spaceEditor.id) {
@@ -1815,6 +1822,7 @@ export default function KeluniaPage() {
         <FixedSchedulesView
           fixedSectionTitle={fixedSectionTitle}
           fixedSchedules={visibleFixedSchedulesByRoomAccess}
+          groups={groups}
           dayLabels={dayLabels}
           canEditCurrentLocation={canEditCurrentLocation}
           profileGroupName={profile?.groupName}
@@ -1841,6 +1849,7 @@ export default function KeluniaPage() {
               monthCells={monthCells}
               today={today}
               bookings={visibleBookingsByRoomAccess}
+              groups={groups}
               canManageBookings={canManageBookings}
               isOnline={isOnline}
               profileGroupName={profile?.groupName}
@@ -1853,6 +1862,7 @@ export default function KeluniaPage() {
             <WeekView
               activePeriodDays={activePeriodDays}
               bookings={visibleBookingsByRoomAccess}
+              groups={groups}
               canManageBookings={canManageBookings}
               isOnline={isOnline}
               profileGroupName={profile?.groupName}
@@ -1864,6 +1874,7 @@ export default function KeluniaPage() {
             <DayView
               activePeriodDays={activePeriodDays}
               bookings={visibleBookingsByRoomAccess}
+              groups={groups}
               canManageBookings={canManageBookings}
               isOnline={isOnline}
               profileGroupName={profile?.groupName}
@@ -1880,6 +1891,7 @@ export default function KeluniaPage() {
         listViewTitle={listViewTitle}
         listBookings={listBookings}
         visibleListBookings={visibleListBookings}
+        groups={groups}
         reachedBookingsQueryLimit={reachedBookingsQueryLimit}
         listPageSize={listPageSize}
         listPage={listPage}
@@ -2061,6 +2073,7 @@ export default function KeluniaPage() {
         open={showFixedManager}
         fixedSectionTitle={fixedSectionTitle}
         fixedSchedules={fixedSchedules}
+        groups={groups}
         fixedError={showFixedForm ? "" : fixedError}
         profileGroupName={profile?.groupName}
         onClose={() => setShowFixedManager(false)}
@@ -2101,6 +2114,7 @@ export default function KeluniaPage() {
       <DayBookingsModal
         date={selectedDay}
         bookings={selectedDayBookings}
+        groups={groups}
         canCreate={canManageBookings && isOnline}
         profileGroupName={profile?.groupName}
         onAdd={createBookingFromDayModal}
@@ -2110,6 +2124,7 @@ export default function KeluniaPage() {
 
       <BookingDetailsModal
         booking={selectedBooking}
+        groups={groups}
         profileGroupName={profile?.groupName}
         canEdit={selectedBooking ? canEditBooking(selectedBooking) : false}
         canCreate={canManageBookings && isOnline}

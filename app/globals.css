@@ -814,6 +814,18 @@ img {
   box-shadow: inset 3px 0 0 rgba(227, 93, 244, 0.18);
 }
 
+.group-colored-booking {
+  border-color: color-mix(in srgb, var(--group-color) 42%, #d8e8e4);
+  background: color-mix(in srgb, var(--group-color) 12%, #fff);
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--group-color) 72%, transparent);
+}
+
+.group-colored-booking strong,
+.group-colored-booking .fixed-pill-time,
+.group-colored-booking .fixed-pill-group {
+  color: var(--group-color);
+}
+
 .fixed-pill.own-group-booking strong {
   color: var(--magenta);
 }
@@ -1358,6 +1370,7 @@ img {
 
 .month-cell {
   position: relative;
+  height: 132px;
   min-height: 132px;
   padding: 8px;
   border-top: 1px solid var(--line);
@@ -1492,6 +1505,15 @@ img {
 .cell-events small {
   color: var(--muted);
   font-weight: 750;
+}
+
+.cell-events small.own-group-booking {
+  width: fit-content;
+  max-width: 100%;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(227, 93, 244, 0.12);
+  color: var(--magenta);
 }
 
 .agenda-grid {
@@ -1749,6 +1771,47 @@ img {
   color: var(--muted);
   font-size: 0.84rem;
   font-weight: 750;
+}
+
+.group-color-picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.group-color-picker button {
+  width: 30px;
+  height: 30px;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.group-color-picker button.active {
+  box-shadow: 0 0 0 3px rgba(23, 135, 255, 0.24);
+}
+
+.group-color-picker input[type="color"] {
+  width: 38px;
+  min-height: 32px;
+  padding: 2px;
+  border-radius: 8px;
+}
+
+.group-name-with-swatch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.group-name-with-swatch i {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
+  border-radius: 999px;
+  box-shadow: 0 0 0 1px rgba(22, 23, 43, 0.14);
 }
 
 .booking-form label small {
@@ -3044,6 +3107,7 @@ img {
   }
 
   .month-cell {
+    height: 78px;
     min-height: 78px;
     padding: 4px;
   }
@@ -3058,7 +3122,7 @@ img {
   }
 
   .month-cell .cell-date button {
-    display: block;
+    display: none;
   }
 
   .cell-events button {
@@ -3248,6 +3312,7 @@ img {
   }
 
   .month-cell {
+    height: 66px;
     min-height: 66px;
   }
 

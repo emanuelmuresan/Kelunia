@@ -1,12 +1,13 @@
 "use client";
 
 import { fixedForDay } from "@/lib/scheduling";
-import type { FixedSchedule } from "@/lib/types/domain";
+import type { FixedSchedule, GroupItem } from "@/lib/types/domain";
 import { FixedSchedulePill } from "../components/FixedSchedulePill";
 
 type FixedSchedulesViewProps = {
   fixedSectionTitle: string;
   fixedSchedules: FixedSchedule[];
+  groups: GroupItem[];
   dayLabels: string[];
   canEditCurrentLocation: boolean;
   profileGroupName?: string;
@@ -16,6 +17,7 @@ type FixedSchedulesViewProps = {
 export function FixedSchedulesView({
   fixedSectionTitle,
   fixedSchedules,
+  groups,
   dayLabels,
   canEditCurrentLocation,
   profileGroupName,
@@ -54,6 +56,7 @@ export function FixedSchedulesView({
                   <FixedSchedulePill
                     key={item.id}
                     item={item}
+                    groups={groups}
                     profileGroupName={profileGroupName}
                   />
                 ))

@@ -205,6 +205,14 @@ service cloud.firestore {
         || validTextOrEmpty(data[key], maxSize);
     }
 
+    function validOptionalColor(data, key) {
+      return !hasKey(data, key)
+        || (
+          data[key] is string
+          && data[key].matches("^#[0-9a-fA-F]{6}$")
+        );
+    }
+
     function validOptionalBool(data, key) {
       return !hasKey(data, key)
         || data[key] is bool;
@@ -784,6 +792,7 @@ service cloud.firestore {
       return data.keys().hasOnly([
           "name",
           "floorLabel",
+          "color",
           "locationId",
           "locationName",
           "createdBy",
@@ -797,6 +806,7 @@ service cloud.firestore {
         ])
         && validText(data.name, 120)
         && validOptionalText(data, "floorLabel", 80)
+        && validOptionalColor(data, "color")
         && validText(data.locationId, 160)
         && validTextOrEmpty(data.locationName, 180)
         && validOptionalText(data, "createdBy", 180)
