@@ -2,7 +2,6 @@
 
 import { dayLabels } from "@/lib/config/app";
 import { groupColorForName, groupColorStyle } from "@/lib/group-colors";
-import { isGroupFixedSchedule } from "@/lib/scheduling";
 import type { FixedSchedule, GroupItem } from "@/lib/types/domain";
 
 type FixedSchedulesManagerModalProps = {
@@ -25,7 +24,6 @@ export function FixedSchedulesManagerModal({
   fixedSchedules,
   groups,
   fixedError,
-  profileGroupName,
   onClose,
   onAdd,
   onEdit,
@@ -84,15 +82,7 @@ export function FixedSchedulesManagerModal({
           ) : (
             fixedSchedules.map((item) => (
               <div
-                className={`mini-row ${
-                  groupColorForName(groups, item.group)
-                    ? "group-colored-booking "
-                    : ""
-                }${
-                  isGroupFixedSchedule(item, profileGroupName)
-                    ? "own-group-booking"
-                    : ""
-                }`}
+                className={`mini-row ${groupColorForName(groups, item.group) ? "group-colored-booking" : ""}`}
                 key={item.id}
                 style={groupColorStyle(groupColorForName(groups, item.group))}
               >

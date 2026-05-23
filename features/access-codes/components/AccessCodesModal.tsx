@@ -25,7 +25,7 @@ interface AccessCodesModalProps {
     nextGroupName: string,
     nextRoomAccess?: RoomAccessMode,
     nextAllowedRoomIds?: string[]
-  ) => void;
+  ) => void | Promise<void>;
   onCopy: (code: string) => void;
   onToggleActive: (item: LocationCode) => void;
   onRemove: (item: LocationCode) => void;
@@ -34,6 +34,13 @@ interface AccessCodesModalProps {
   onCopyInviteLink: (code: string) => void;
   onSendInvite: (item: LocationCode) => void;
 }
+
+type AccessCodeDraft = {
+  role: UserRole;
+  groupName: string;
+  roomAccess: RoomAccessMode;
+  allowedRoomIds: string[];
+};
 
 export function AccessCodesModal({
   open,
@@ -59,13 +66,15 @@ export function AccessCodesModal({
 }: AccessCodesModalProps) {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [groupFilter, setGroupFilter] = useState("all");
-  const [roomDrafts, setRoomDrafts] = useState<Record<string, { roomAccess: RoomAccessMode; allowedRoomIds: string[] }>>({});
+  const [editingCodeIds, setEditingCodeIds] = useState<Record<string, boolean>>({});
+  const [codeDrafts, setCodeDrafts] = useState<Record<string, AccessCodeDraft>>({});
 
   useEffect(() => {
     if (!open) {
       setShowCreateForm(false);
       setGroupFilter("all");
-      setRoomDrafts({});
+      setEditingCodeIds({});
+      setCodeDrafts({});
     }
   }, [open]);
 
@@ -85,23 +94,43 @@ export function AccessCodesModal({
     return accessCodes.filter((item) => item.groupName === groupFilter);
   }, [accessCodes, groupFilter]);
 
-  function roomDraftFor(item: LocationCode) {
-    return roomDrafts[item.id] ?? {
+  function codeDraftFor(item: LocationCode): AccessCodeDraft {
+    return codeDrafts[item.id] ?? {
+      role: item.role,
+      groupName: item.groupName || "",
       roomAccess: item.role === "manager" ? "all" : item.roomAccess,
       allowedRoomIds: item.role === "manager" ? [] : item.allowedRoomIds,
     };
   }
 
-  function setRoomDraft(item: LocationCode, nextDraft: { roomAccess: RoomAccessMode; allowedRoomIds: string[] }) {
-    setRoomDrafts((current) => ({ ...current, [item.id]: nextDraft }));
+  function openCodeEditor(item: LocationCode) {
+    setCodeDrafts((current) => ({
+      ...current,
+      [item.id]: {
+        role: item.role,
+        groupName: item.groupName || "",
+        roomAccess: item.role === "manager" ? "all" : item.roomAccess,
+        allowedRoomIds: item.role === "manager" ? [] : item.allowedRoomIds,
+      },
+    }));
+    setEditingCodeIds((current) => ({ ...current, [item.id]: true }));
   }
 
-  function clearRoomDraft(codeId: string) {
-    setRoomDrafts((current) => {
+  function closeCodeEditor(itemId: string) {
+    setEditingCodeIds((current) => {
       const next = { ...current };
-      delete next[codeId];
+      delete next[itemId];
       return next;
     });
+    setCodeDrafts((current) => {
+      const next = { ...current };
+      delete next[itemId];
+      return next;
+    });
+  }
+
+  function setCodeDraft(item: LocationCode, nextDraft: AccessCodeDraft) {
+    setCodeDrafts((current) => ({ ...current, [item.id]: nextDraft }));
   }
 
   function sameRoomIds(first: string[], second: string[]) {
@@ -111,6 +140,21 @@ export function AccessCodesModal({
 
     const firstSet = new Set(first);
     return second.every((item) => firstSet.has(item));
+  }
+
+  async function saveCodeEditor(item: LocationCode) {
+    const draft = codeDraftFor(item);
+    const nextRoomAccess = draft.role === "manager" ? "all" : draft.roomAccess;
+    const nextAllowedRoomIds = nextRoomAccess === "selected" ? draft.allowedRoomIds : [];
+
+    await onUpdateDetails(
+      item,
+      draft.role,
+      draft.role === "manager" ? "" : draft.groupName,
+      nextRoomAccess,
+      nextAllowedRoomIds
+    );
+    closeCodeEditor(item.id);
   }
 
   if (!open) {
@@ -125,7 +169,6 @@ export function AccessCodesModal({
             <span className="eyebrow">Acces</span>
             <h2>Coduri de acces</h2>
           </div>
-          <button onClick={onClose} type="button" aria-label="Închide">×</button>
         </div>
 
         <div className="code-toolbar">
@@ -143,6 +186,10 @@ export function AccessCodesModal({
             {showCreateForm ? "Inchide" : "Cod nou"}
           </button>
         </div>
+
+        <p className="muted-note">
+          Opreste pastreaza codul in istoric, dar nu mai poate fi folosit. Sterge il ascunde din lista activa si il scoate din evidenta curenta.
+        </p>
 
         {showCreateForm && (
           <div className="code-create-panel">
@@ -246,32 +293,45 @@ export function AccessCodesModal({
             <p className="empty-line">Nu exista coduri pentru filtrul ales.</p>
           ) : (
             visibleAccessCodes.map((item) => {
-              const roomDraft = roomDraftFor(item);
-              const draftRoomAccess = item.role === "manager" ? "all" : roomDraft.roomAccess;
-              const draftAllowedRoomIds = draftRoomAccess === "selected" ? roomDraft.allowedRoomIds : [];
-              const roomSelectionChanged = draftRoomAccess !== item.roomAccess || !sameRoomIds(draftAllowedRoomIds, item.allowedRoomIds);
+              const codeDraft = codeDraftFor(item);
+              const isEditingCode = Boolean(editingCodeIds[item.id]);
+              const draftRole = isEditingCode ? codeDraft.role : item.role;
+              const draftGroupName = isEditingCode ? codeDraft.groupName : item.groupName;
+              const draftRoomAccess = draftRole === "manager" ? "all" : codeDraft.roomAccess;
+              const draftAllowedRoomIds = draftRoomAccess === "selected" ? codeDraft.allowedRoomIds : [];
+              const codeChanged =
+                draftRole !== item.role ||
+                draftGroupName !== item.groupName ||
+                draftRoomAccess !== item.roomAccess ||
+                !sameRoomIds(draftAllowedRoomIds, item.allowedRoomIds);
+              const editDisabled = codesWorking || !isEditingCode;
 
               return (
                 <div className={`code-row ${!item.active || isAccessCodeFull(item) ? "code-row-muted" : ""}`} key={item.id}>
                   <span className="code-chip">{item.code}</span>
                   <select
-                    value={item.role}
+                    value={draftRole}
                     onChange={(event) => {
                       const nextRole = event.target.value as UserRole;
-                      clearRoomDraft(item.id);
-                      onUpdateDetails(item, nextRole, nextRole === "manager" ? "" : item.groupName || "", nextRole === "manager" ? "all" : item.roomAccess, nextRole === "manager" ? [] : item.allowedRoomIds);
+                      setCodeDraft(item, {
+                        role: nextRole,
+                        groupName: nextRole === "manager" ? "" : codeDraft.groupName,
+                        roomAccess: nextRole === "manager" ? "all" : item.roomAccess,
+                        allowedRoomIds: nextRole === "manager" || item.roomAccess === "all" ? [] : item.allowedRoomIds,
+                      });
                     }}
+                    disabled={editDisabled}
                   >
                     <option value="guest">Oaspete</option>
                     <option value="member">Membru</option>
                     <option value="manager">Manager</option>
                   </select>
                   <select
-                    value={item.groupName}
-                    onChange={(event) => onUpdateDetails(item, item.role, event.target.value, draftRoomAccess, draftAllowedRoomIds)}
-                    disabled={item.role === "manager"}
+                    value={draftGroupName}
+                    onChange={(event) => setCodeDraft(item, { ...codeDraft, groupName: event.target.value })}
+                    disabled={editDisabled || draftRole === "manager"}
                   >
-                    <option value="">{item.role === "manager" ? "Fara grup" : "Alege grupul"}</option>
+                    <option value="">{draftRole === "manager" ? "Fara grup" : "Alege grupul"}</option>
                     {groups.map((group) => <option key={group.id} value={group.name}>{group.name}</option>)}
                   </select>
                   <div className="code-room-access">
@@ -281,22 +341,26 @@ export function AccessCodesModal({
                         const nextRoomAccess = event.target.value as RoomAccessMode;
 
                         if (nextRoomAccess === "all") {
-                          clearRoomDraft(item.id);
-                          onUpdateDetails(item, item.role, item.groupName, "all", []);
+                          setCodeDraft(item, {
+                            ...codeDraft,
+                            roomAccess: "all",
+                            allowedRoomIds: [],
+                          });
                           return;
                         }
 
-                        setRoomDraft(item, {
+                        setCodeDraft(item, {
+                          ...codeDraft,
                           roomAccess: "selected",
                           allowedRoomIds: item.allowedRoomIds,
                         });
                       }}
-                      disabled={item.role === "manager"}
+                      disabled={editDisabled || draftRole === "manager"}
                     >
                       <option value="all">Toate salile</option>
                       <option value="selected">Sali alese</option>
                     </select>
-                    {item.role !== "manager" && draftRoomAccess === "selected" && (
+                    {draftRole !== "manager" && draftRoomAccess === "selected" && (
                       <div className="room-check-grid code-room-check-grid">
                         {rooms.length === 0 ? (
                           <p className="empty-line">Adauga intai sali pentru aceasta locatie.</p>
@@ -310,21 +374,14 @@ export function AccessCodesModal({
                                   const allowedRoomIds = event.target.checked
                                     ? [...draftAllowedRoomIds, room.id]
                                     : draftAllowedRoomIds.filter((roomId) => roomId !== room.id);
-                                  setRoomDraft(item, { roomAccess: "selected", allowedRoomIds });
+                                  setCodeDraft(item, { ...codeDraft, roomAccess: "selected", allowedRoomIds });
                                 }}
+                                disabled={editDisabled}
                               />
                               {room.name}
                             </label>
                           ))
                         )}
-                        <button
-                          className="secondary-button compact"
-                          disabled={codesWorking || !roomSelectionChanged || draftAllowedRoomIds.length === 0}
-                          onClick={() => onUpdateDetails(item, item.role, item.groupName, "selected", draftAllowedRoomIds)}
-                          type="button"
-                        >
-                          Salveaza salile
-                        </button>
                       </div>
                     )}
                     <small>{roomAccessLabel({ ...item, roomAccess: draftRoomAccess, allowedRoomIds: draftAllowedRoomIds }, rooms)}</small>
@@ -339,6 +396,25 @@ export function AccessCodesModal({
                   <button onClick={() => onSendInvite(item)} disabled={!item.active || isAccessCodeFull(item)} type="button">
                     Email
                   </button>
+                  {isEditingCode ? (
+                    <>
+                      <button className="secondary-button compact" onClick={() => closeCodeEditor(item.id)} type="button">
+                        Renunta
+                      </button>
+                      <button
+                        className="primary-button compact"
+                        disabled={!codeChanged || (draftRoomAccess === "selected" && draftAllowedRoomIds.length === 0)}
+                        onClick={() => saveCodeEditor(item)}
+                        type="button"
+                      >
+                        Salveaza
+                      </button>
+                    </>
+                  ) : (
+                    <button className="secondary-button compact" disabled={codesWorking} onClick={() => openCodeEditor(item)} type="button">
+                      Editeaza
+                    </button>
+                  )}
                   <button onClick={() => onToggleActive(item)} type="button">
                     {item.active ? "Opreste" : "Activeaza"}
                   </button>
@@ -347,7 +423,7 @@ export function AccessCodesModal({
                     type="button"
                     aria-label="Sterge codul"
                   >
-                    x
+                    Sterge
                   </button>
                 </div>
               );

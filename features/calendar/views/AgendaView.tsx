@@ -1,6 +1,6 @@
 "use client";
 
-import { bookingsForDay, isGroupBooking } from "@/lib/scheduling";
+import { bookingsForDay } from "@/lib/scheduling";
 import { formatDateLabel, parseDateKey } from "@/lib/dates";
 import { groupColorForName, groupColorStyle } from "@/lib/group-colors";
 import type { Booking, GroupItem } from "@/lib/types/domain";
@@ -23,7 +23,6 @@ export function AgendaView({
   groups,
   canManageBookings,
   isOnline,
-  profileGroupName,
   onCreateBooking,
   onDateSelect,
   onSelectBooking,
@@ -69,11 +68,7 @@ export function AgendaView({
             ) : (
               dayBookings.map((booking) => (
                 <button
-                  className={`agenda-booking ${groupColorForName(groups, booking.group) ? "group-colored-booking " : ""}${
-                    isGroupBooking(booking, profileGroupName)
-                      ? "own-group-booking"
-                      : ""
-                  }`}
+                  className={`agenda-booking ${groupColorForName(groups, booking.group) ? "group-colored-booking" : ""}`}
                   key={booking.id}
                   onClick={(event) => {
                     event.stopPropagation();

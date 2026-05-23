@@ -5,6 +5,7 @@ import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { doc, getDoc, setDoc, type DocumentData, type DocumentReference } from "firebase/firestore";
 import { normalizeAllowedRoomIds, normalizeRoomAccessMode } from "@/lib/room-access";
+import { normalizeNotificationOffsets } from "@/lib/notifications";
 import type { RoomAccessMode } from "@/lib/types/domain";
 
 export type UserRole = "manager" | "member" | "guest";
@@ -32,6 +33,7 @@ export interface UserProfile {
   notifyGroupBookings: boolean;
   notifyWeekBefore: boolean;
   notifyDayBefore: boolean;
+  notifyOffsetsDays: number[];
 }
 
 interface AuthContextType {
@@ -117,6 +119,7 @@ function buildFallbackProfile(userData: User): UserProfile {
     notifyGroupBookings: false,
     notifyWeekBefore: true,
     notifyDayBefore: true,
+    notifyOffsetsDays: [1, 7],
   };
 }
 
@@ -209,6 +212,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 notifyGroupBookings: false,
                 notifyWeekBefore: true,
                 notifyDayBefore: true,
+                notifyOffsetsDays: [1, 7],
               },
               { merge: true }
             ).catch((error) => {
@@ -289,6 +293,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           notifyGroupBookings: Boolean(data.notifyGroupBookings),
           notifyWeekBefore: data.notifyWeekBefore !== false,
           notifyDayBefore: data.notifyDayBefore !== false,
+          notifyOffsetsDays: normalizeNotificationOffsets(data.notifyOffsetsDays).length > 0
+            ? normalizeNotificationOffsets(data.notifyOffsetsDays)
+            : [
+              ...(data.notifyDayBefore !== false ? [1] : []),
+              ...(data.notifyWeekBefore !== false ? [7] : []),
+            ],
         });
       } catch (error) {
         console.error("Eroare la citirea profilului:", error);

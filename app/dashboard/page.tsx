@@ -46,6 +46,7 @@ import { initialLocationBillingFields } from "@/lib/licensing";
 import {
   canUseNativeNotifications,
   LocalNotifications,
+  normalizeNotificationOffsets,
   requestKeluniaNotificationPermission,
 } from "@/lib/notifications";
 import { can } from "@/lib/permissions/capabilities";
@@ -163,6 +164,7 @@ export default function KeluniaPage() {
     notifyGroupBookings: false,
     notifyWeekBefore: true,
     notifyDayBefore: true,
+    notifyOffsetsDays: [1, 7],
     language: "ro",
   });
   const [groupSetupDraft, setGroupSetupDraft] = useState("");
@@ -498,6 +500,12 @@ export default function KeluniaPage() {
       notifyGroupBookings: profile.notifyGroupBookings,
       notifyWeekBefore: profile.notifyWeekBefore,
       notifyDayBefore: profile.notifyDayBefore,
+      notifyOffsetsDays: normalizeNotificationOffsets(profile.notifyOffsetsDays).length > 0
+        ? normalizeNotificationOffsets(profile.notifyOffsetsDays)
+        : [
+          ...(profile.notifyDayBefore ? [1] : []),
+          ...(profile.notifyWeekBefore ? [7] : []),
+        ],
       language: profile.language,
     });
     setGroupSetupDraft(profile.groupName);
@@ -990,9 +998,15 @@ export default function KeluniaPage() {
     if (wantsBiometrics && !biometricReady) {
       setSettingsError("Biometria nu este disponibila pe acest dispozitiv. PIN-ul ramane activ ca metoda de blocare.");
     }
+
+    await savePersonalSettings({
+      pinHash,
+      usePin: true,
+      useBiometrics: wantsBiometrics ? biometricReady : personalDraft.useBiometrics,
+    });
   }
 
-  async function savePersonalSettings() {
+  async function savePersonalSettings(options?: { pinHash?: string; usePin?: boolean; useBiometrics?: boolean }) {
     if (!user) {
       return;
     }
@@ -1009,13 +1023,21 @@ export default function KeluniaPage() {
       return;
     }
 
-    if ((personalDraft.usePin || personalDraft.useBiometrics) && !profile?.hasPin && !pendingPinHash) {
-      openPinSetup(personalDraft.useBiometrics ? "biometrics" : "pin");
+    const effectiveDraft = {
+      ...personalDraft,
+      usePin: options?.usePin ?? personalDraft.usePin,
+      useBiometrics: options?.useBiometrics ?? personalDraft.useBiometrics,
+    };
+    const effectivePinHash = options?.pinHash ?? pendingPinHash;
+    const notificationOffsets = normalizeNotificationOffsets(effectiveDraft.notifyOffsetsDays);
+
+    if ((effectiveDraft.usePin || effectiveDraft.useBiometrics) && !profile?.hasPin && !effectivePinHash) {
+      openPinSetup(effectiveDraft.useBiometrics ? "biometrics" : "pin");
       return;
     }
 
-    if (personalDraft.notifyGroupBookings) {
-      if (!personalDraft.notifyWeekBefore && !personalDraft.notifyDayBefore) {
+    if (effectiveDraft.notifyGroupBookings) {
+      if (notificationOffsets.length === 0) {
         setSettingsError("Alege cel puțin un moment pentru notificări.");
         return;
       }
@@ -1028,29 +1050,30 @@ export default function KeluniaPage() {
       }
     }
 
-    const usePin = personalDraft.usePin || personalDraft.useBiometrics;
+    const usePin = effectiveDraft.usePin || effectiveDraft.useBiometrics;
     const savedRoomAccess = isOwner || role === "manager" ? "all" : normalizeRoomAccessMode(profile?.roomAccess);
     const savedAllowedRoomIds = savedRoomAccess === "selected" ? normalizeAllowedRoomIds(profile?.allowedRoomIds) : [];
     const payload: Record<string, unknown> = {
       email: user.email,
-      displayName: personalDraft.displayName,
-      groupName: isOwner ? "" : personalDraft.groupName,
+      displayName: effectiveDraft.displayName,
+      groupName: isOwner ? "" : effectiveDraft.groupName,
       role,
       locationId: isOwner ? "" : profile?.locationId ?? "main-location",
       locationName: isOwner ? defaultLocationName : profile?.locationName ?? locationName,
       roomAccess: savedRoomAccess,
       allowedRoomIds: savedAllowedRoomIds,
       usePin,
-      lockOnHide: usePin ? personalDraft.lockOnHide : false,
-      useBiometrics: usePin ? personalDraft.useBiometrics : false,
-      notifyGroupBookings: personalDraft.notifyGroupBookings,
-      notifyWeekBefore: personalDraft.notifyGroupBookings ? personalDraft.notifyWeekBefore : false,
-      notifyDayBefore: personalDraft.notifyGroupBookings ? personalDraft.notifyDayBefore : false,
-      language: personalDraft.language,
+      lockOnHide: usePin ? effectiveDraft.lockOnHide : false,
+      useBiometrics: usePin ? effectiveDraft.useBiometrics : false,
+      notifyGroupBookings: effectiveDraft.notifyGroupBookings,
+      notifyWeekBefore: effectiveDraft.notifyGroupBookings ? notificationOffsets.includes(7) : false,
+      notifyDayBefore: effectiveDraft.notifyGroupBookings ? notificationOffsets.includes(1) : false,
+      notifyOffsetsDays: effectiveDraft.notifyGroupBookings ? notificationOffsets : [],
+      language: effectiveDraft.language,
     };
 
-    if (pendingPinHash) {
-      payload.pinHash = pendingPinHash;
+    if (effectivePinHash) {
+      payload.pinHash = effectivePinHash;
       payload.pinSet = true;
     }
 

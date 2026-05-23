@@ -29,6 +29,7 @@ type PersonalDraft = {
   notifyGroupBookings: boolean;
   notifyWeekBefore: boolean;
   notifyDayBefore: boolean;
+  notifyOffsetsDays: number[];
   language: string;
 };
 
@@ -39,7 +40,8 @@ type LicenseAccess = {
   daysRemaining: number | null;
 };
 
-type RoomAccessDraft = {
+type ManagedUserDraft = {
+  role: UserRole;
   roomAccess: RoomAccessMode;
   allowedRoomIds: string[];
 };
@@ -124,8 +126,8 @@ type SettingsViewProps = {
   onOpenLicenseCodes: () => void;
   onOpenSpaceEditor: (kind: SpaceKind, item?: RoomItem | GroupItem) => void;
   onRemoveSpaceItem: (kind: SpaceKind, itemId: string) => void;
-  onUpdateManagedUserRole: (managedUser: ManagedUser, role: UserRole) => void;
-  onUpdateManagedUserRoomAccess: (managedUser: ManagedUser, roomAccess: RoomAccessMode, allowedRoomIds: string[]) => void;
+  onUpdateManagedUserRole: (managedUser: ManagedUser, role: UserRole) => void | Promise<void>;
+  onUpdateManagedUserRoomAccess: (managedUser: ManagedUser, roomAccess: RoomAccessMode, allowedRoomIds: string[]) => void | Promise<void>;
   onRemoveManagedUser: (managedUser: ManagedUser) => void;
   onMarkCommunityApplicationReviewed: (applicationId: string) => void;
   onSendCommunityApplicationReply: (application: CommunityApplication, body: string) => Promise<void>;
@@ -197,7 +199,6 @@ export function SettingsView({
   onEnableOwnerNotifications,
 }: SettingsViewProps) {
   const showLocationSettings = !isOwner || Boolean(currentLocationId);
-  const [roomAccessDrafts, setRoomAccessDrafts] = useState<Record<string, RoomAccessDraft>>({});
   const [selectedCommunityApplication, setSelectedCommunityApplication] = useState<CommunityApplication | null>(null);
   const [communityReplyDraft, setCommunityReplyDraft] = useState("");
   const [communityReplyError, setCommunityReplyError] = useState("");
@@ -210,6 +211,9 @@ export function SettingsView({
   const [newsletterPanelOpen, setNewsletterPanelOpen] = useState(false);
   const [newsletterComposerOpen, setNewsletterComposerOpen] = useState(false);
   const [newsletterTargetEmail, setNewsletterTargetEmail] = useState("");
+  const [pagesEditing, setPagesEditing] = useState(false);
+  const [managedUserEditing, setManagedUserEditing] = useState<Record<string, boolean>>({});
+  const [managedUserDrafts, setManagedUserDrafts] = useState<Record<string, ManagedUserDraft>>({});
   const [inboxOpen, setInboxOpen] = useState(false);
   const [profileEditorOpen, setProfileEditorOpen] = useState(false);
   const [profileBaseline, setProfileBaseline] = useState<PersonalDraft | null>(null);
@@ -265,23 +269,41 @@ export function SettingsView({
     refreshOwnerNotificationPermission();
   }, []);
 
-  function roomDraftFor(managedUser: ManagedUser): RoomAccessDraft {
-    return roomAccessDrafts[managedUser.id] ?? {
+  function managedUserDraftFor(managedUser: ManagedUser): ManagedUserDraft {
+    return managedUserDrafts[managedUser.id] ?? {
+      role: managedUser.role,
       roomAccess: managedUser.role === "manager" ? "all" : managedUser.roomAccess,
       allowedRoomIds: managedUser.role === "manager" ? [] : managedUser.allowedRoomIds,
     };
   }
 
-  function setRoomDraft(managedUser: ManagedUser, nextDraft: RoomAccessDraft) {
-    setRoomAccessDrafts((current) => ({ ...current, [managedUser.id]: nextDraft }));
+  function openManagedUserEditor(managedUser: ManagedUser) {
+    setManagedUserDrafts((current) => ({
+      ...current,
+      [managedUser.id]: {
+        role: managedUser.role,
+        roomAccess: managedUser.role === "manager" ? "all" : managedUser.roomAccess,
+        allowedRoomIds: managedUser.role === "manager" ? [] : managedUser.allowedRoomIds,
+      },
+    }));
+    setManagedUserEditing((current) => ({ ...current, [managedUser.id]: true }));
   }
 
-  function clearRoomDraft(userId: string) {
-    setRoomAccessDrafts((current) => {
+  function closeManagedUserEditor(userId: string) {
+    setManagedUserEditing((current) => {
       const next = { ...current };
       delete next[userId];
       return next;
     });
+    setManagedUserDrafts((current) => {
+      const next = { ...current };
+      delete next[userId];
+      return next;
+    });
+  }
+
+  function setManagedUserDraft(managedUser: ManagedUser, nextDraft: ManagedUserDraft) {
+    setManagedUserDrafts((current) => ({ ...current, [managedUser.id]: nextDraft }));
   }
 
   function sameRoomIds(first: string[], second: string[]) {
@@ -293,6 +315,33 @@ export function SettingsView({
     return second.every((item) => firstSet.has(item));
   }
 
+  async function saveManagedUserEditor(managedUser: ManagedUser) {
+    const draft = managedUserDraftFor(managedUser);
+    const nextRoomAccess = draft.role === "manager" ? "all" : draft.roomAccess;
+    const nextAllowedRoomIds = nextRoomAccess === "selected" ? draft.allowedRoomIds : [];
+
+    if (draft.role !== managedUser.role) {
+      await onUpdateManagedUserRole(managedUser, draft.role);
+    }
+
+    if (
+      draft.role === managedUser.role &&
+      (nextRoomAccess !== managedUser.roomAccess || !sameRoomIds(nextAllowedRoomIds, managedUser.allowedRoomIds))
+    ) {
+      await onUpdateManagedUserRoomAccess(managedUser, nextRoomAccess, nextAllowedRoomIds);
+    }
+
+    if (draft.role !== managedUser.role && draft.role !== "manager") {
+      await onUpdateManagedUserRoomAccess(
+        { ...managedUser, role: draft.role },
+        nextRoomAccess,
+        nextAllowedRoomIds
+      );
+    }
+
+    closeManagedUserEditor(managedUser.id);
+  }
+
   function samePersonalDraft(first: PersonalDraft, second: PersonalDraft) {
     return first.displayName === second.displayName
       && first.groupName === second.groupName
@@ -302,11 +351,48 @@ export function SettingsView({
       && first.notifyGroupBookings === second.notifyGroupBookings
       && first.notifyWeekBefore === second.notifyWeekBefore
       && first.notifyDayBefore === second.notifyDayBefore
+      && first.notifyOffsetsDays.join("|") === second.notifyOffsetsDays.join("|")
       && first.language === second.language;
   }
 
   function copyPersonalDraft(draft: PersonalDraft): PersonalDraft {
-    return { ...draft };
+    return { ...draft, notifyOffsetsDays: [...draft.notifyOffsetsDays] };
+  }
+
+  function updateNotificationOffset(index: number, value: string) {
+    const nextValue = Math.max(1, Math.min(30, Number(value) || 1));
+    const nextOffsets = personalDraft.notifyOffsetsDays.map((offset, offsetIndex) =>
+      offsetIndex === index ? nextValue : offset
+    );
+
+    setPersonalDraft({
+      ...personalDraft,
+      notifyOffsetsDays: nextOffsets,
+      notifyWeekBefore: nextOffsets.includes(7),
+      notifyDayBefore: nextOffsets.includes(1),
+    });
+  }
+
+  function addNotificationOffset() {
+    const nextOffsets = [...personalDraft.notifyOffsetsDays, 1].slice(0, 5);
+
+    setPersonalDraft({
+      ...personalDraft,
+      notifyOffsetsDays: nextOffsets,
+      notifyWeekBefore: nextOffsets.includes(7),
+      notifyDayBefore: nextOffsets.includes(1),
+    });
+  }
+
+  function removeNotificationOffset(index: number) {
+    const nextOffsets = personalDraft.notifyOffsetsDays.filter((_, offsetIndex) => offsetIndex !== index);
+
+    setPersonalDraft({
+      ...personalDraft,
+      notifyOffsetsDays: nextOffsets,
+      notifyWeekBefore: nextOffsets.includes(7),
+      notifyDayBefore: nextOffsets.includes(1),
+    });
   }
 
   function refreshOwnerNotificationPermission() {
@@ -631,7 +717,11 @@ export function SettingsView({
             {!isOwner && (
               <div>
                 <span>Notificari</span>
-                <strong>{personalDraft.notifyGroupBookings ? "Active" : "Inactive"}</strong>
+                <strong>
+                  {personalDraft.notifyGroupBookings
+                    ? `${personalDraft.notifyOffsetsDays.length} active`
+                    : "Inactive"}
+                </strong>
               </div>
             )}
           </div>
@@ -645,161 +735,6 @@ export function SettingsView({
             </button>
           </div>
 
-          <div className="settings-form profile-inline-form">
-            <label>
-              Nume
-              <input
-                value={personalDraft.displayName}
-                onChange={(event) =>
-                  setPersonalDraft({
-                    ...personalDraft,
-                    displayName: event.target.value,
-                  })
-                }
-              />
-            </label>
-
-            <label>
-              Limba
-              <select
-                value={personalDraft.language}
-                onChange={(event) =>
-                  setPersonalDraft({
-                    ...personalDraft,
-                    language: event.target.value,
-                  })
-                }
-              >
-                <option value="ro">Română</option>
-              </select>
-            </label>
-
-            {!isOwner && (
-              <label>
-                {groupsLabelDraft.trim() || defaultGroupsLabel}
-                <select
-                  value={personalDraft.groupName}
-                  onChange={(event) =>
-                    setPersonalDraft({
-                      ...personalDraft,
-                      groupName: event.target.value,
-                    })
-                  }
-                >
-                  <option value="">Alege {(groupsLabelDraft.trim() || defaultGroupsLabel).toLowerCase()}</option>
-                  {groups.map((group) => (
-                    <option key={group.id} value={group.name}>
-                      {group.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-
-            {isOwner && (
-              <p className="muted-note">
-                Proprietarul nu trebuie să aparțină unui grup.
-              </p>
-            )}
-
-            <label className="toggle-row">
-              <input
-                type="checkbox"
-                checked={personalDraft.usePin}
-                onChange={(event) => onHandlePinToggle(event.target.checked)}
-              />
-              Blocare cu PIN
-            </label>
-
-            <label className="toggle-row">
-              <input
-                type="checkbox"
-                checked={personalDraft.useBiometrics}
-                onChange={(event) => onHandleBiometricsToggle(event.target.checked)}
-              />
-              Biometrie
-            </label>
-
-            <p className="muted-note">
-              Biometria folosește PIN-ul ca rezervă dacă deblocarea biometrică nu merge.
-            </p>
-
-            <label className="toggle-row">
-              <input
-                type="checkbox"
-                checked={personalDraft.lockOnHide}
-                onChange={(event) =>
-                  setPersonalDraft({
-                    ...personalDraft,
-                    lockOnHide: event.target.checked,
-                  })
-                }
-              />
-              Blochează când ieși din aplicație
-            </label>
-
-            {!isOwner && (
-              <>
-                <label className="toggle-row">
-                  <input
-                    type="checkbox"
-                    checked={personalDraft.notifyGroupBookings}
-                    onChange={(event) =>
-                      setPersonalDraft({
-                        ...personalDraft,
-                        notifyGroupBookings: event.target.checked,
-                      })
-                    }
-                  />
-                  Notificări pentru programările grupului meu
-                </label>
-
-                {personalDraft.notifyGroupBookings && (
-                  <div className="notification-options">
-                    <label className="toggle-row compact-toggle">
-                      <input
-                        type="checkbox"
-                        checked={personalDraft.notifyWeekBefore}
-                        onChange={(event) =>
-                          setPersonalDraft({
-                            ...personalDraft,
-                            notifyWeekBefore: event.target.checked,
-                          })
-                        }
-                      />
-                      Cu o săptămână înainte
-                    </label>
-
-                    <label className="toggle-row compact-toggle">
-                      <input
-                        type="checkbox"
-                        checked={personalDraft.notifyDayBefore}
-                        onChange={(event) =>
-                          setPersonalDraft({
-                            ...personalDraft,
-                            notifyDayBefore: event.target.checked,
-                          })
-                        }
-                      />
-                      Cu o zi înainte
-                    </label>
-
-                    <p className="muted-note">
-                      Notificările se activează pe dispozitivul curent.
-                    </p>
-                  </div>
-                )}
-              </>
-            )}
-
-            <button className="primary-button" onClick={onSavePersonalSettings} type="button">
-              Salvează
-            </button>
-
-            <button className="secondary-button" onClick={onOpenPasswordModal} type="button">
-              Schimbă parola
-            </button>
-          </div>
           </>
         ) : (
           <div className="empty-state">
@@ -820,6 +755,11 @@ export function SettingsView({
                 <span className="eyebrow">Navigare</span>
                 <h2>Pagini</h2>
               </div>
+              {canEditCurrentLocation && !pagesEditing && (
+                <button className="secondary-button compact" onClick={() => setPagesEditing(true)} type="button">
+                  Editeaza
+                </button>
+              )}
             </div>
 
             <div className="settings-form">
@@ -827,7 +767,7 @@ export function SettingsView({
                 <input
                   type="checkbox"
                   checked={fixedPageEnabledDraft}
-                  disabled={!canEditCurrentLocation}
+                  disabled={!canEditCurrentLocation || !pagesEditing}
                   onChange={(event) => setFixedPageEnabledDraft(event.target.checked)}
                 />
                 Afișează pagina {fixedSectionDraft.trim() || defaultFixedSectionTitle}
@@ -837,7 +777,7 @@ export function SettingsView({
                 Nume programări fixe
                 <input
                   value={fixedSectionDraft}
-                  disabled={!canEditCurrentLocation}
+                  disabled={!canEditCurrentLocation || !pagesEditing}
                   onChange={(event) => setFixedSectionDraft(event.target.value)}
                 />
               </label>
@@ -846,7 +786,7 @@ export function SettingsView({
                 Nume listă programări
                 <input
                   value={listViewDraft}
-                  disabled={!canEditCurrentLocation}
+                  disabled={!canEditCurrentLocation || !pagesEditing}
                   onChange={(event) => setListViewDraft(event.target.value)}
                 />
               </label>
@@ -855,7 +795,7 @@ export function SettingsView({
                 Nume sectiune spatii
                 <input
                   value={resourcesSectionDraft}
-                  disabled={!canEditCurrentLocation}
+                  disabled={!canEditCurrentLocation || !pagesEditing}
                   placeholder={defaultResourcesSectionTitle}
                   onChange={(event) => setResourcesSectionDraft(event.target.value)}
                 />
@@ -865,7 +805,7 @@ export function SettingsView({
                 Nume sali
                 <input
                   value={roomsLabelDraft}
-                  disabled={!canEditCurrentLocation}
+                  disabled={!canEditCurrentLocation || !pagesEditing}
                   placeholder={defaultRoomsLabel}
                   onChange={(event) => setRoomsLabelDraft(event.target.value)}
                 />
@@ -875,16 +815,28 @@ export function SettingsView({
                 Nume grupuri
                 <input
                   value={groupsLabelDraft}
-                  disabled={!canEditCurrentLocation}
+                  disabled={!canEditCurrentLocation || !pagesEditing}
                   placeholder={defaultGroupsLabel}
                   onChange={(event) => setGroupsLabelDraft(event.target.value)}
                 />
               </label>
 
-              {canEditCurrentLocation && (
-                <button className="primary-button" onClick={onSaveNavigationSettings} type="button">
-                  Salvează paginile
-                </button>
+              {canEditCurrentLocation && pagesEditing && (
+                <div className="modal-actions inline-actions">
+                  <button className="secondary-button" onClick={() => setPagesEditing(false)} type="button">
+                    Renunta
+                  </button>
+                  <button
+                    className="primary-button"
+                    onClick={() => {
+                      onSaveNavigationSettings();
+                      setPagesEditing(false);
+                    }}
+                    type="button"
+                  >
+                    Salvează paginile
+                  </button>
+                </div>
               )}
             </div>
           </article>
@@ -1073,8 +1025,8 @@ export function SettingsView({
                             <button onClick={() => onOpenSpaceEditor("room", room)} type="button" aria-label="Editează sala">
                               ✎
                             </button>
-                            <button onClick={() => onRemoveSpaceItem("room", room.id)} type="button" aria-label="Șterge sala">
-                              ×
+                            <button className="secondary-button compact danger-button" onClick={() => onRemoveSpaceItem("room", room.id)} type="button">
+                              Sterge
                             </button>
                           </div>
                         )}
@@ -1109,8 +1061,8 @@ export function SettingsView({
                             <button onClick={() => onOpenSpaceEditor("group", group)} type="button" aria-label="Editează grupul">
                               ✎
                             </button>
-                            <button onClick={() => onRemoveSpaceItem("group", group.id)} type="button" aria-label="Șterge grupul">
-                              ×
+                            <button className="secondary-button compact danger-button" onClick={() => onRemoveSpaceItem("group", group.id)} type="button">
+                              Sterge
                             </button>
                           </div>
                         )}
@@ -1134,17 +1086,25 @@ export function SettingsView({
 
             <div className="users-table">
               {visibleManagedUsers.map((managedUser) => {
-                const roomDraft = roomDraftFor(managedUser);
-                const draftRoomAccess = managedUser.role === "manager" ? "all" : roomDraft.roomAccess;
-                const draftAllowedRoomIds = draftRoomAccess === "selected" ? roomDraft.allowedRoomIds : [];
-                const roomSelectionChanged =
+                const userDraft = managedUserDraftFor(managedUser);
+                const isEditingUser = Boolean(managedUserEditing[managedUser.id]);
+                const draftRole = isEditingUser ? userDraft.role : managedUser.role;
+                const draftRoomAccess = draftRole === "manager" ? "all" : userDraft.roomAccess;
+                const draftAllowedRoomIds = draftRoomAccess === "selected" ? userDraft.allowedRoomIds : [];
+                const userDraftChanged =
+                  draftRole !== managedUser.role ||
                   draftRoomAccess !== managedUser.roomAccess ||
                   !sameRoomIds(draftAllowedRoomIds, managedUser.allowedRoomIds);
                 const accessDisabled =
+                  !isEditingUser ||
                   managedUser.isOwner ||
-                  managedUser.role === "manager" ||
+                  draftRole === "manager" ||
                   !canManageMembers ||
                   managedUser.locationId !== currentLocationId;
+                const canEditManagedUser =
+                  !managedUser.isOwner &&
+                  canManageMembers &&
+                  managedUser.locationId === currentLocationId;
 
                 return (
                 <div className="user-row" key={managedUser.id}>
@@ -1156,12 +1116,17 @@ export function SettingsView({
                   </div>
 
                   <select
-                    value={managedUser.role}
+                    value={draftRole}
                     onChange={(event) => {
-                      clearRoomDraft(managedUser.id);
-                      onUpdateManagedUserRole(managedUser, event.target.value as UserRole);
+                      const nextRole = event.target.value as UserRole;
+                      setManagedUserDraft(managedUser, {
+                        role: nextRole,
+                        roomAccess: nextRole === "manager" ? "all" : managedUser.roomAccess,
+                        allowedRoomIds: nextRole === "manager" || managedUser.roomAccess === "all" ? [] : managedUser.allowedRoomIds,
+                      });
                     }}
                     disabled={
+                      !isEditingUser ||
                       managedUser.isOwner ||
                       !canManageMembers ||
                       managedUser.locationId !== currentLocationId
@@ -1179,12 +1144,16 @@ export function SettingsView({
                         const nextRoomAccess = event.target.value as RoomAccessMode;
 
                         if (nextRoomAccess === "all") {
-                          clearRoomDraft(managedUser.id);
-                          onUpdateManagedUserRoomAccess(managedUser, "all", []);
+                          setManagedUserDraft(managedUser, {
+                            ...userDraft,
+                            roomAccess: "all",
+                            allowedRoomIds: [],
+                          });
                           return;
                         }
 
-                        setRoomDraft(managedUser, {
+                        setManagedUserDraft(managedUser, {
+                          ...userDraft,
                           roomAccess: "selected",
                           allowedRoomIds: managedUser.allowedRoomIds,
                         });
@@ -1195,7 +1164,7 @@ export function SettingsView({
                       <option value="selected">Sali alese</option>
                     </select>
 
-                    {managedUser.role !== "manager" && draftRoomAccess === "selected" && (
+                    {draftRole !== "manager" && draftRoomAccess === "selected" && (
                       <div className="room-check-grid user-room-check-grid">
                         {rooms.length === 0 ? (
                           <p className="empty-line">Adauga intai sali pentru aceasta locatie.</p>
@@ -1210,38 +1179,50 @@ export function SettingsView({
                                   const allowedRoomIds = event.target.checked
                                     ? [...draftAllowedRoomIds, room.id]
                                     : draftAllowedRoomIds.filter((roomId) => roomId !== room.id);
-                                  setRoomDraft(managedUser, { roomAccess: "selected", allowedRoomIds });
+                                  setManagedUserDraft(managedUser, { ...userDraft, roomAccess: "selected", allowedRoomIds });
                                 }}
                               />
                               {room.name}
                             </label>
                           ))
                         )}
-                        <button
-                          className="secondary-button compact"
-                          disabled={accessDisabled || !roomSelectionChanged || draftAllowedRoomIds.length === 0}
-                          onClick={() => onUpdateManagedUserRoomAccess(managedUser, "selected", draftAllowedRoomIds)}
-                          type="button"
-                        >
-                          Salveaza salile
-                        </button>
                       </div>
                     )}
 
                     <small>{roomAccessLabel({ ...managedUser, roomAccess: draftRoomAccess, allowedRoomIds: draftAllowedRoomIds }, rooms)}</small>
                   </div>
 
-                  <button
-                    disabled={
-                      managedUser.isOwner ||
-                      !canManageMembers ||
-                      managedUser.locationId !== currentLocationId
-                    }
-                    onClick={() => onRemoveManagedUser(managedUser)}
-                    type="button"
-                  >
-                    ×
-                  </button>
+                  <div className="row-actions">
+                    {isEditingUser ? (
+                      <>
+                        <button className="secondary-button compact" onClick={() => closeManagedUserEditor(managedUser.id)} type="button">
+                          Renunta
+                        </button>
+                        <button
+                          className="primary-button compact"
+                          disabled={!userDraftChanged || (draftRoomAccess === "selected" && draftAllowedRoomIds.length === 0)}
+                          onClick={() => saveManagedUserEditor(managedUser)}
+                          type="button"
+                        >
+                          Salveaza
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button className="secondary-button compact" disabled={!canEditManagedUser} onClick={() => openManagedUserEditor(managedUser)} type="button">
+                          Editeaza
+                        </button>
+                        <button
+                          className="secondary-button compact danger-button"
+                          disabled={!canEditManagedUser}
+                          onClick={() => onRemoveManagedUser(managedUser)}
+                          type="button"
+                        >
+                          Sterge
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
                 );
               })}
@@ -1266,9 +1247,6 @@ export function SettingsView({
               <span className="eyebrow">Profil</span>
               <h2 id="profile-settings-title">Setari personale</h2>
             </div>
-            <button className="icon-button" onClick={closeProfileEditor} type="button" aria-label="Inchide">
-              x
-            </button>
           </div>
 
           <div className="settings-form">
@@ -1374,33 +1352,28 @@ export function SettingsView({
 
                 {personalDraft.notifyGroupBookings && (
                   <div className="notification-options">
-                    <label className="toggle-row compact-toggle">
-                      <input
-                        type="checkbox"
-                        checked={personalDraft.notifyWeekBefore}
-                        onChange={(event) =>
-                          setPersonalDraft({
-                            ...personalDraft,
-                            notifyWeekBefore: event.target.checked,
-                          })
-                        }
-                      />
-                      Cu o saptamana inainte
-                    </label>
-
-                    <label className="toggle-row compact-toggle">
-                      <input
-                        type="checkbox"
-                        checked={personalDraft.notifyDayBefore}
-                        onChange={(event) =>
-                          setPersonalDraft({
-                            ...personalDraft,
-                            notifyDayBefore: event.target.checked,
-                          })
-                        }
-                      />
-                      Cu o zi inainte
-                    </label>
+                    {personalDraft.notifyOffsetsDays.map((offset, index) => (
+                      <label key={`${offset}-${index}`}>
+                        Cu cate zile inainte
+                        <div className="inline-add">
+                          <input
+                            min={1}
+                            max={30}
+                            type="number"
+                            value={offset}
+                            onChange={(event) => updateNotificationOffset(index, event.target.value)}
+                          />
+                          <button className="secondary-button compact" onClick={() => removeNotificationOffset(index)} type="button">
+                            Sterge
+                          </button>
+                        </div>
+                      </label>
+                    ))}
+                    {personalDraft.notifyOffsetsDays.length < 5 && (
+                      <button className="secondary-button compact" onClick={addNotificationOffset} type="button">
+                        Adauga notificare
+                      </button>
+                    )}
                   </div>
                 )}
               </div>

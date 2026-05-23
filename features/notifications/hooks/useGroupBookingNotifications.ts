@@ -10,6 +10,7 @@ import {
   canUseNativeNotifications,
   LocalNotifications,
   nativeNotificationId,
+  normalizeNotificationOffsets,
   notificationStorageKey,
   notificationTitle,
 } from "@/lib/notifications";
@@ -44,10 +45,12 @@ export function useGroupBookingNotifications({
       return;
     }
 
-    const offsets = [
-      ...(profile.notifyWeekBefore ? [7] : []),
-      ...(profile.notifyDayBefore ? [1] : []),
-    ];
+    const offsets = normalizeNotificationOffsets(profile.notifyOffsetsDays).length > 0
+      ? normalizeNotificationOffsets(profile.notifyOffsetsDays)
+      : [
+        ...(profile.notifyWeekBefore ? [7] : []),
+        ...(profile.notifyDayBefore ? [1] : []),
+      ];
 
     if (offsets.length === 0) {
       return;

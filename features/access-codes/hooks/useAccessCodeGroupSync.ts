@@ -15,6 +15,7 @@ type PersonalDraft = {
   lockOnHide: boolean;
   notifyDayBefore: boolean;
   notifyGroupBookings: boolean;
+  notifyOffsetsDays: number[];
   notifyWeekBefore: boolean;
   useBiometrics: boolean;
   usePin: boolean;

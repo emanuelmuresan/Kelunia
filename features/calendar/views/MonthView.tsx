@@ -80,7 +80,7 @@ export function MonthView({
 
                     return (
                     <button
-                      className={`${groupColor ? "group-colored-booking " : ""}${isGroupBooking(booking, profileGroupName) ? "own-group-booking" : ""}`}
+                      className={groupColor ? "group-colored-booking" : ""}
                       key={booking.id}
                       onClick={(event) => {
                         event.stopPropagation();

@@ -2,7 +2,6 @@
 
 import { formatDateLabel } from "@/lib/dates";
 import { groupColorForName, groupColorStyle } from "@/lib/group-colors";
-import { isGroupBooking } from "@/lib/scheduling";
 import type { Booking, GroupItem } from "@/lib/types/domain";
 
 type DayBookingsModalProps = {
@@ -21,7 +20,6 @@ export function DayBookingsModal({
   bookings,
   groups,
   canCreate,
-  profileGroupName,
   onAdd,
   onClose,
   onSelectBooking,
@@ -50,7 +48,7 @@ export function DayBookingsModal({
           <div className="day-bookings-list">
             {bookings.map((booking) => (
               <button
-                className={`${groupColorForName(groups, booking.group) ? "group-colored-booking " : ""}${isGroupBooking(booking, profileGroupName) ? "own-group-booking" : ""}`}
+                className={groupColorForName(groups, booking.group) ? "group-colored-booking" : ""}
                 key={booking.id}
                 onClick={() => onSelectBooking(booking)}
                 style={groupColorStyle(groupColorForName(groups, booking.group))}

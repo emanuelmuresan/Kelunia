@@ -2,7 +2,6 @@
 
 import { formatDateLabel } from "@/lib/dates";
 import { groupColorForName, groupColorStyle } from "@/lib/group-colors";
-import { isGroupBooking } from "@/lib/scheduling";
 import type { Booking, GroupItem } from "@/lib/types/domain";
 
 type BookingDetailsModalProps = {
@@ -20,7 +19,6 @@ type BookingDetailsModalProps = {
 export function BookingDetailsModal({
   booking,
   groups,
-  profileGroupName,
   canEdit,
   canCreate = false,
   onAdd,
@@ -36,13 +34,7 @@ export function BookingDetailsModal({
     <div className="modal-backdrop" role="presentation">
       <div
         className={`modal-card details-card ${
-          groupColorForName(groups, booking.group)
-            ? "group-colored-booking "
-            : ""
-        }${
-          isGroupBooking(booking, profileGroupName)
-            ? "own-group-booking"
-            : ""
+          groupColorForName(groups, booking.group) ? "group-colored-booking" : ""
         }`}
         style={groupColorStyle(groupColorForName(groups, booking.group))}
         role="dialog"

@@ -25,8 +25,28 @@ export function notificationStorageKey(uid: string, bookingId: string, offsetDay
   return `kelunia-notified:${uid}:${bookingId}:${offsetDays}`;
 }
 
+export function normalizeNotificationOffsets(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return [...new Set(value
+    .map((item) => Number(item))
+    .filter((item) => Number.isInteger(item) && item >= 1 && item <= 30))]
+    .sort((first, second) => first - second)
+    .slice(0, 5);
+}
+
 export function notificationTitle(offsetDays: number) {
-  return offsetDays === 7 ? "Programare peste o saptamana" : "Programare maine";
+  if (offsetDays === 1) {
+    return "Programare maine";
+  }
+
+  if (offsetDays === 7) {
+    return "Programare peste o saptamana";
+  }
+
+  return `Programare peste ${offsetDays} zile`;
 }
 
 export function nativeNotificationId(uid: string, bookingId: string, offsetDays: number) {

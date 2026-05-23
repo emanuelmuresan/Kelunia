@@ -1,7 +1,6 @@
 "use client";
 
 import { groupColorForName, groupColorStyle } from "@/lib/group-colors";
-import { isGroupFixedSchedule } from "@/lib/scheduling";
 import type { FixedSchedule, GroupItem } from "@/lib/types/domain";
 
 type FixedSchedulePillProps = {
@@ -13,14 +12,11 @@ type FixedSchedulePillProps = {
 export function FixedSchedulePill({
   item,
   groups,
-  profileGroupName,
 }: FixedSchedulePillProps) {
   return (
     <div
       className={`fixed-pill ${
-        groupColorForName(groups, item.group) ? "group-colored-booking " : ""
-      }${
-        isGroupFixedSchedule(item, profileGroupName) ? "own-group-booking" : ""
+        groupColorForName(groups, item.group) ? "group-colored-booking" : ""
       }`}
       style={groupColorStyle(groupColorForName(groups, item.group))}
     >

@@ -223,6 +223,15 @@ service cloud.firestore {
         || data[key] is timestamp;
     }
 
+    function validOptionalNotificationOffsets(data, key) {
+      return !hasKey(data, key)
+        || (
+          data[key] is list
+          && data[key].size() <= 5
+          && data[key].hasOnly([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30])
+        );
+    }
+
     function validSoftDeleteFields(data) {
       return validOptionalBool(data, "deleted")
         && (!hasKey(data, "deletedAt") || validNullableTimestamp(data.deletedAt))
@@ -612,6 +621,7 @@ service cloud.firestore {
           "notifyGroupBookings",
           "notifyWeekBefore",
           "notifyDayBefore",
+          "notifyOffsetsDays",
           "verificationEmailSentAt",
           "createdAt"
         ])
@@ -639,6 +649,7 @@ service cloud.firestore {
         && validOptionalBool(data, "notifyGroupBookings")
         && validOptionalBool(data, "notifyWeekBefore")
         && validOptionalBool(data, "notifyDayBefore")
+        && validOptionalNotificationOffsets(data, "notifyOffsetsDays")
         && validOptionalTimestamp(data, "verificationEmailSentAt")
         && validOptionalTimestamp(data, "createdAt");
     }

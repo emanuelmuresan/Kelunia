@@ -2,7 +2,6 @@
 
 import { formatDateLabel } from "@/lib/dates";
 import { groupColorForName, groupColorStyle } from "@/lib/group-colors";
-import { isGroupBooking } from "@/lib/scheduling";
 import type { Booking, GroupItem } from "@/lib/types/domain";
 
 type BookingRowProps = {
@@ -18,7 +17,6 @@ type BookingRowProps = {
 export function BookingRow({
   booking,
   groups,
-  profileGroupName,
   canEdit,
   onOpen,
   onEdit,
@@ -27,13 +25,7 @@ export function BookingRow({
   return (
     <article
       className={`booking-row ${
-        groupColorForName(groups, booking.group)
-          ? "group-colored-booking "
-          : ""
-      }${
-        isGroupBooking(booking, profileGroupName)
-          ? "own-group-booking"
-          : ""
+        groupColorForName(groups, booking.group) ? "group-colored-booking" : ""
       }`}
       style={groupColorStyle(groupColorForName(groups, booking.group))}
     >
