@@ -12,7 +12,6 @@ export function Sidebar() {
       <nav className="sidebar-nav">
         <Link href="/dashboard">Dashboard</Link>
         <Link href="/locations">Locations</Link>
-        <Link href="/feedback">Feedback</Link>
         <Link href="/settings">Settings</Link>
         <Link href="/billing">Billing</Link>
       </nav>

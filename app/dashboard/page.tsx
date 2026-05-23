@@ -24,15 +24,12 @@ import { BookingModal } from "@/features/bookings/components/BookingModal";
 import { DayBookingsModal } from "@/features/bookings/components/DayBookingsModal";
 import { FixedScheduleModal } from "@/features/fixed-schedules/components/FixedScheduleModal";
 import { KeluniaShellChrome } from "@/features/shell/components/KeluniaShellChrome";
-import type { AuditAction, AuditEntityType } from "@/lib/audit";
 import {
   accessCodeUsageLabel,
   isAccessCodeFull,
 } from "@/lib/access-codes";
 import {
   appRoleLabel,
-  auditActionLabels,
-  auditEntityLabels,
   dayLabels,
   defaultFixedSectionTitle,
   defaultGroupsLabel,
@@ -43,7 +40,7 @@ import {
   offlineReadOnlyMessage,
   shortDayLabels,
 } from "@/lib/config/app";
-import { dateKey, formatAuditTimestamp, parseDateKey } from "@/lib/dates";
+import { dateKey, parseDateKey } from "@/lib/dates";
 import { normalizeGroupColor } from "@/lib/group-colors";
 import { initialLocationBillingFields } from "@/lib/licensing";
 import {
@@ -56,8 +53,6 @@ import { bookingQueryWindow } from "@/lib/queries/bookings";
 import { bookingMatchesRoomAccess, filterRoomsByAccess, normalizeAllowedRoomIds, normalizeRoomAccessMode } from "@/lib/room-access";
 import {
   bookingsForDay,
-  fixedForDay,
-  isGroupFixedSchedule,
   timeToMinutes,
 } from "@/lib/scheduling";
 import { clearBiometricCredential, hashPin, registerBiometricCredential, verifyBiometricCredential } from "@/lib/security";
@@ -1639,25 +1634,6 @@ export default function KeluniaPage() {
     } catch (error) {
       console.error("Locația nu a putut fi salvată:", error);
       setLocationError("Locația nu a putut fi salvată. Verifică regulile Firebase.");
-    }
-  }
-
-  async function removeLocation(item: LocationItem) {
-    if (!canEditCurrentLocation || !requireOnline("settings") || !confirm(`Ștergi locația ${item.name}?`)) {
-      return;
-    }
-
-    try {
-      const deletedPayload = softDeletePayload();
-      await updateDoc(doc(db, "locations", item.id), deletedPayload);
-      await recordAuditLog("location", "delete", item.id, item, { ...item, ...deletedPayload }, item.id, item.name);
-      if (activeLocationId === item.id) {
-        setActiveLocationId(isOwner ? "" : profile?.locationId ?? "main-location");
-      }
-      setSettingsMessage("Locația a fost ștearsă.");
-    } catch (error) {
-      console.error("Locația nu a putut fi ștearsă:", error);
-      setSettingsError("Locația nu a putut fi ștearsă. Verifică regulile Firebase.");
     }
   }
 

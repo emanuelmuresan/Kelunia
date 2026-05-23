@@ -72,8 +72,6 @@ export function InstallAppPrompt() {
     return null;
   }
 
-  const canPrompt = Boolean(installPrompt);
-
   async function installApp() {
     if (!installPrompt) {
       setShowHelp(true);
