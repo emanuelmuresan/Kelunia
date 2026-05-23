@@ -705,6 +705,12 @@ export default function KeluniaPage() {
 
     const dayBookings = bookingsForDay(visibleBookingsByRoomAccess, date);
 
+    if (dayBookings.length === 0) {
+      setSelectedDay(null);
+      openCreateForm(date, { defaultStartTime: "12:00" });
+      return;
+    }
+
     if (dayBookings.length === 1) {
       setSelectedDay(null);
       setSelectedBooking(dayBookings[0]);
