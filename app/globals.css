@@ -4509,3 +4509,83 @@ img {
     min-height: 48px;
   }
 }
+
+@media (min-width: 768px) {
+  .kelunia-shell {
+    width: auto;
+    max-width: none;
+    margin: 0;
+    padding: calc(112px + env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) 28px calc(204px + max(18px, env(safe-area-inset-left)));
+  }
+
+  .app-tabs {
+    top: calc(108px + env(safe-area-inset-top));
+    right: auto;
+    bottom: 0;
+    left: 0;
+    width: 190px;
+    min-height: auto;
+    height: auto;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 14px 12px max(14px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+    overflow-x: hidden;
+    overflow-y: auto;
+    border-top: 0;
+    border-right: 1px solid rgba(188, 206, 238, 0.86);
+    background: #fff;
+    box-shadow: 10px 0 24px rgba(22, 23, 43, 0.09);
+  }
+
+  .app-tabs button,
+  .app-tab-link,
+  .app-tab-action,
+  .app-tabs .install-button {
+    width: 100%;
+    min-width: 0;
+    min-height: 46px;
+    justify-content: flex-start;
+    padding: 0 12px;
+  }
+
+  .app-tabs-spacer {
+    width: 100%;
+    min-width: 0;
+    min-height: 8px;
+    flex: 1 1 auto;
+  }
+
+  .kelunia-native-shell {
+    --native-tabs-height: 0px;
+  }
+
+  .kelunia-native-shell .kelunia-shell {
+    padding: calc(var(--native-topbar-height) + 2px) max(18px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) calc(204px + max(12px, env(safe-area-inset-left)));
+  }
+
+  .kelunia-native-shell .app-tabs {
+    top: var(--native-topbar-height, 108px);
+    width: 190px;
+    min-height: auto;
+    padding: 14px 12px max(14px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+    box-shadow: 10px 0 24px rgba(22, 23, 43, 0.09);
+  }
+}
+
+@media (min-width: 1024px) {
+  .kelunia-shell {
+    padding-left: calc(228px + max(22px, env(safe-area-inset-left)));
+    padding-right: max(32px, env(safe-area-inset-right));
+  }
+
+  .app-tabs,
+  .kelunia-native-shell .app-tabs {
+    width: 212px;
+  }
+
+  .kelunia-native-shell .kelunia-shell {
+    padding-left: calc(228px + max(18px, env(safe-area-inset-left)));
+    padding-right: max(28px, env(safe-area-inset-right));
+  }
+}
