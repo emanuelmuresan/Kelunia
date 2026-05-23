@@ -5,7 +5,7 @@ import type { User } from "firebase/auth";
 
 import type { UserProfile } from "@/context/AuthContext";
 import { maxNotificationDelayMs } from "@/lib/config/app";
-import { formatDateLabel } from "@/lib/dates";
+import { dateKey, formatDateLabel } from "@/lib/dates";
 import {
   canUseNativeNotifications,
   LocalNotifications,
@@ -21,10 +21,11 @@ import {
   bookingStartDateTime,
   isGroupBooking,
 } from "@/lib/scheduling";
-import type { Booking } from "@/lib/types/domain";
+import type { Booking, FixedSchedule } from "@/lib/types/domain";
 
 type UseGroupBookingNotificationsParams = {
   bookings: Booking[];
+  fixedSchedules: FixedSchedule[];
   profile: UserProfile | null;
   user: User | null;
 };
@@ -40,11 +41,12 @@ type NativeGroupBookingNotification = {
 
 export function useGroupBookingNotifications({
   bookings,
+  fixedSchedules,
   profile,
   user,
 }: UseGroupBookingNotificationsParams) {
   useEffect(() => {
-    if (!user || !profile?.notifyGroupBookings || !profile.groupName.trim() || typeof window === "undefined") {
+    if (!user || !profile || typeof window === "undefined") {
       return;
     }
 
@@ -58,15 +60,36 @@ export function useGroupBookingNotifications({
         ...(profile.notifyDayBefore ? [{ value: 1, unit: "days" as const }] : []),
       ];
 
-    if (legacyOffsets.length === 0) {
-      return;
-    }
+    const groupBookings = profile.notifyGroupBookings && profile.groupName.trim()
+      ? bookings.filter((booking) => isGroupBooking(booking, profile.groupName))
+      : [];
+    const personalBookingNotifications = bookings.flatMap((booking) => {
+      if (!booking.notifyOnThisBooking || booking.notifyForUid !== user.uid) {
+        return [];
+      }
 
-    const groupBookings = bookings.filter((booking) => isGroupBooking(booking, profile.groupName));
+      const bookingOffsets = normalizeNotificationOffsetRules(booking.notifyOffsets);
+      return bookingOffsets.map((offset) => ({ booking, offset }));
+    });
+    const recurringNotifications = profile.notifyGroupBookings && profile.notifyFixedGroupSchedules && profile.groupName.trim()
+      ? fixedSchedules
+        .filter((schedule) => schedule.group.trim().toLowerCase() === profile.groupName.trim().toLowerCase())
+        .flatMap((schedule) => {
+          const today = new Date();
+          return Array.from({ length: 35 }, (_, dayOffset) => {
+            const date = new Date(today);
+            date.setDate(today.getDate() + dayOffset);
+            return date;
+          })
+            .filter((date) => ((date.getDay() + 6) % 7) === schedule.dayIndex)
+            .slice(0, 5)
+            .flatMap((date) => legacyOffsets.map((offset) => ({ schedule, date, offset })));
+        })
+      : [];
 
     if (canUseNativeNotifications()) {
       void (async () => {
-        const notifications: NativeGroupBookingNotification[] = groupBookings.flatMap((booking) =>
+        const groupNotifications = groupBookings.flatMap((booking) =>
           legacyOffsets.flatMap((offset) => {
             const notifyAt = new Date(bookingStartDateTime(booking).getTime() - notificationOffsetToMs(offset));
 
@@ -86,6 +109,41 @@ export function useGroupBookingNotifications({
             ];
           })
         );
+        const personalNotifications = personalBookingNotifications.flatMap(({ booking, offset }) => {
+          const notifyAt = new Date(bookingStartDateTime(booking).getTime() - notificationOffsetToMs(offset));
+
+          if (notifyAt.getTime() <= Date.now()) {
+            return [];
+          }
+
+          return [{
+            id: nativeNotificationId(user.uid, booking.id, offset),
+            title: notificationTitle(offset),
+            body: `${booking.group}, ${formatDateLabel(booking.startDate, { year: "numeric" })}, ${booking.startTime}-${booking.endTime}, ${booking.room}`,
+            schedule: { at: notifyAt },
+            iconColor: "#1da4fe",
+            extra: { bookingId: booking.id, url: "/dashboard" },
+          }];
+        });
+        const fixedNotifications = recurringNotifications.flatMap(({ schedule, date, offset }) => {
+          const occurrenceDateKey = dateKey(date);
+          const notifyAt = new Date(`${occurrenceDateKey}T${schedule.startTime}:00`);
+          notifyAt.setTime(notifyAt.getTime() - notificationOffsetToMs(offset));
+
+          if (notifyAt.getTime() <= Date.now()) {
+            return [];
+          }
+
+          return [{
+            id: nativeNotificationId(user.uid, `fixed:${schedule.id}:${occurrenceDateKey}`, offset),
+            title: notificationTitle(offset),
+            body: `${schedule.group}, ${formatDateLabel(occurrenceDateKey, { year: "numeric" })}, ${schedule.startTime}-${schedule.endTime}, ${schedule.room}`,
+            schedule: { at: notifyAt },
+            iconColor: "#1da4fe",
+            extra: { bookingId: `fixed:${schedule.id}`, url: "/dashboard" },
+          }];
+        });
+        const notifications: NativeGroupBookingNotification[] = [...groupNotifications, ...personalNotifications, ...fixedNotifications];
 
         if (notifications.length === 0) {
           return;
@@ -104,8 +162,8 @@ export function useGroupBookingNotifications({
       return;
     }
 
-    const timers = bookings
-      .filter((booking) => isGroupBooking(booking, profile.groupName))
+    const groupTimers = bookings
+      .filter((booking) => profile.notifyGroupBookings && profile.groupName.trim() && isGroupBooking(booking, profile.groupName))
       .flatMap((booking) =>
         legacyOffsets.map((offset) => {
           const notifyAt = new Date(bookingStartDateTime(booking).getTime() - notificationOffsetToMs(offset));
@@ -143,9 +201,41 @@ export function useGroupBookingNotifications({
             }
           }, delay);
         })
-      )
-      .filter((timer): timer is number => timer !== null);
+      );
+    const personalTimers = personalBookingNotifications.map(({ booking, offset }) => {
+      const notifyAt = new Date(bookingStartDateTime(booking).getTime() - notificationOffsetToMs(offset));
+      const delay = notifyAt.getTime() - Date.now();
+      const storageKey = notificationStorageKey(user.uid, booking.id, offset);
+
+      if (delay <= 0 || delay > maxNotificationDelayMs || window.localStorage.getItem(storageKey)) {
+        return null;
+      }
+
+      return window.setTimeout(() => {
+        const body = `${booking.group}, ${formatDateLabel(booking.startDate, { year: "numeric" })}, ${booking.startTime}-${booking.endTime}, ${booking.room}`;
+        window.localStorage.setItem(storageKey, "1");
+        new Notification(notificationTitle(offset), { body, icon: "/icon-192.png", tag: notificationOffsetToKey(offset) });
+      }, delay);
+    });
+    const recurringTimers = recurringNotifications.map(({ schedule, date, offset }) => {
+      const occurrenceDateKey = dateKey(date);
+      const notifyAt = new Date(`${occurrenceDateKey}T${schedule.startTime}:00`);
+      notifyAt.setTime(notifyAt.getTime() - notificationOffsetToMs(offset));
+      const delay = notifyAt.getTime() - Date.now();
+      const storageKey = notificationStorageKey(user.uid, `fixed:${schedule.id}:${occurrenceDateKey}`, offset);
+
+      if (delay <= 0 || delay > maxNotificationDelayMs || window.localStorage.getItem(storageKey)) {
+        return null;
+      }
+
+      return window.setTimeout(() => {
+        const body = `${schedule.group}, ${formatDateLabel(occurrenceDateKey, { year: "numeric" })}, ${schedule.startTime}-${schedule.endTime}, ${schedule.room}`;
+        window.localStorage.setItem(storageKey, "1");
+        new Notification(notificationTitle(offset), { body, icon: "/icon-192.png", tag: notificationOffsetToKey(offset) });
+      }, delay);
+    });
+    const timers = [...groupTimers, ...personalTimers, ...recurringTimers].filter((timer): timer is number => timer !== null);
 
     return () => timers.forEach((timer) => window.clearTimeout(timer));
-  }, [bookings, profile, user]);
+  }, [bookings, fixedSchedules, profile, user]);
 }

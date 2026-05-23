@@ -197,6 +197,9 @@ export interface Booking {
   locationId: string;
   locationName: string;
   updatedBy?: string;
+  notifyOnThisBooking?: boolean;
+  notifyOffsets?: string[];
+  notifyForUid?: string;
   createdAt?: unknown;
 }
 
@@ -209,6 +212,8 @@ export interface BookingForm {
   startTime: string;
   endTime: string;
   reason: string;
+  notifyOnThisBooking: boolean;
+  notifyOffsets: string[];
 }
 
 export interface RoomItem {

@@ -31,6 +31,7 @@ export interface UserProfile {
   allowedRoomIds: string[];
   language: AppLanguage;
   notifyGroupBookings: boolean;
+  notifyFixedGroupSchedules: boolean;
   notifyWeekBefore: boolean;
   notifyDayBefore: boolean;
   notifyOffsets: string[];
@@ -118,6 +119,7 @@ function buildFallbackProfile(userData: User): UserProfile {
     allowedRoomIds: [],
     language: "ro",
     notifyGroupBookings: false,
+    notifyFixedGroupSchedules: false,
     notifyWeekBefore: true,
     notifyDayBefore: true,
     notifyOffsets: ["1d", "7d"],
@@ -212,6 +214,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 allowedRoomIds: [],
                 language: "ro",
                 notifyGroupBookings: false,
+                notifyFixedGroupSchedules: false,
                 notifyWeekBefore: true,
                 notifyDayBefore: true,
                 notifyOffsets: ["1d", "7d"],
@@ -294,6 +297,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           allowedRoomIds: normalizeAllowedRoomIds(data.allowedRoomIds),
           language: normalizeLanguage(data.language),
           notifyGroupBookings: Boolean(data.notifyGroupBookings),
+          notifyFixedGroupSchedules: Boolean(data.notifyFixedGroupSchedules),
           notifyWeekBefore: data.notifyWeekBefore !== false,
           notifyDayBefore: data.notifyDayBefore !== false,
           notifyOffsets: normalizeNotificationOffsetRules(data.notifyOffsets).length > 0

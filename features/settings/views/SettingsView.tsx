@@ -27,6 +27,7 @@ type PersonalDraft = {
   lockOnHide: boolean;
   useBiometrics: boolean;
   notifyGroupBookings: boolean;
+  notifyFixedGroupSchedules: boolean;
   notifyWeekBefore: boolean;
   notifyDayBefore: boolean;
   notifyOffsets: string[];
@@ -352,6 +353,7 @@ export function SettingsView({
       && first.lockOnHide === second.lockOnHide
       && first.useBiometrics === second.useBiometrics
       && first.notifyGroupBookings === second.notifyGroupBookings
+      && first.notifyFixedGroupSchedules === second.notifyFixedGroupSchedules
       && first.notifyWeekBefore === second.notifyWeekBefore
       && first.notifyDayBefore === second.notifyDayBefore
       && first.notifyOffsets.join("|") === second.notifyOffsets.join("|")
@@ -1371,6 +1373,21 @@ export function SettingsView({
 
           <div className="settings-form">
             <label>
+              Limba
+              <select
+                value={personalDraft.language}
+                onChange={(event) =>
+                  setPersonalDraft({
+                    ...personalDraft,
+                    language: event.target.value as AppLanguage,
+                  })
+                }
+              >
+                <option value="ro">Romana</option>
+              </select>
+            </label>
+
+            <label>
               Nume
               <input
                 value={personalDraft.displayName}
@@ -1457,6 +1474,19 @@ export function SettingsView({
 
                 {personalDraft.notifyGroupBookings && (
                   <div className="notification-options">
+                    <label className="toggle-row compact-toggle">
+                      <input
+                        type="checkbox"
+                        checked={personalDraft.notifyFixedGroupSchedules}
+                        onChange={(event) =>
+                          setPersonalDraft({
+                            ...personalDraft,
+                            notifyFixedGroupSchedules: event.target.checked,
+                          })
+                        }
+                      />
+                      Include si programarile recurente ale grupului meu
+                    </label>
                     {personalDraft.notifyOffsets.map((offset, index) => {
                       const unit = offset.endsWith("h") ? "h" : "d";
                       const amount = Math.max(1, Number(offset.slice(0, -1)) || 1);

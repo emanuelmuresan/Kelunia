@@ -164,6 +164,7 @@ export default function KeluniaPage() {
     lockOnHide: false,
     useBiometrics: false,
     notifyGroupBookings: false,
+    notifyFixedGroupSchedules: false,
     notifyWeekBefore: true,
     notifyDayBefore: true,
     notifyOffsets: ["1d", "7d"],
@@ -335,7 +336,7 @@ export default function KeluniaPage() {
     locationId: currentLocationId,
   });
 
-  useGroupBookingNotifications({ bookings: visibleBookingsByRoomAccess, profile, user });
+  useGroupBookingNotifications({ bookings: visibleBookingsByRoomAccess, fixedSchedules, profile, user });
   useAccessCodeGroupSync({
     isManager: isSuperAdmin,
     isOnline,
@@ -501,6 +502,7 @@ export default function KeluniaPage() {
       lockOnHide: profile.lockOnHide,
       useBiometrics: profile.useBiometrics,
       notifyGroupBookings: profile.notifyGroupBookings,
+      notifyFixedGroupSchedules: profile.notifyFixedGroupSchedules,
       notifyWeekBefore: profile.notifyWeekBefore,
       notifyDayBefore: profile.notifyDayBefore,
       notifyOffsets: normalizeNotificationOffsetRules(profile.notifyOffsets).length > 0
@@ -1081,6 +1083,7 @@ export default function KeluniaPage() {
       lockOnHide: usePin ? effectiveDraft.lockOnHide : false,
       useBiometrics: usePin ? effectiveDraft.useBiometrics : false,
       notifyGroupBookings: effectiveDraft.notifyGroupBookings,
+      notifyFixedGroupSchedules: effectiveDraft.notifyGroupBookings ? effectiveDraft.notifyFixedGroupSchedules : false,
       notifyWeekBefore: effectiveDraft.notifyGroupBookings ? notificationOffsetDays.includes(7) : false,
       notifyDayBefore: effectiveDraft.notifyGroupBookings ? notificationOffsetDays.includes(1) : false,
       notifyOffsets: effectiveDraft.notifyGroupBookings ? notificationOffsets.map(notificationOffsetToKey) : [],
@@ -1105,11 +1108,6 @@ export default function KeluniaPage() {
       console.error("Setările nu au putut fi salvate:", error);
       setSettingsError("Setările nu au putut fi salvate. Verifică regulile Firebase.");
     }
-  }
-
-  function updateLanguageFromHeader(language: AppLanguage) {
-    setPersonalDraft((current) => ({ ...current, language }));
-    void savePersonalSettings({ language });
   }
 
   async function saveRequiredGroup() {
@@ -1821,13 +1819,11 @@ export default function KeluniaPage() {
         headerTitle={headerTitle}
         isOnline={isOnline}
         isSignedIn={Boolean(user)}
-        language={personalDraft.language}
         licenseMessage={licenseAccess.message}
         navigationItems={navigationItems}
         offlineMessage={offlineReadOnlyMessage}
         showLicenseWarning={Boolean(user && currentLocationId && licenseAccess.isReadOnly)}
         userLabel={profile ? `${profile.displayName} · ${appRoleLabel(profile, role)}` : undefined}
-        onLanguageChange={updateLanguageFromHeader}
         onNavigate={setActiveView}
         onSignOut={confirmSignOut}
       />

@@ -35,6 +35,9 @@ export function normalizeBooking(id: string, data: Record<string, unknown>): Boo
     locationId: String(data.locationId ?? "main-location"),
     locationName: String(data.locationName ?? defaultLocationName),
     updatedBy: data.updatedBy ? String(data.updatedBy) : undefined,
+    notifyOnThisBooking: Boolean(data.notifyOnThisBooking),
+    notifyOffsets: Array.isArray(data.notifyOffsets) ? data.notifyOffsets.map((item) => String(item)) : [],
+    notifyForUid: data.notifyForUid ? String(data.notifyForUid) : undefined,
     createdAt: data.createdAt,
   };
 }

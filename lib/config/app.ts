@@ -46,6 +46,8 @@ export const emptyForm: BookingForm = {
   startTime: "",
   endTime: "",
   reason: "",
+  notifyOnThisBooking: false,
+  notifyOffsets: ["1h"],
 };
 
 export const emptyFixedDraft: FixedScheduleDraft = {

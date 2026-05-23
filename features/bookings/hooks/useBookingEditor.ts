@@ -15,6 +15,7 @@ import type { UserProfile, UserRole } from "@/context/AuthContext";
 import type { AuditAction, AuditEntityType } from "@/lib/audit";
 import { emptyForm } from "@/lib/config/app";
 import { can, type PermissionContext } from "@/lib/permissions/capabilities";
+import { normalizeNotificationOffsetRules, notificationOffsetToKey, requestKeluniaNotificationPermission } from "@/lib/notifications";
 import { timeToMinutes } from "@/lib/scheduling";
 import { updateLocationCounterSafely } from "@/lib/usage-counters";
 import type { Booking, BookingForm, FixedSchedule, GroupItem, RoomItem } from "@/lib/types/domain";
@@ -153,6 +154,8 @@ export function useBookingEditor({
       startTime: booking.startTime,
       endTime: booking.endTime,
       reason: booking.reason,
+      notifyOnThisBooking: Boolean(booking.notifyOnThisBooking && booking.notifyForUid === user?.uid),
+      notifyOffsets: booking.notifyOffsets?.length ? booking.notifyOffsets : ["1h"],
     });
     setShowBookingModal(true);
   }
@@ -212,6 +215,22 @@ export function useBookingEditor({
     }
 
     const originalBooking = editingId ? bookings.find((booking) => booking.id === editingId) : null;
+    const bookingNotificationOffsets = normalizeNotificationOffsetRules(formData.notifyOffsets);
+
+    if (formData.notifyOnThisBooking) {
+      if (bookingNotificationOffsets.length === 0) {
+        setFormError("Alege cel puțin un moment pentru notificarea programării.");
+        return;
+      }
+
+      const notificationsAllowed = await requestKeluniaNotificationPermission();
+
+      if (!notificationsAllowed) {
+        setFormError("Notificările nu au fost permise pe acest dispozitiv.");
+        return;
+      }
+    }
+
     const payload = {
       group: formData.group,
       congregatie: formData.group,
@@ -230,6 +249,9 @@ export function useBookingEditor({
       updatedBy: profile?.displayName ?? user.email,
       locationId: currentLocationId,
       locationName,
+      notifyOnThisBooking: formData.notifyOnThisBooking,
+      notifyOffsets: formData.notifyOnThisBooking ? bookingNotificationOffsets.map(notificationOffsetToKey) : [],
+      notifyForUid: formData.notifyOnThisBooking ? user.uid : "",
       updatedAt: Timestamp.now(),
     };
 

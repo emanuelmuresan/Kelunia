@@ -13,7 +13,7 @@ import { deleteDoc, doc, getDoc, runTransaction, setDoc, Timestamp } from "fireb
 import { httpsCallable } from "firebase/functions";
 import { auth, cloudFunctions, db, ensureAuthPersistence } from "@/lib/firebase";
 import { isInstalledAppShell } from "@/lib/app-shell";
-import { useAuth, type UserRole } from "@/context/AuthContext";
+import { useAuth, type AppLanguage, type UserRole } from "@/context/AuthContext";
 import { maxUsesForAccessRole, normalizeRole, readOptionalNumber } from "@/lib/access-codes";
 import { defaultLocationName } from "@/lib/config/app";
 import { normalizeAllowedRoomIds, normalizeRoomAccessMode } from "@/lib/room-access";
@@ -188,6 +188,7 @@ export default function LoginPage() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [installedAppShell, setInstalledAppShell] = useState(false);
+  const [language, setLanguage] = useState<AppLanguage>("ro");
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
 
@@ -291,7 +292,7 @@ export default function LoginPage() {
         usePin: false,
         lockOnHide: false,
         useBiometrics: false,
-        language: "ro",
+        language,
         createdAt: Timestamp.now(),
       };
 
@@ -380,7 +381,7 @@ export default function LoginPage() {
         usePin: false,
         lockOnHide: false,
         useBiometrics: false,
-        language: "ro",
+        language,
         createdAt: Timestamp.now(),
       });
       await sendVerificationAndSignOut();
@@ -439,7 +440,7 @@ export default function LoginPage() {
           usePin: false,
           lockOnHide: false,
           useBiometrics: false,
-          language: "ro",
+          language,
           createdAt: Timestamp.now(),
         });
 
@@ -608,7 +609,15 @@ export default function LoginPage() {
   return (
     <main className="auth-shell">
       <section className="auth-card">
-        {!installedAppShell && <Link href="/" className="back-link">← Acasă</Link>}
+        <div className="auth-top-row">
+          {!installedAppShell && <Link href="/" className="back-link">← Acasă</Link>}
+          <label className="language-selector auth-language-selector">
+            Limba
+            <select value={language} onChange={(event) => setLanguage(event.target.value as AppLanguage)}>
+              <option value="ro">Romana</option>
+            </select>
+          </label>
+        </div>
 
         <div className="auth-card-head">
           <img src="/icon-192.png" alt="Kelunia" />

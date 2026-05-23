@@ -636,6 +636,7 @@ service cloud.firestore {
           "useBiometrics",
           "language",
           "notifyGroupBookings",
+          "notifyFixedGroupSchedules",
           "notifyWeekBefore",
           "notifyDayBefore",
           "notifyOffsets",
@@ -665,6 +666,7 @@ service cloud.firestore {
         && validOptionalBool(data, "useBiometrics")
         && (!hasKey(data, "language") || data.language == "ro")
         && validOptionalBool(data, "notifyGroupBookings")
+        && validOptionalBool(data, "notifyFixedGroupSchedules")
         && validOptionalBool(data, "notifyWeekBefore")
         && validOptionalBool(data, "notifyDayBefore")
         && validOptionalNotificationOffsetRules(data, "notifyOffsets")
@@ -788,6 +790,9 @@ service cloud.firestore {
           "updatedBy",
           "locationId",
           "locationName",
+          "notifyOnThisBooking",
+          "notifyOffsets",
+          "notifyForUid",
           "updatedAt",
           "createdAt",
           "deleted",
@@ -813,6 +818,9 @@ service cloud.firestore {
         && validTextOrEmpty(data.updatedBy, 180)
         && validText(data.locationId, 160)
         && validTextOrEmpty(data.locationName, 180)
+        && validOptionalBool(data, "notifyOnThisBooking")
+        && validOptionalNotificationOffsetRules(data, "notifyOffsets")
+        && validOptionalText(data, "notifyForUid", 160)
         && data.updatedAt is timestamp
         && validOptionalTimestamp(data, "createdAt")
         && validSoftDeleteFields(data);

@@ -14,6 +14,7 @@ type PersonalDraft = {
   language: AppLanguage;
   lockOnHide: boolean;
   notifyDayBefore: boolean;
+  notifyFixedGroupSchedules: boolean;
   notifyGroupBookings: boolean;
   notifyOffsets: string[];
   notifyOffsetsDays: number[];
