@@ -4,17 +4,18 @@ import { useEffect, type Dispatch, type SetStateAction } from "react";
 import type { User } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 
-import type { UserProfile } from "@/context/AuthContext";
+import type { AppLanguage, UserProfile } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
 import { normalizeAllowedRoomIds, normalizeRoomAccessMode } from "@/lib/room-access";
 
 type PersonalDraft = {
   displayName: string;
   groupName: string;
-  language: string;
+  language: AppLanguage;
   lockOnHide: boolean;
   notifyDayBefore: boolean;
   notifyGroupBookings: boolean;
+  notifyOffsets: string[];
   notifyOffsetsDays: number[];
   notifyWeekBefore: boolean;
   useBiometrics: boolean;

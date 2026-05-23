@@ -5,7 +5,7 @@ import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { doc, getDoc, setDoc, type DocumentData, type DocumentReference } from "firebase/firestore";
 import { normalizeAllowedRoomIds, normalizeRoomAccessMode } from "@/lib/room-access";
-import { normalizeNotificationOffsets } from "@/lib/notifications";
+import { normalizeNotificationOffsetRules, normalizeNotificationOffsets, notificationOffsetToKey } from "@/lib/notifications";
 import type { RoomAccessMode } from "@/lib/types/domain";
 
 export type UserRole = "manager" | "member" | "guest";
@@ -33,6 +33,7 @@ export interface UserProfile {
   notifyGroupBookings: boolean;
   notifyWeekBefore: boolean;
   notifyDayBefore: boolean;
+  notifyOffsets: string[];
   notifyOffsetsDays: number[];
 }
 
@@ -119,6 +120,7 @@ function buildFallbackProfile(userData: User): UserProfile {
     notifyGroupBookings: false,
     notifyWeekBefore: true,
     notifyDayBefore: true,
+    notifyOffsets: ["1d", "7d"],
     notifyOffsetsDays: [1, 7],
   };
 }
@@ -212,6 +214,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 notifyGroupBookings: false,
                 notifyWeekBefore: true,
                 notifyDayBefore: true,
+                notifyOffsets: ["1d", "7d"],
                 notifyOffsetsDays: [1, 7],
               },
               { merge: true }
@@ -293,6 +296,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           notifyGroupBookings: Boolean(data.notifyGroupBookings),
           notifyWeekBefore: data.notifyWeekBefore !== false,
           notifyDayBefore: data.notifyDayBefore !== false,
+          notifyOffsets: normalizeNotificationOffsetRules(data.notifyOffsets).length > 0
+            ? normalizeNotificationOffsetRules(data.notifyOffsets).map(notificationOffsetToKey)
+            : normalizeNotificationOffsets(data.notifyOffsetsDays).length > 0
+              ? normalizeNotificationOffsets(data.notifyOffsetsDays).map((value) => `${value}d`)
+              : [
+                ...(data.notifyDayBefore !== false ? ["1d"] : []),
+                ...(data.notifyWeekBefore !== false ? ["7d"] : []),
+              ],
           notifyOffsetsDays: normalizeNotificationOffsets(data.notifyOffsetsDays).length > 0
             ? normalizeNotificationOffsets(data.notifyOffsetsDays)
             : [

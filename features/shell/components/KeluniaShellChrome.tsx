@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { InstallAppPrompt } from "@/components/InstallAppPrompt";
+import type { AppLanguage } from "@/context/AuthContext";
 import type { AppView } from "@/lib/types/domain";
 
 type NavigationItem = [AppView, string];
@@ -11,11 +12,13 @@ type KeluniaShellChromeProps = {
   headerTitle: string;
   isOnline: boolean;
   isSignedIn: boolean;
+  language: AppLanguage;
   licenseMessage: string;
   navigationItems: NavigationItem[];
   offlineMessage: string;
   showLicenseWarning: boolean;
   userLabel?: string;
+  onLanguageChange: (language: AppLanguage) => void;
   onNavigate: (view: AppView) => void;
   onSignOut: () => void;
 };
@@ -40,11 +43,13 @@ export function KeluniaShellChrome({
   headerTitle,
   isOnline,
   isSignedIn,
+  language,
   licenseMessage,
   navigationItems,
   offlineMessage,
   showLicenseWarning,
   userLabel,
+  onLanguageChange,
   onNavigate,
   onSignOut,
 }: KeluniaShellChromeProps) {
@@ -68,17 +73,13 @@ export function KeluniaShellChrome({
           <p>{userLabel ?? "Rezervări clare pentru fiecare spațiu al comunității."}</p>
         </div>
 
-        <div className="topbar-actions">
-          <InstallAppPrompt />
-          {isSignedIn ? (
-            <button className="icon-button logout-button" onClick={onSignOut} aria-label="Ieșire" type="button">
-              <span className="logout-door" aria-hidden="true" />
-              <span>Ieșire</span>
-            </button>
-          ) : (
-            <Link className="primary-link" href="/login">
-              Intră în cont
-            </Link>
+        <div className="topbar-actions topbar-header-actions">
+          {isSignedIn && (
+            <label className="language-selector" aria-label="Limba aplicatiei">
+              <select value={language} onChange={(event) => onLanguageChange(event.target.value as AppLanguage)}>
+                <option value="ro">RO</option>
+              </select>
+            </label>
           )}
         </div>
       </header>

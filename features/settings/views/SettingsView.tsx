@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import type { UserRole } from "@/context/AuthContext";
+import type { AppLanguage, UserRole } from "@/context/AuthContext";
 import { useCommunityApplicationMessages } from "@/features/landing/hooks/useCommunityApplications";
 import { db } from "@/lib/firebase";
 import { billingStatusLabel, dateFromFirestoreValue, planLabel } from "@/lib/licensing";
@@ -29,8 +29,9 @@ type PersonalDraft = {
   notifyGroupBookings: boolean;
   notifyWeekBefore: boolean;
   notifyDayBefore: boolean;
+  notifyOffsets: string[];
   notifyOffsetsDays: number[];
-  language: string;
+  language: AppLanguage;
 };
 
 type LicenseAccess = {
@@ -214,6 +215,8 @@ export function SettingsView({
   const [pagesEditing, setPagesEditing] = useState(false);
   const [managedUserEditing, setManagedUserEditing] = useState<Record<string, boolean>>({});
   const [managedUserDrafts, setManagedUserDrafts] = useState<Record<string, ManagedUserDraft>>({});
+  const [resourcesManagerOpen, setResourcesManagerOpen] = useState(false);
+  const [usersManagerOpen, setUsersManagerOpen] = useState(false);
   const [inboxOpen, setInboxOpen] = useState(false);
   const [profileEditorOpen, setProfileEditorOpen] = useState(false);
   const [profileBaseline, setProfileBaseline] = useState<PersonalDraft | null>(null);
@@ -351,47 +354,74 @@ export function SettingsView({
       && first.notifyGroupBookings === second.notifyGroupBookings
       && first.notifyWeekBefore === second.notifyWeekBefore
       && first.notifyDayBefore === second.notifyDayBefore
+      && first.notifyOffsets.join("|") === second.notifyOffsets.join("|")
       && first.notifyOffsetsDays.join("|") === second.notifyOffsetsDays.join("|")
       && first.language === second.language;
   }
 
   function copyPersonalDraft(draft: PersonalDraft): PersonalDraft {
-    return { ...draft, notifyOffsetsDays: [...draft.notifyOffsetsDays] };
+    return { ...draft, notifyOffsets: [...draft.notifyOffsets], notifyOffsetsDays: [...draft.notifyOffsetsDays] };
+  }
+
+  function syncLegacyNotificationFlags(nextOffsets: string[]) {
+    return {
+      notifyWeekBefore: nextOffsets.includes("7d"),
+      notifyDayBefore: nextOffsets.includes("1d"),
+      notifyOffsetsDays: nextOffsets
+        .filter((offset) => offset.endsWith("d"))
+        .map((offset) => Number(offset.slice(0, -1)))
+        .filter((offset) => Number.isInteger(offset) && offset >= 1 && offset <= 30),
+    };
   }
 
   function updateNotificationOffset(index: number, value: string) {
-    const nextValue = Math.max(1, Math.min(30, Number(value) || 1));
-    const nextOffsets = personalDraft.notifyOffsetsDays.map((offset, offsetIndex) =>
-      offsetIndex === index ? nextValue : offset
+    const current = personalDraft.notifyOffsets[index] ?? "1d";
+    const unit = current.endsWith("h") ? "h" : "d";
+    const max = unit === "h" ? 48 : 30;
+    const nextValue = Math.max(1, Math.min(max, Number(value) || 1));
+    const nextOffsets = personalDraft.notifyOffsets.map((offset, offsetIndex) =>
+      offsetIndex === index ? `${nextValue}${unit}` : offset
     );
 
     setPersonalDraft({
       ...personalDraft,
-      notifyOffsetsDays: nextOffsets,
-      notifyWeekBefore: nextOffsets.includes(7),
-      notifyDayBefore: nextOffsets.includes(1),
+      notifyOffsets: nextOffsets,
+      ...syncLegacyNotificationFlags(nextOffsets),
+    });
+  }
+
+  function updateNotificationOffsetUnit(index: number, unit: "h" | "d") {
+    const current = personalDraft.notifyOffsets[index] ?? "1d";
+    const currentValue = Math.max(1, Number(current.slice(0, -1)) || 1);
+    const nextValue = unit === "h" ? Math.min(currentValue, 48) : Math.min(currentValue, 30);
+    const nextOffsets = personalDraft.notifyOffsets.map((offset, offsetIndex) =>
+      offsetIndex === index ? `${nextValue}${unit}` : offset
+    );
+
+    setPersonalDraft({
+      ...personalDraft,
+      notifyOffsets: nextOffsets,
+      ...syncLegacyNotificationFlags(nextOffsets),
     });
   }
 
   function addNotificationOffset() {
-    const nextOffsets = [...personalDraft.notifyOffsetsDays, 1].slice(0, 5);
+    const nextOffsets = [...personalDraft.notifyOffsets, "1h"].slice(0, 5);
 
     setPersonalDraft({
       ...personalDraft,
-      notifyOffsetsDays: nextOffsets,
-      notifyWeekBefore: nextOffsets.includes(7),
-      notifyDayBefore: nextOffsets.includes(1),
+      notifyOffsets: nextOffsets,
+      ...syncLegacyNotificationFlags(nextOffsets),
     });
   }
 
   function removeNotificationOffset(index: number) {
-    const nextOffsets = personalDraft.notifyOffsetsDays.filter((_, offsetIndex) => offsetIndex !== index);
+    const nextOffsets = personalDraft.notifyOffsets.filter((_, offsetIndex) => offsetIndex !== index);
 
     setPersonalDraft({
       ...personalDraft,
-      notifyOffsetsDays: nextOffsets,
-      notifyWeekBefore: nextOffsets.includes(7),
-      notifyDayBefore: nextOffsets.includes(1),
+      notifyOffsets: nextOffsets,
+      ...syncLegacyNotificationFlags(nextOffsets),
     });
   }
 
@@ -719,7 +749,7 @@ export function SettingsView({
                 <span>Notificari</span>
                 <strong>
                   {personalDraft.notifyGroupBookings
-                    ? `${personalDraft.notifyOffsetsDays.length} active`
+                    ? `${personalDraft.notifyOffsets.length} active`
                     : "Inactive"}
                 </strong>
               </div>
@@ -1002,75 +1032,28 @@ export function SettingsView({
               </div>
             </div>
 
-            <div className="split-list">
-              <div className="mini-column">
-                <div className="mini-section-head">
-                  <h3>{roomsLabelDraft.trim() || defaultRoomsLabel}</h3>
-                  {canEditCurrentLocation && (
-                    <button className="secondary-button compact" onClick={() => onOpenSpaceEditor("room")} type="button">
-                      + {roomsLabelDraft.trim() || defaultRoomsLabel}
-                    </button>
-                  )}
-                </div>
-
-                <div className="mini-list">
-                  {rooms.length === 0 ? (
-                    <p className="empty-line">Nu exista elemente adaugate.</p>
-                  ) : (
-                    rooms.map((room) => (
-                      <div className="mini-row" key={room.id}>
-                        <span>{room.name}</span>
-                        {canEditCurrentLocation && (
-                          <div className="row-actions">
-                            <button onClick={() => onOpenSpaceEditor("room", room)} type="button" aria-label="Editează sala">
-                              ✎
-                            </button>
-                            <button className="secondary-button compact danger-button" onClick={() => onRemoveSpaceItem("room", room.id)} type="button">
-                              Sterge
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    ))
-                  )}
+            <div className="owner-tool-grid">
+              <div className="owner-tool-card">
+                <div>
+                  <span className="eyebrow">{roomsLabelDraft.trim() || defaultRoomsLabel}</span>
+                  <h3>{rooms.length} {rooms.length === 1 ? "element" : "elemente"}</h3>
+                  <p>{rooms.length > 0 ? rooms.slice(0, 3).map((room) => room.name).join(", ") : "Nu exista elemente adaugate."}</p>
                 </div>
               </div>
 
-              <div className="mini-column">
-                <div className="mini-section-head">
-                  <h3>{groupsLabelDraft.trim() || defaultGroupsLabel}</h3>
-                  {canEditCurrentLocation && (
-                    <button className="secondary-button compact" onClick={() => onOpenSpaceEditor("group")} type="button">
-                      + {groupsLabelDraft.trim() || defaultGroupsLabel}
-                    </button>
-                  )}
-                </div>
-
-                <div className="mini-list">
-                  {groups.length === 0 ? (
-                    <p className="empty-line">Nu exista elemente adaugate.</p>
-                  ) : (
-                    groups.map((group) => (
-                      <div className="mini-row" key={group.id}>
-                        <span className="group-name-with-swatch">
-                          {group.color && <i aria-hidden="true" style={{ backgroundColor: group.color }} />}
-                          {group.name}
-                        </span>
-                        {canEditCurrentLocation && (
-                          <div className="row-actions">
-                            <button onClick={() => onOpenSpaceEditor("group", group)} type="button" aria-label="Editează grupul">
-                              ✎
-                            </button>
-                            <button className="secondary-button compact danger-button" onClick={() => onRemoveSpaceItem("group", group.id)} type="button">
-                              Sterge
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    ))
-                  )}
+              <div className="owner-tool-card">
+                <div>
+                  <span className="eyebrow">{groupsLabelDraft.trim() || defaultGroupsLabel}</span>
+                  <h3>{groups.length} {groups.length === 1 ? "element" : "elemente"}</h3>
+                  <p>{groups.length > 0 ? groups.slice(0, 3).map((group) => group.name).join(", ") : "Nu exista elemente adaugate."}</p>
                 </div>
               </div>
+            </div>
+
+            <div className="modal-actions inline-actions">
+              <button className="primary-button compact" onClick={() => setResourcesManagerOpen(true)} type="button">
+                Deschide organizarea
+              </button>
             </div>
           </article>
           )}
@@ -1084,7 +1067,140 @@ export function SettingsView({
               </div>
             </div>
 
-            <div className="users-table">
+            <div className="owner-tool-card">
+              <div>
+                <span className="eyebrow">Acces</span>
+                <h3>{visibleManagedUsers.length} {visibleManagedUsers.length === 1 ? "utilizator" : "utilizatori"}</h3>
+                <p>
+                  {visibleManagedUsers.filter((item) => item.role === "manager").length} manageri ·{" "}
+                  {visibleManagedUsers.filter((item) => item.role !== "manager").length} membri si oaspeti
+                </p>
+              </div>
+              <div className="owner-tool-actions">
+                <button className="primary-button compact" onClick={() => setUsersManagerOpen(true)} type="button">
+                  Deschide utilizatorii
+                </button>
+              </div>
+            </div>
+          </article>
+          )}
+        </>
+      )}
+    </section>
+
+    {resourcesManagerOpen && (
+      <div className="modal-backdrop" role="presentation" onMouseDown={() => setResourcesManagerOpen(false)}>
+        <section
+          className="modal-card manager-card"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="resources-manager-title"
+          onMouseDown={(event) => event.stopPropagation()}
+        >
+          <div className="modal-head">
+            <div>
+              <span className="eyebrow">Organizare</span>
+              <h2 id="resources-manager-title">{resourcesSectionDraft.trim() || defaultResourcesSectionTitle}</h2>
+            </div>
+          </div>
+
+          <div className="split-list">
+            <div className="mini-column">
+              <div className="mini-section-head">
+                <h3>{roomsLabelDraft.trim() || defaultRoomsLabel}</h3>
+                {canEditCurrentLocation && (
+                  <button className="secondary-button compact" onClick={() => onOpenSpaceEditor("room")} type="button">
+                    + {roomsLabelDraft.trim() || defaultRoomsLabel}
+                  </button>
+                )}
+              </div>
+
+              <div className="mini-list">
+                {rooms.length === 0 ? (
+                  <p className="empty-line">Nu exista elemente adaugate.</p>
+                ) : (
+                  rooms.map((room) => (
+                    <div className="mini-row" key={room.id}>
+                      <span>{room.name}</span>
+                      {canEditCurrentLocation && (
+                        <div className="row-actions">
+                          <button onClick={() => onOpenSpaceEditor("room", room)} type="button" aria-label="Editează sala">
+                            ✎
+                          </button>
+                          <button className="secondary-button compact danger-button" onClick={() => onRemoveSpaceItem("room", room.id)} type="button">
+                            Sterge
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="mini-column">
+              <div className="mini-section-head">
+                <h3>{groupsLabelDraft.trim() || defaultGroupsLabel}</h3>
+                {canEditCurrentLocation && (
+                  <button className="secondary-button compact" onClick={() => onOpenSpaceEditor("group")} type="button">
+                    + {groupsLabelDraft.trim() || defaultGroupsLabel}
+                  </button>
+                )}
+              </div>
+
+              <div className="mini-list">
+                {groups.length === 0 ? (
+                  <p className="empty-line">Nu exista elemente adaugate.</p>
+                ) : (
+                  groups.map((group) => (
+                    <div className="mini-row" key={group.id}>
+                      <span className="group-name-with-swatch">
+                        {group.color && <i aria-hidden="true" style={{ backgroundColor: group.color }} />}
+                        {group.name}
+                      </span>
+                      {canEditCurrentLocation && (
+                        <div className="row-actions">
+                          <button onClick={() => onOpenSpaceEditor("group", group)} type="button" aria-label="Editează grupul">
+                            ✎
+                          </button>
+                          <button className="secondary-button compact danger-button" onClick={() => onRemoveSpaceItem("group", group.id)} type="button">
+                            Sterge
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="modal-actions">
+            <button className="primary-button" onClick={() => setResourcesManagerOpen(false)} type="button">
+              Gata
+            </button>
+          </div>
+        </section>
+      </div>
+    )}
+
+    {usersManagerOpen && (
+      <div className="modal-backdrop" role="presentation" onMouseDown={() => setUsersManagerOpen(false)}>
+        <section
+          className="modal-card manager-card"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="users-manager-title"
+          onMouseDown={(event) => event.stopPropagation()}
+        >
+          <div className="modal-head">
+            <div>
+              <span className="eyebrow">Utilizatori</span>
+              <h2 id="users-manager-title">{visibleManagedUsers.length} conturi</h2>
+            </div>
+          </div>
+
+          <div className="users-table">
               {visibleManagedUsers.map((managedUser) => {
                 const userDraft = managedUserDraftFor(managedUser);
                 const isEditingUser = Boolean(managedUserEditing[managedUser.id]);
@@ -1226,12 +1342,16 @@ export function SettingsView({
                 </div>
                 );
               })}
-            </div>
-          </article>
-          )}
-        </>
-      )}
-    </section>
+          </div>
+
+          <div className="modal-actions">
+            <button className="primary-button" onClick={() => setUsersManagerOpen(false)} type="button">
+              Gata
+            </button>
+          </div>
+        </section>
+      </div>
+    )}
 
     {profileEditorOpen && (
       <div className="modal-backdrop" role="presentation" onMouseDown={closeProfileEditor}>
@@ -1261,21 +1381,6 @@ export function SettingsView({
                   })
                 }
               />
-            </label>
-
-            <label>
-              Limba
-              <select
-                value={personalDraft.language}
-                onChange={(event) =>
-                  setPersonalDraft({
-                    ...personalDraft,
-                    language: event.target.value,
-                  })
-                }
-              >
-                <option value="ro">Romana</option>
-              </select>
             </label>
 
             {!isOwner && (
@@ -1352,24 +1457,33 @@ export function SettingsView({
 
                 {personalDraft.notifyGroupBookings && (
                   <div className="notification-options">
-                    {personalDraft.notifyOffsetsDays.map((offset, index) => (
+                    {personalDraft.notifyOffsets.map((offset, index) => {
+                      const unit = offset.endsWith("h") ? "h" : "d";
+                      const amount = Math.max(1, Number(offset.slice(0, -1)) || 1);
+
+                      return (
                       <label key={`${offset}-${index}`}>
-                        Cu cate zile inainte
+                        Cu cat timp inainte
                         <div className="inline-add">
                           <input
                             min={1}
-                            max={30}
+                            max={unit === "h" ? 48 : 30}
                             type="number"
-                            value={offset}
+                            value={amount}
                             onChange={(event) => updateNotificationOffset(index, event.target.value)}
                           />
+                          <select value={unit} onChange={(event) => updateNotificationOffsetUnit(index, event.target.value as "h" | "d")}>
+                            <option value="h">ore</option>
+                            <option value="d">zile</option>
+                          </select>
                           <button className="secondary-button compact" onClick={() => removeNotificationOffset(index)} type="button">
                             Sterge
                           </button>
                         </div>
                       </label>
-                    ))}
-                    {personalDraft.notifyOffsetsDays.length < 5 && (
+                      );
+                    })}
+                    {personalDraft.notifyOffsets.length < 5 && (
                       <button className="secondary-button compact" onClick={addNotificationOffset} type="button">
                         Adauga notificare
                       </button>

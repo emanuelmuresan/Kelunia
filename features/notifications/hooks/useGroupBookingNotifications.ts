@@ -10,7 +10,10 @@ import {
   canUseNativeNotifications,
   LocalNotifications,
   nativeNotificationId,
+  normalizeNotificationOffsetRules,
   normalizeNotificationOffsets,
+  notificationOffsetToMs,
+  notificationOffsetToKey,
   notificationStorageKey,
   notificationTitle,
 } from "@/lib/notifications";
@@ -45,14 +48,17 @@ export function useGroupBookingNotifications({
       return;
     }
 
-    const offsets = normalizeNotificationOffsets(profile.notifyOffsetsDays).length > 0
-      ? normalizeNotificationOffsets(profile.notifyOffsetsDays)
+    const offsets = normalizeNotificationOffsetRules(profile.notifyOffsets).length > 0
+      ? normalizeNotificationOffsetRules(profile.notifyOffsets)
+      : normalizeNotificationOffsets(profile.notifyOffsetsDays).map((value) => ({ value, unit: "days" as const }));
+    const legacyOffsets = offsets.length > 0
+      ? offsets
       : [
-        ...(profile.notifyWeekBefore ? [7] : []),
-        ...(profile.notifyDayBefore ? [1] : []),
+        ...(profile.notifyWeekBefore ? [{ value: 7, unit: "days" as const }] : []),
+        ...(profile.notifyDayBefore ? [{ value: 1, unit: "days" as const }] : []),
       ];
 
-    if (offsets.length === 0) {
+    if (legacyOffsets.length === 0) {
       return;
     }
 
@@ -61,8 +67,8 @@ export function useGroupBookingNotifications({
     if (canUseNativeNotifications()) {
       void (async () => {
         const notifications: NativeGroupBookingNotification[] = groupBookings.flatMap((booking) =>
-          offsets.flatMap((offsetDays) => {
-            const notifyAt = new Date(bookingStartDateTime(booking).getTime() - offsetDays * 24 * 60 * 60 * 1000);
+          legacyOffsets.flatMap((offset) => {
+            const notifyAt = new Date(bookingStartDateTime(booking).getTime() - notificationOffsetToMs(offset));
 
             if (notifyAt.getTime() <= Date.now()) {
               return [];
@@ -70,8 +76,8 @@ export function useGroupBookingNotifications({
 
             return [
               {
-                id: nativeNotificationId(user.uid, booking.id, offsetDays),
-                title: notificationTitle(offsetDays),
+                id: nativeNotificationId(user.uid, booking.id, offset),
+                title: notificationTitle(offset),
                 body: `${booking.group}, ${formatDateLabel(booking.startDate, { year: "numeric" })}, ${booking.startTime}-${booking.endTime}, ${booking.room}`,
                 schedule: { at: notifyAt },
                 iconColor: "#1da4fe",
@@ -101,10 +107,10 @@ export function useGroupBookingNotifications({
     const timers = bookings
       .filter((booking) => isGroupBooking(booking, profile.groupName))
       .flatMap((booking) =>
-        offsets.map((offsetDays) => {
-          const notifyAt = new Date(bookingStartDateTime(booking).getTime() - offsetDays * 24 * 60 * 60 * 1000);
+        legacyOffsets.map((offset) => {
+          const notifyAt = new Date(bookingStartDateTime(booking).getTime() - notificationOffsetToMs(offset));
           const delay = notifyAt.getTime() - Date.now();
-          const storageKey = notificationStorageKey(user.uid, booking.id, offsetDays);
+          const storageKey = notificationStorageKey(user.uid, booking.id, offset);
 
           if (delay <= 0 || delay > maxNotificationDelayMs || window.localStorage.getItem(storageKey)) {
             return null;
@@ -117,7 +123,7 @@ export function useGroupBookingNotifications({
             try {
               if ("serviceWorker" in navigator) {
                 const registration = await navigator.serviceWorker.ready;
-                await registration.showNotification(notificationTitle(offsetDays), {
+                await registration.showNotification(notificationTitle(offset), {
                   body,
                   icon: "/icon-192.png",
                   badge: "/icon-192.png",
@@ -127,10 +133,10 @@ export function useGroupBookingNotifications({
                 return;
               }
 
-              new Notification(notificationTitle(offsetDays), {
+              new Notification(notificationTitle(offset), {
                 body,
                 icon: "/icon-192.png",
-                tag: storageKey,
+                tag: notificationOffsetToKey(offset),
               });
             } catch (error) {
               console.warn("Notificarea nu a putut fi afisata:", error);

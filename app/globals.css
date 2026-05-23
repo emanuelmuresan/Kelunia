@@ -106,6 +106,21 @@ img {
   display: none;
 }
 
+.app-main-topbar .topbar-header-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.language-selector select {
+  min-height: 40px;
+  border: 1px solid #b9cffb;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--blue);
+  padding: 0 10px;
+  font-weight: 820;
+}
+
 .app-topbar-brand {
   display: flex;
   align-items: center;

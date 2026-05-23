@@ -232,6 +232,23 @@ service cloud.firestore {
         );
     }
 
+    function validOptionalNotificationOffsetRules(data, key) {
+      return !hasKey(data, key)
+        || (
+          data[key] is list
+          && data[key].size() <= 5
+          && data[key].hasOnly([
+            "1h", "2h", "3h", "4h", "5h", "6h", "7h", "8h", "9h", "10h", "11h", "12h",
+            "13h", "14h", "15h", "16h", "17h", "18h", "19h", "20h", "21h", "22h", "23h", "24h",
+            "25h", "26h", "27h", "28h", "29h", "30h", "31h", "32h", "33h", "34h", "35h", "36h",
+            "37h", "38h", "39h", "40h", "41h", "42h", "43h", "44h", "45h", "46h", "47h", "48h",
+            "1d", "2d", "3d", "4d", "5d", "6d", "7d", "8d", "9d", "10d", "11d", "12d",
+            "13d", "14d", "15d", "16d", "17d", "18d", "19d", "20d", "21d", "22d", "23d", "24d",
+            "25d", "26d", "27d", "28d", "29d", "30d"
+          ])
+        );
+    }
+
     function validSoftDeleteFields(data) {
       return validOptionalBool(data, "deleted")
         && (!hasKey(data, "deletedAt") || validNullableTimestamp(data.deletedAt))
@@ -621,6 +638,7 @@ service cloud.firestore {
           "notifyGroupBookings",
           "notifyWeekBefore",
           "notifyDayBefore",
+          "notifyOffsets",
           "notifyOffsetsDays",
           "verificationEmailSentAt",
           "createdAt"
@@ -649,6 +667,7 @@ service cloud.firestore {
         && validOptionalBool(data, "notifyGroupBookings")
         && validOptionalBool(data, "notifyWeekBefore")
         && validOptionalBool(data, "notifyDayBefore")
+        && validOptionalNotificationOffsetRules(data, "notifyOffsets")
         && validOptionalNotificationOffsets(data, "notifyOffsetsDays")
         && validOptionalTimestamp(data, "verificationEmailSentAt")
         && validOptionalTimestamp(data, "createdAt");

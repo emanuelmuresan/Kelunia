@@ -16,7 +16,7 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
-import { useAuth, type UserRole } from "@/context/AuthContext";
+import { useAuth, type AppLanguage, type UserRole } from "@/context/AuthContext";
 import { AccessCodesModal } from "@/features/access-codes/components/AccessCodesModal";
 import { useAccessCodeGroupSync } from "@/features/access-codes/hooks/useAccessCodeGroupSync";
 import { useAccessCodes } from "@/features/access-codes/hooks/useAccessCodes";
@@ -46,7 +46,9 @@ import { initialLocationBillingFields } from "@/lib/licensing";
 import {
   canUseNativeNotifications,
   LocalNotifications,
+  normalizeNotificationOffsetRules,
   normalizeNotificationOffsets,
+  notificationOffsetToKey,
   requestKeluniaNotificationPermission,
 } from "@/lib/notifications";
 import { can } from "@/lib/permissions/capabilities";
@@ -164,8 +166,9 @@ export default function KeluniaPage() {
     notifyGroupBookings: false,
     notifyWeekBefore: true,
     notifyDayBefore: true,
+    notifyOffsets: ["1d", "7d"],
     notifyOffsetsDays: [1, 7],
-    language: "ro",
+    language: "ro" as AppLanguage,
   });
   const [groupSetupDraft, setGroupSetupDraft] = useState("");
   const [groupSetupError, setGroupSetupError] = useState("");
@@ -500,6 +503,14 @@ export default function KeluniaPage() {
       notifyGroupBookings: profile.notifyGroupBookings,
       notifyWeekBefore: profile.notifyWeekBefore,
       notifyDayBefore: profile.notifyDayBefore,
+      notifyOffsets: normalizeNotificationOffsetRules(profile.notifyOffsets).length > 0
+        ? normalizeNotificationOffsetRules(profile.notifyOffsets).map(notificationOffsetToKey)
+        : normalizeNotificationOffsets(profile.notifyOffsetsDays).length > 0
+          ? normalizeNotificationOffsets(profile.notifyOffsetsDays).map((value) => `${value}d`)
+          : [
+            ...(profile.notifyDayBefore ? ["1d"] : []),
+            ...(profile.notifyWeekBefore ? ["7d"] : []),
+          ],
       notifyOffsetsDays: normalizeNotificationOffsets(profile.notifyOffsetsDays).length > 0
         ? normalizeNotificationOffsets(profile.notifyOffsetsDays)
         : [
@@ -1006,7 +1017,7 @@ export default function KeluniaPage() {
     });
   }
 
-  async function savePersonalSettings(options?: { pinHash?: string; usePin?: boolean; useBiometrics?: boolean }) {
+  async function savePersonalSettings(options?: { pinHash?: string; usePin?: boolean; useBiometrics?: boolean; language?: AppLanguage }) {
     if (!user) {
       return;
     }
@@ -1027,9 +1038,13 @@ export default function KeluniaPage() {
       ...personalDraft,
       usePin: options?.usePin ?? personalDraft.usePin,
       useBiometrics: options?.useBiometrics ?? personalDraft.useBiometrics,
+      language: options?.language ?? personalDraft.language,
     };
     const effectivePinHash = options?.pinHash ?? pendingPinHash;
-    const notificationOffsets = normalizeNotificationOffsets(effectiveDraft.notifyOffsetsDays);
+    const notificationOffsets = normalizeNotificationOffsetRules(effectiveDraft.notifyOffsets);
+    const notificationOffsetDays = notificationOffsets
+      .filter((offset) => offset.unit === "days")
+      .map((offset) => offset.value);
 
     if ((effectiveDraft.usePin || effectiveDraft.useBiometrics) && !profile?.hasPin && !effectivePinHash) {
       openPinSetup(effectiveDraft.useBiometrics ? "biometrics" : "pin");
@@ -1066,9 +1081,10 @@ export default function KeluniaPage() {
       lockOnHide: usePin ? effectiveDraft.lockOnHide : false,
       useBiometrics: usePin ? effectiveDraft.useBiometrics : false,
       notifyGroupBookings: effectiveDraft.notifyGroupBookings,
-      notifyWeekBefore: effectiveDraft.notifyGroupBookings ? notificationOffsets.includes(7) : false,
-      notifyDayBefore: effectiveDraft.notifyGroupBookings ? notificationOffsets.includes(1) : false,
-      notifyOffsetsDays: effectiveDraft.notifyGroupBookings ? notificationOffsets : [],
+      notifyWeekBefore: effectiveDraft.notifyGroupBookings ? notificationOffsetDays.includes(7) : false,
+      notifyDayBefore: effectiveDraft.notifyGroupBookings ? notificationOffsetDays.includes(1) : false,
+      notifyOffsets: effectiveDraft.notifyGroupBookings ? notificationOffsets.map(notificationOffsetToKey) : [],
+      notifyOffsetsDays: effectiveDraft.notifyGroupBookings ? notificationOffsetDays : [],
       language: effectiveDraft.language,
     };
 
@@ -1089,6 +1105,11 @@ export default function KeluniaPage() {
       console.error("Setările nu au putut fi salvate:", error);
       setSettingsError("Setările nu au putut fi salvate. Verifică regulile Firebase.");
     }
+  }
+
+  function updateLanguageFromHeader(language: AppLanguage) {
+    setPersonalDraft((current) => ({ ...current, language }));
+    void savePersonalSettings({ language });
   }
 
   async function saveRequiredGroup() {
@@ -1800,11 +1821,13 @@ export default function KeluniaPage() {
         headerTitle={headerTitle}
         isOnline={isOnline}
         isSignedIn={Boolean(user)}
+        language={personalDraft.language}
         licenseMessage={licenseAccess.message}
         navigationItems={navigationItems}
         offlineMessage={offlineReadOnlyMessage}
         showLicenseWarning={Boolean(user && currentLocationId && licenseAccess.isReadOnly)}
         userLabel={profile ? `${profile.displayName} · ${appRoleLabel(profile, role)}` : undefined}
+        onLanguageChange={updateLanguageFromHeader}
         onNavigate={setActiveView}
         onSignOut={confirmSignOut}
       />
