@@ -402,6 +402,8 @@ export function useAccessCodes({
         groupName: nextRole === "manager" ? "" : nextGroupName.trim(),
         roomAccess,
         allowedRoomIds: selectedRoomIds,
+        locationId: item.locationId,
+        locationName: item.locationName || locationName,
         maxUses: maxUsesForAccessRole(nextRole),
         usedCount: item.usedCount,
         active: item.active,
@@ -436,6 +438,12 @@ export function useAccessCodes({
         updatedAt: Timestamp.now(),
       };
       await updateDoc(doc(db, "accessCodes", item.id), {
+        role: item.role,
+        groupName: item.role === "manager" ? "" : item.groupName,
+        roomAccess: item.role === "manager" ? "all" : item.roomAccess,
+        allowedRoomIds: item.role === "manager" || item.roomAccess === "all" ? [] : item.allowedRoomIds,
+        locationId: item.locationId,
+        locationName: item.locationName || locationName,
         active: !item.active,
         maxUses: item.maxUses,
         usedCount: item.usedCount,

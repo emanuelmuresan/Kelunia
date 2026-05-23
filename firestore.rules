@@ -1847,6 +1847,7 @@ service cloud.firestore {
           && locationWriteEnabled(resource.data.locationId)
           && request.resource.data.locationId == resource.data.locationId
           && request.resource.data.code == resource.data.code
+          && validText(request.resource.data.locationName, 180)
           && validAccessRole(request.resource.data.role)
           && validAccessGroup(request.resource.data.role, request.resource.data.groupName)
           && validRoomAccessData(request.resource.data.role, request.resource.data)
@@ -1862,6 +1863,7 @@ service cloud.firestore {
             "groupName",
             "roomAccess",
             "allowedRoomIds",
+            "locationName",
             "maxUses",
             "usedCount",
             "active",
