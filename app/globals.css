@@ -815,9 +815,9 @@ img {
 }
 
 .group-colored-booking {
-  border-color: color-mix(in srgb, var(--group-color) 42%, #d8e8e4);
-  background: color-mix(in srgb, var(--group-color) 12%, #fff);
-  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--group-color) 72%, transparent);
+  border-color: color-mix(in srgb, var(--group-color) 78%, #d8e8e4);
+  background: color-mix(in srgb, var(--group-color) 24%, #fff);
+  box-shadow: inset 4px 0 0 var(--group-color);
 }
 
 .group-colored-booking strong,
@@ -2557,6 +2557,18 @@ img {
   border-color: rgba(227, 93, 244, 0.42);
   background: linear-gradient(135deg, rgba(233, 251, 255, 0.96), rgba(255, 238, 255, 0.96));
   box-shadow: inset 3px 0 0 var(--magenta);
+}
+
+.group-colored-booking.own-group-booking {
+  border-color: color-mix(in srgb, var(--group-color) 82%, #d8e8e4);
+  background: color-mix(in srgb, var(--group-color) 28%, #fff);
+  box-shadow: inset 4px 0 0 var(--group-color);
+}
+
+.group-colored-booking.own-group-booking strong,
+.group-colored-booking.own-group-booking .fixed-pill-time,
+.group-colored-booking.own-group-booking .fixed-pill-group {
+  color: var(--group-color);
 }
 
 .day-bookings-list span,
