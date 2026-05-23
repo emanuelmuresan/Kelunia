@@ -68,7 +68,7 @@ export function DayBookingsModal({
           )}
 
           <button className="secondary-button" onClick={onClose} type="button">
-            Închide
+            Gata
           </button>
         </div>
       </div>

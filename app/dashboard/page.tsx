@@ -728,6 +728,16 @@ export default function KeluniaPage() {
     setSelectedDay(null);
     setSelectedBooking(booking);
   }
+
+  function createBookingFromSelectedBooking() {
+    if (!selectedBooking) {
+      return;
+    }
+
+    const date = selectedBooking.startDate;
+    setSelectedBooking(null);
+    openCreateForm(date, { defaultStartTime: "12:00" });
+  }
   const {
     openPasswordModal,
     passwordDraft,
@@ -2096,6 +2106,8 @@ export default function KeluniaPage() {
         booking={selectedBooking}
         profileGroupName={profile?.groupName}
         canEdit={selectedBooking ? canEditBooking(selectedBooking) : false}
+        canCreate={canManageBookings && isOnline}
+        onAdd={createBookingFromSelectedBooking}
         onClose={() => setSelectedBooking(null)}
         onEdit={() => {
           if (selectedBooking) {

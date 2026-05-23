@@ -8,6 +8,8 @@ type BookingDetailsModalProps = {
   booking: Booking | null;
   profileGroupName?: string;
   canEdit: boolean;
+  canCreate?: boolean;
+  onAdd?: () => void;
   onClose: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -17,6 +19,8 @@ export function BookingDetailsModal({
   booking,
   profileGroupName,
   canEdit,
+  canCreate = false,
+  onAdd,
   onClose,
   onEdit,
   onDelete,
@@ -108,6 +112,16 @@ export function BookingDetailsModal({
                 Șterge
               </button>
             </>
+          )}
+
+          {canCreate && onAdd && (
+            <button
+              className="secondary-button"
+              onClick={onAdd}
+              type="button"
+            >
+              Adaugă
+            </button>
           )}
 
           <button
