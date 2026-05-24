@@ -2057,9 +2057,13 @@ service cloud.firestore {
           isOwner()
           || resource.data.locationId == userLocationId()
         );
-      allow create: if (isOwner() || isLocationAdmin())
+      allow create: if signedInVerified()
+        && hasUserDoc()
         && validEventData(request.resource.data)
-        && (isOwner() || request.resource.data.locationId == userLocationId())
+        && (
+          isOwner()
+          || request.resource.data.locationId == userLocationId()
+        )
         && roomAccessAllows(request.resource.data.roomId)
         && locationWriteEnabled(request.resource.data.locationId);
       allow update: if validEventData(request.resource.data)
