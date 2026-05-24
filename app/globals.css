@@ -2108,7 +2108,7 @@ img {
 
 .code-row {
   display: grid;
-  grid-template-columns: minmax(160px, 1fr) 112px minmax(130px, 1fr) minmax(150px, 1fr) minmax(105px, auto) auto auto auto;
+  grid-template-columns: minmax(150px, 0.9fr) 112px minmax(130px, 0.9fr) minmax(150px, 1fr) minmax(92px, auto) minmax(330px, 1.2fr);
   gap: 8px;
   align-items: start;
   margin-top: 12px;
@@ -2197,6 +2197,18 @@ img {
 .code-row button:hover {
   border-color: var(--blue);
   color: var(--blue);
+}
+
+.code-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.code-row-actions button {
+  flex: 1 1 74px;
 }
 
 .license-list {
@@ -2474,6 +2486,7 @@ img {
 .modal-card {
   width: min(720px, 100%);
   max-height: min(760px, calc(100vh - 32px));
+  box-sizing: border-box;
   overflow: auto;
   border-radius: 8px;
   border: 1px solid var(--line);
@@ -2539,7 +2552,8 @@ img {
 }
 
 .manager-card {
-  width: min(820px, 100%);
+  width: min(1180px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
 }
 
 .day-bookings-list {
@@ -3242,6 +3256,10 @@ img {
   .owner-tool-grid,
   .license-add-grid {
     grid-template-columns: 1fr;
+  }
+
+  .code-row-actions {
+    justify-content: stretch;
   }
 
   .license-row {

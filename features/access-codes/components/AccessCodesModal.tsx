@@ -387,44 +387,46 @@ export function AccessCodesModal({
                     <small>{roomAccessLabel({ ...item, roomAccess: draftRoomAccess, allowedRoomIds: draftAllowedRoomIds }, rooms)}</small>
                   </div>
                   <span className="code-usage">{accessCodeUsageLabel(item)}</span>
-                  <button onClick={() => onCopy(item.code)} type="button">
-                    Copiaza
-                  </button>
-                  <button onClick={() => onCopyInviteLink(item.code)} type="button">
-                    Link
-                  </button>
-                  <button onClick={() => onSendInvite(item)} disabled={!item.active || isAccessCodeFull(item)} type="button">
-                    Email
-                  </button>
-                  {isEditingCode ? (
-                    <>
-                      <button className="secondary-button compact" onClick={() => closeCodeEditor(item.id)} type="button">
-                        Renunta
-                      </button>
-                      <button
-                        className="primary-button compact"
-                        disabled={!codeChanged || (draftRoomAccess === "selected" && draftAllowedRoomIds.length === 0)}
-                        onClick={() => saveCodeEditor(item)}
-                        type="button"
-                      >
-                        Salveaza
-                      </button>
-                    </>
-                  ) : (
-                    <button className="secondary-button compact" disabled={codesWorking} onClick={() => openCodeEditor(item)} type="button">
-                      Editeaza
+                  <div className="code-row-actions">
+                    <button onClick={() => onCopy(item.code)} type="button">
+                      Copiaza
                     </button>
-                  )}
-                  <button onClick={() => onToggleActive(item)} type="button">
-                    {item.active ? "Opreste" : "Activeaza"}
-                  </button>
-                  <button
-                    onClick={() => onRemove(item)}
-                    type="button"
-                    aria-label="Sterge codul"
-                  >
-                    Sterge
-                  </button>
+                    <button onClick={() => onCopyInviteLink(item.code)} type="button">
+                      Link
+                    </button>
+                    <button onClick={() => onSendInvite(item)} disabled={!item.active || isAccessCodeFull(item)} type="button">
+                      Email
+                    </button>
+                    {isEditingCode ? (
+                      <>
+                        <button className="secondary-button compact" onClick={() => closeCodeEditor(item.id)} type="button">
+                          Renunta
+                        </button>
+                        <button
+                          className="primary-button compact"
+                          disabled={!codeChanged || (draftRoomAccess === "selected" && draftAllowedRoomIds.length === 0)}
+                          onClick={() => saveCodeEditor(item)}
+                          type="button"
+                        >
+                          Salveaza
+                        </button>
+                      </>
+                    ) : (
+                      <button className="secondary-button compact" disabled={codesWorking} onClick={() => openCodeEditor(item)} type="button">
+                        Editeaza
+                      </button>
+                    )}
+                    <button onClick={() => onToggleActive(item)} type="button">
+                      {item.active ? "Opreste" : "Activeaza"}
+                    </button>
+                    <button
+                      onClick={() => onRemove(item)}
+                      type="button"
+                      aria-label="Sterge codul"
+                    >
+                      Sterge
+                    </button>
+                  </div>
                 </div>
               );
             })
