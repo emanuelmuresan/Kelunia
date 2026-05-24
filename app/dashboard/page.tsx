@@ -558,11 +558,14 @@ export default function KeluniaPage() {
     copyAccessCode,
     copyInviteLink,
     generateLocationCode,
+    inviteDraft,
     openCodesEditor,
     removeAccessCode,
     sendAccessInvite,
+    sendInviteEmailFromModal,
     setCodeGenerator,
     setCodesError,
+    setInviteDraft,
     setShowCodesModal,
     showCodesModal,
     toggleAccessCodeActive,
@@ -2027,8 +2030,10 @@ export default function KeluniaPage() {
         codesWorking={codesWorking}
         codesError={codesError}
         codesMessage={codesMessage}
+        inviteDraft={inviteDraft}
         onClose={() => setShowCodesModal(false)}
         onCodeGeneratorChange={setCodeGenerator}
+        onInviteDraftChange={setInviteDraft}
         onGenerate={generateLocationCode}
         onUpdateDetails={updateAccessCodeDetails}
         onCopy={copyAccessCode}
@@ -2038,6 +2043,7 @@ export default function KeluniaPage() {
         isAccessCodeFull={isAccessCodeFull}
         onCopyInviteLink={copyInviteLink}
         onSendInvite={sendAccessInvite}
+        onSendInviteEmail={sendInviteEmailFromModal}
       />
 
       <LicenseCodesModal

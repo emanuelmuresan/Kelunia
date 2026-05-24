@@ -273,6 +273,9 @@ export interface LocationCode {
   active: boolean;
   createdBy?: string;
   createdAt?: unknown;
+  lastInviteEmailSentAt?: unknown;
+  lastInviteEmailSentBy?: string;
+  lastInviteEmailSentTo?: string;
 }
 
 export interface LicenseCodeItem {

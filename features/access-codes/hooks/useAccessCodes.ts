@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { User } from "firebase/auth";
+import { httpsCallable } from "firebase/functions";
 import {
   doc,
   runTransaction,
@@ -12,6 +13,7 @@ import {
 
 import type { UserRole } from "@/context/AuthContext";
 import type { AuditAction, AuditEntityType } from "@/lib/audit";
+import { cloudFunctions } from "@/lib/firebase";
 import {
   generateAccessCode,
   isAccessCodeFull,
@@ -34,6 +36,15 @@ export type CodeGeneratorState = {
   roomAccess: RoomAccessMode;
   allowedRoomIds: string[];
   inviteEmail: string;
+};
+
+export type AccessInviteDraft = {
+  code: string;
+  email: string;
+  groupName: string;
+  locationName: string;
+  message: string;
+  role: UserRole;
 };
 
 type RecordAuditLog = (
@@ -79,6 +90,7 @@ export function useAccessCodes({
   const [codesError, setCodesError] = useState("");
   const [codesMessage, setCodesMessage] = useState("");
   const [codesWorking, setCodesWorking] = useState(false);
+  const [inviteDraft, setInviteDraft] = useState<AccessInviteDraft | null>(null);
   const [codeGenerator, setCodeGenerator] = useState<CodeGeneratorState>({
     role: "",
     groupName: "",
@@ -118,37 +130,35 @@ export function useAccessCodes({
     return "Oaspete";
   }
 
-  function openInviteEmail(params: {
+  function defaultInviteMessage(params: {
     code: string;
     email: string;
     groupName: string;
     locationName: string;
     role: UserRole;
   }) {
-    const recipientEmail = params.email.trim();
-
-    if (!recipientEmail) {
-      setCodesError("Scrie emailul persoanei invitate.");
-      return;
-    }
-
-    const inviteUrl = inviteUrlForCode(params.code, recipientEmail);
-    const groupLine = params.role === "manager" ? "" : `\nGrup: ${params.groupName || "setat in invitatie"}`;
-    const subject = `Invitatie Kelunia - ${params.locationName}`;
-    const body = [
-      "Buna,",
-      "",
+    return [
       `Ai primit o invitatie pentru Kelunia, locatia ${params.locationName}.`,
-      `Rol: ${roleLabel(params.role)}${groupLine}`,
+      `Rol: ${roleLabel(params.role)}${params.role === "manager" ? "" : `, grup: ${params.groupName || "setat in invitatie"}`}.`,
       "",
-      "Deschide linkul de mai jos si creeaza contul:",
-      inviteUrl,
-      "",
-      `Cod acces: ${params.code}`,
+      "Deschide linkul din email, creeaza contul sau intra in cont, apoi Kelunia va folosi codul pentru a te conecta la locatia potrivita.",
     ].join("\n");
+  }
 
-    window.location.href = `mailto:${encodeURIComponent(recipientEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    setCodesMessage("Emailul de invitatie a fost pregatit in aplicatia ta de email.");
+  function openInviteComposer(params: {
+    code: string;
+    email: string;
+    groupName: string;
+    locationName: string;
+    role: UserRole;
+  }) {
+    setCodesError("");
+    setCodesMessage("");
+    setInviteDraft({
+      ...params,
+      email: params.email.trim(),
+      message: defaultInviteMessage(params),
+    });
   }
 
   function openCodesEditor() {
@@ -166,6 +176,7 @@ export function useAccessCodes({
     });
     setCodesError("");
     setCodesMessage("");
+    setInviteDraft(null);
     setShowCodesModal(true);
   }
 
@@ -202,19 +213,50 @@ export function useAccessCodes({
       return;
     }
 
-    const recipientEmail = window.prompt("Emailul persoanei invitate")?.trim() ?? "";
-
-    if (!recipientEmail) {
-      return;
-    }
-
-    openInviteEmail({
+    openInviteComposer({
       code: item.code,
-      email: recipientEmail,
+      email: item.lastInviteEmailSentTo || "",
       groupName: item.groupName,
       locationName: item.locationName || locationName,
       role: item.role,
     });
+  }
+
+  async function sendInviteEmailFromModal() {
+    if (!inviteDraft) {
+      return;
+    }
+
+    const recipientEmail = inviteDraft.email.trim();
+
+    if (!recipientEmail) {
+      setCodesError("Scrie emailul persoanei invitate.");
+      return;
+    }
+
+    if (!requireOnline("codes")) {
+      return;
+    }
+
+    setCodesError("");
+    setCodesMessage("");
+    setCodesWorking(true);
+
+    try {
+      const callable = httpsCallable(cloudFunctions, "sendAccessInviteEmail");
+      await callable({
+        code: inviteDraft.code,
+        toEmail: recipientEmail,
+        message: inviteDraft.message,
+      });
+      setInviteDraft(null);
+      setCodesMessage(`Invitatia a fost trimisa prin Kelunia catre ${recipientEmail}.`);
+    } catch (error) {
+      console.error("Invitatia nu a putut fi trimisa:", error);
+      setCodesError(error instanceof Error ? error.message : "Invitatia nu a putut fi trimisa.");
+    } finally {
+      setCodesWorking(false);
+    }
   }
 
   async function generateLocationCode() {
@@ -312,13 +354,14 @@ export function useAccessCodes({
       setCodeGenerator({ role: "", groupName: "", locationId: "", roomAccess: "all", allowedRoomIds: [], inviteEmail: "" });
 
       if (inviteEmail) {
-        openInviteEmail({
+        openInviteComposer({
           code: generatedCode,
           email: inviteEmail,
           groupName: selectedRole === "manager" ? "" : codeGenerator.groupName.trim(),
           locationName: location.name,
           role: selectedRole,
         });
+        setCodesMessage(`Cod generat: ${generatedCode}. Verifica invitatia si apasa Trimite.`);
       } else {
         try {
           await navigator.clipboard.writeText(inviteUrlForCode(generatedCode));
@@ -489,10 +532,13 @@ export function useAccessCodes({
     openCodesEditor,
     removeAccessCode,
     sendAccessInvite,
+    sendInviteEmailFromModal,
     setCodeGenerator,
     setCodesError,
+    setInviteDraft,
     setShowCodesModal,
     showCodesModal,
+    inviteDraft,
     toggleAccessCodeActive,
     updateAccessCodeDetails,
   };

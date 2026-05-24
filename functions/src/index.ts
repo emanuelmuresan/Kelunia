@@ -45,6 +45,22 @@ type LicenseEmailRequest = {
   toEmail?: string;
 };
 
+type AccessInviteEmailRequest = {
+  code?: string;
+  message?: string;
+  toEmail?: string;
+};
+
+type AccessCodeDocument = {
+  active?: boolean;
+  code?: string;
+  deleted?: boolean;
+  groupName?: string;
+  locationId?: string;
+  locationName?: string;
+  role?: UserRole;
+};
+
 type UserRole = "manager" | "member" | "guest";
 
 type UserProfile = {
@@ -243,6 +259,80 @@ function passwordResetEmailHtml(link: string) {
   ].join("");
 }
 
+function roleLabel(role: UserRole) {
+  if (role === "manager") {
+    return "Manager";
+  }
+
+  if (role === "member") {
+    return "Membru";
+  }
+
+  return "Oaspete";
+}
+
+function accessInviteText(request: AccessInviteEmailRequest, accessCode: AccessCodeDocument) {
+  const code = accessCode.code ?? request.code ?? "";
+  const email = cleanEmail(request.toEmail);
+  const link = appUrl(`/login?invite=${encodeURIComponent(code)}${email ? `&email=${encodeURIComponent(email)}` : ""}`);
+  const groupName = accessCode.role === "manager" ? "" : accessCode.groupName?.trim();
+  const customMessage = request.message?.trim();
+
+  return [
+    customMessage || `Ai primit o invitație pentru Kelunia, locația ${accessCode.locationName ?? ""}.`,
+    "",
+    `Locație: ${accessCode.locationName ?? ""}`,
+    `Rol: ${roleLabel(accessCode.role ?? "guest")}`,
+    groupName ? `Grup: ${groupName}` : "",
+    "",
+    "Pași:",
+    "1. Deschide linkul de mai jos pe telefon sau calculator.",
+    "2. Creează contul sau intră în cont dacă ai deja unul.",
+    "3. Confirmă emailul, dacă aplicația îți cere acest lucru.",
+    "4. Kelunia va folosi codul de acces pentru a te conecta la locația potrivită.",
+    "",
+    `Link invitație: ${link}`,
+    `Cod acces: ${code}`,
+    "",
+    "Dacă linkul nu se deschide corect, intră manual în aplicația Kelunia și folosește codul de acces de mai sus.",
+    "",
+    "---",
+    "Kelunia",
+  ].filter(Boolean).join("\n");
+}
+
+function accessInviteHtml(request: AccessInviteEmailRequest, accessCode: AccessCodeDocument) {
+  const code = accessCode.code ?? request.code ?? "";
+  const email = cleanEmail(request.toEmail);
+  const link = appUrl(`/login?invite=${encodeURIComponent(code)}${email ? `&email=${encodeURIComponent(email)}` : ""}`);
+  const groupName = accessCode.role === "manager" ? "" : accessCode.groupName?.trim();
+  const customMessage = escapeHtml(request.message?.trim() || `Ai primit o invitație pentru Kelunia, locația ${accessCode.locationName ?? ""}.`).replace(/\n/g, "<br />");
+
+  return [
+    '<div style="font-family:Arial,sans-serif;line-height:1.6;color:#172033;max-width:640px">',
+    '<h1 style="font-size:22px;margin:0 0 18px;color:#0f766e">Kelunia</h1>',
+    `<p>${customMessage}</p>`,
+    '<div style="background:#f6f9ff;border:1px solid #d9e4f2;border-radius:10px;padding:14px 16px;margin:18px 0">',
+    `<p style="margin:0 0 6px"><strong>Locație:</strong> ${escapeHtml(accessCode.locationName ?? "")}</p>`,
+    `<p style="margin:0 0 6px"><strong>Rol:</strong> ${escapeHtml(roleLabel(accessCode.role ?? "guest"))}</p>`,
+    groupName ? `<p style="margin:0"><strong>Grup:</strong> ${escapeHtml(groupName)}</p>` : "",
+    "</div>",
+    '<p style="font-weight:700;margin:18px 0 8px">Pașii necesari</p>',
+    '<ol style="margin:0 0 18px;padding-left:20px">',
+    "<li>Deschide linkul pe telefon sau calculator.</li>",
+    "<li>Creează contul sau intră în cont dacă ai deja unul.</li>",
+    "<li>Confirmă emailul, dacă aplicația îți cere acest lucru.</li>",
+    "<li>Kelunia va folosi codul de acces pentru a te conecta la locația potrivită.</li>",
+    "</ol>",
+    `<p><a href="${escapeHtml(link)}" style="display:inline-block;background:#0f766e;color:#fff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:700">Deschide invitația</a></p>`,
+    '<p style="margin:18px 0 8px;color:#667085">Cod acces</p>',
+    `<p style="font-size:24px;font-weight:700;letter-spacing:1px;margin:0 0 18px">${escapeHtml(code)}</p>`,
+    `<p style="font-size:13px;color:#667085;margin-top:18px">Dacă butonul nu merge, deschide acest link: ${escapeHtml(link)}</p>`,
+    '<p style="font-size:13px;color:#667085;margin-top:8px">Dacă linkul nu se deschide corect, intră manual în aplicația Kelunia și folosește codul de acces de mai sus.</p>',
+    "</div>",
+  ].join("");
+}
+
 export const sendAuthVerificationEmail = onCall(
   {
     region: "europe-west1",
@@ -343,6 +433,98 @@ export const sendAuthPasswordResetEmail = onCall(
     }
 
     return { sent: true };
+  }
+);
+
+export const sendAccessInviteEmail = onCall(
+  {
+    region: "europe-west1",
+    secrets: [resendApiKey],
+  },
+  async (request) => {
+    if (!request.auth?.uid) {
+      throw new HttpsError("unauthenticated", "Trebuie să fii autentificat pentru a trimite invitații.");
+    }
+
+    const currentUser = await getAuth().getUser(request.auth.uid);
+
+    if (!currentUser.emailVerified) {
+      throw new HttpsError("failed-precondition", "Confirmă emailul înainte să trimiți invitații.");
+    }
+
+    const payload = request.data as AccessInviteEmailRequest;
+    const toEmail = cleanEmail(payload?.toEmail);
+    const code = typeof payload?.code === "string" ? payload.code.trim().toUpperCase() : "";
+    const message = typeof payload?.message === "string" ? payload.message.trim() : "";
+
+    if (!validEmail(toEmail)) {
+      throw new HttpsError("invalid-argument", "Email invalid.");
+    }
+
+    if (!/^[A-Z0-9-]{4,24}$/.test(code)) {
+      throw new HttpsError("invalid-argument", "Cod invalid.");
+    }
+
+    if (message.length > 1200) {
+      throw new HttpsError("invalid-argument", "Mesajul este prea lung.");
+    }
+
+    const db = getFirestore();
+    const accessCodeSnapshot = await db.doc(`accessCodes/${code}`).get();
+
+    if (!accessCodeSnapshot.exists) {
+      throw new HttpsError("not-found", "Codul nu mai există.");
+    }
+
+    const accessCode = accessCodeSnapshot.data() as AccessCodeDocument;
+
+    if (accessCode.deleted === true || accessCode.active === false) {
+      throw new HttpsError("failed-precondition", "Codul nu mai este activ.");
+    }
+
+    const claims = request.auth.token as {
+      isOwner?: boolean;
+      locationId?: string;
+      role?: string;
+    };
+    const canManageLocation =
+      claims.isOwner === true ||
+      (claims.role === "manager" && typeof accessCode.locationId === "string" && claims.locationId === accessCode.locationId);
+
+    if (!canManageLocation) {
+      throw new HttpsError("permission-denied", "Nu ai dreptul să trimiți invitații pentru această locație.");
+    }
+
+    const resend = new Resend(resendApiKey.value());
+    const result = await resend.emails.send({
+      from: emailFrom.value(),
+      to: [toEmail],
+      replyTo: currentUser.email ? [currentUser.email] : undefined,
+      subject: `Invitație Kelunia - ${accessCode.locationName ?? "locația ta"}`,
+      text: accessInviteText({ ...payload, code, message, toEmail }, { ...accessCode, code }),
+      html: accessInviteHtml({ ...payload, code, message, toEmail }, { ...accessCode, code }),
+    });
+
+    if (result.error) {
+      logger.error("Access invite email failed", {
+        code,
+        toEmail,
+        uid: currentUser.uid,
+        error: result.error,
+      });
+      throw new HttpsError("internal", result.error.message);
+    }
+
+    await accessCodeSnapshot.ref.set(
+      {
+        lastInviteEmailSentAt: FieldValue.serverTimestamp(),
+        lastInviteEmailSentBy: currentUser.email ?? request.auth.uid,
+        lastInviteEmailSentTo: toEmail,
+      },
+      { merge: true }
+    );
+
+    return { sent: true, id: result.data?.id ?? "" };
   }
 );
 

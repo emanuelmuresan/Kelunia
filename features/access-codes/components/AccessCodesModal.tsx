@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { UserRole } from "@/context/AuthContext";
-import type { CodeGeneratorState } from "@/features/access-codes/hooks/useAccessCodes";
+import type { AccessInviteDraft, CodeGeneratorState } from "@/features/access-codes/hooks/useAccessCodes";
 import { roomAccessLabel } from "@/lib/room-access";
 import type { GroupItem, LocationCode, LocationItem, RoomAccessMode, RoomItem } from "@/lib/types/domain";
 
@@ -16,8 +16,10 @@ interface AccessCodesModalProps {
   codesWorking: boolean;
   codesError: string;
   codesMessage: string;
+  inviteDraft: AccessInviteDraft | null;
   onClose: () => void;
   onCodeGeneratorChange: (nextGenerator: CodeGeneratorState) => void;
+  onInviteDraftChange: (nextDraft: AccessInviteDraft | null) => void;
   onGenerate: () => void;
   onUpdateDetails: (
     item: LocationCode,
@@ -33,6 +35,7 @@ interface AccessCodesModalProps {
   isAccessCodeFull: (item: LocationCode) => boolean;
   onCopyInviteLink: (code: string) => void;
   onSendInvite: (item: LocationCode) => void;
+  onSendInviteEmail: () => void;
 }
 
 type AccessCodeDraft = {
@@ -52,8 +55,10 @@ export function AccessCodesModal({
   codesWorking,
   codesError,
   codesMessage,
+  inviteDraft,
   onClose,
   onCodeGeneratorChange,
+  onInviteDraftChange,
   onGenerate,
   onUpdateDetails,
   onCopy,
@@ -63,6 +68,7 @@ export function AccessCodesModal({
   isAccessCodeFull,
   onCopyInviteLink,
   onSendInvite,
+  onSendInviteEmail,
 }: AccessCodesModalProps) {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [groupFilter, setGroupFilter] = useState("all");
@@ -162,6 +168,7 @@ export function AccessCodesModal({
   }
 
   return (
+    <>
     <div className="modal-backdrop" role="presentation">
       <div className="modal-card manager-card" role="dialog" aria-modal="true" aria-label="Coduri de acces">
         <div className="modal-head">
@@ -441,5 +448,71 @@ export function AccessCodesModal({
         </div>
       </div>
     </div>
+
+    {inviteDraft && (
+      <div className="modal-backdrop modal-backdrop-nested" role="presentation" onMouseDown={() => onInviteDraftChange(null)}>
+        <section
+          className="modal-card small-card"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Trimite invitatie prin email"
+          onMouseDown={(event) => event.stopPropagation()}
+        >
+          <div className="section-heading">
+            <div>
+              <span className="eyebrow">Email Kelunia</span>
+              <h2>Trimite invitatia</h2>
+            </div>
+          </div>
+
+          <p className="muted-note">
+            Emailul pleaca de la Kelunia, cu domeniul configurat in Resend. Nu se deschide aplicatia ta de email.
+          </p>
+
+          <div className="settings-form newsletter-compose">
+            <label>
+              Email destinatar
+              <input
+                type="email"
+                value={inviteDraft.email}
+                onChange={(event) => onInviteDraftChange({ ...inviteDraft, email: event.target.value })}
+                placeholder="persoana@email.com"
+              />
+            </label>
+            <div className="settings-summary-grid">
+              <span>Cod</span>
+              <strong>{inviteDraft.code}</strong>
+              <span>Locatie</span>
+              <strong>{inviteDraft.locationName}</strong>
+              <span>Rol</span>
+              <strong>{inviteDraft.role === "manager" ? "Manager" : inviteDraft.role === "member" ? "Membru" : "Oaspete"}</strong>
+              {inviteDraft.role !== "manager" && (
+                <>
+                  <span>Grup</span>
+                  <strong>{inviteDraft.groupName || "setat in invitatie"}</strong>
+                </>
+              )}
+            </div>
+            <label>
+              Mesaj
+              <textarea
+                value={inviteDraft.message}
+                onChange={(event) => onInviteDraftChange({ ...inviteDraft, message: event.target.value })}
+              />
+            </label>
+          </div>
+
+          <div className="modal-actions">
+            <button className="secondary-button" onClick={() => onInviteDraftChange(null)} disabled={codesWorking} type="button">
+              Renunta
+            </button>
+            <button className="primary-button" onClick={onSendInviteEmail} disabled={codesWorking} type="button">
+              {codesWorking ? "Se trimite..." : "Trimite"}
+            </button>
+          </div>
+        </section>
+      </div>
+    )}
+    </>
   );
 }
