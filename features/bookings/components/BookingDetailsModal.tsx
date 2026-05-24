@@ -15,6 +15,8 @@ type BookingDetailsModalProps = {
   onEdit: () => void;
   onDelete: () => void;
   onNotify?: () => void;
+  notificationBusy?: boolean;
+  notificationMessage?: string;
 };
 
 export function BookingDetailsModal({
@@ -27,6 +29,8 @@ export function BookingDetailsModal({
   onEdit,
   onDelete,
   onNotify,
+  notificationBusy = false,
+  notificationMessage = "",
 }: BookingDetailsModalProps) {
   if (!booking) {
     return null;
@@ -102,9 +106,10 @@ export function BookingDetailsModal({
                 <button
                   className="secondary-button"
                   onClick={onNotify}
+                  disabled={notificationBusy}
                   type="button"
                 >
-                  Notificări
+                  {notificationBusy ? "Se trimite..." : "Notificări"}
                 </button>
               )}
 
@@ -144,6 +149,10 @@ export function BookingDetailsModal({
             Gata
           </button>
         </div>
+
+        {notificationMessage && (
+          <p className="success-line settings-alert">{notificationMessage}</p>
+        )}
       </div>
     </div>
   );

@@ -151,6 +151,8 @@ export default function KeluniaPage() {
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [selectedBookingNotice, setSelectedBookingNotice] = useState("");
+  const [notifyingSelectedBooking, setNotifyingSelectedBooking] = useState(false);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [settingsMessage, setSettingsMessage] = useState("");
   const [settingsError, setSettingsError] = useState("");
@@ -734,6 +736,7 @@ export default function KeluniaPage() {
 
     if (dayBookings.length === 1) {
       setSelectedDay(null);
+      setSelectedBookingNotice("");
       setSelectedBooking(dayBookings[0]);
       return;
     }
@@ -753,6 +756,7 @@ export default function KeluniaPage() {
 
   function selectBookingFromDayModal(booking: Booking) {
     setSelectedDay(null);
+    setSelectedBookingNotice("");
     setSelectedBooking(booking);
   }
 
@@ -767,12 +771,17 @@ export default function KeluniaPage() {
   }
 
   async function notifySelectedBookingNow() {
-    if (!selectedBooking) {
+    if (!selectedBooking || notifyingSelectedBooking) {
       return;
     }
 
+    setSelectedBookingNotice("");
+    setNotifyingSelectedBooking(true);
+
     try {
+      const notificationsAllowed = await requestKeluniaNotificationPermission();
       const saveBooking = httpsCallable(cloudFunctions, "saveBooking");
+
       await saveBooking({
         editingId: selectedBooking.id,
         group: selectedBooking.group,
@@ -789,10 +798,17 @@ export default function KeluniaPage() {
         notifyGroupRecipients: [],
         notifyGroupNow: true,
       });
-      setSelectedBooking(null);
+
+      setSelectedBookingNotice(
+        notificationsAllowed
+          ? "Reminderul a fost trimis. Pe dispozitivele cu notificările activate va apărea imediat."
+          : "Reminderul a fost trimis, dar pe acest dispozitiv notificările nu sunt activate."
+      );
     } catch (error) {
       console.error("Notificarea nu a putut fi trimisa:", error);
-      alert(error instanceof Error ? error.message : "Notificarea nu a putut fi trimisa.");
+      setSelectedBookingNotice(error instanceof Error ? error.message : "Notificarea nu a putut fi trimisa.");
+    } finally {
+      setNotifyingSelectedBooking(false);
     }
   }
 
@@ -962,6 +978,7 @@ export default function KeluniaPage() {
       const booking = bookings.find((item) => item.id === bookingId);
 
       if (booking) {
+        setSelectedBookingNotice("");
         setSelectedBooking(booking);
         setActiveView("calendar");
       }
@@ -995,6 +1012,7 @@ export default function KeluniaPage() {
       return;
     }
 
+    setSelectedBookingNotice("");
     setSelectedBooking(booking);
     setActiveView("calendar");
     window.history.replaceState(null, "", "/dashboard");
@@ -2237,9 +2255,15 @@ export default function KeluniaPage() {
         canEdit={selectedBooking ? canEditBooking(selectedBooking) : false}
         canCreate={canManageBookings && isOnline}
         onAdd={createBookingFromSelectedBooking}
-        onClose={() => setSelectedBooking(null)}
+        notificationBusy={notifyingSelectedBooking}
+        notificationMessage={selectedBookingNotice}
+        onClose={() => {
+          setSelectedBooking(null);
+          setSelectedBookingNotice("");
+        }}
         onEdit={() => {
           if (selectedBooking) {
+            setSelectedBookingNotice("");
             openEditForm(selectedBooking);
           }
         }}
