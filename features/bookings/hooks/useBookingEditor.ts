@@ -2,9 +2,8 @@
 
 import { useEffect, useState, type Dispatch, type FormEvent, type SetStateAction } from "react";
 import type { User } from "firebase/auth";
+import { httpsCallable } from "firebase/functions";
 import {
-  addDoc,
-  collection,
   doc,
   Timestamp,
   updateDoc,
@@ -14,6 +13,7 @@ import {
 import type { UserProfile, UserRole } from "@/context/AuthContext";
 import type { AuditAction, AuditEntityType } from "@/lib/audit";
 import { emptyForm } from "@/lib/config/app";
+import { cloudFunctions } from "@/lib/firebase";
 import { can, type PermissionContext } from "@/lib/permissions/capabilities";
 import { normalizeNotificationOffsetRules, notificationOffsetToKey, requestKeluniaNotificationPermission } from "@/lib/notifications";
 import { timeToMinutes } from "@/lib/scheduling";
@@ -294,14 +294,36 @@ export function useBookingEditor({
     };
 
     try {
+      const saveBooking = httpsCallable(cloudFunctions, "saveBooking");
+      const savePayload = {
+        editingId: editingId ?? "",
+        group: payload.group,
+        room: payload.room,
+        roomId: payload.roomId,
+        locationId: payload.locationId,
+        locationName: payload.locationName,
+        startDate: payload.startDate,
+        endDate: payload.endDate,
+        startTime: payload.startTime,
+        endTime: payload.endTime,
+        reason: payload.reason,
+        notifyOnThisBooking: payload.notifyOnThisBooking,
+        notifyOffsets: payload.notifyOffsets,
+        notifyForUid: payload.notifyForUid,
+        notifyGroupOnThisBooking: payload.notifyGroupOnThisBooking === true,
+        notifyGroupOffsets: payload.notifyGroupOffsets ?? [],
+        notifyGroupAudience: payload.notifyGroupAudience ?? "all",
+        notifyGroupRecipients: payload.notifyGroupRecipients ?? [],
+        notifyGroupNow: shouldNotifyGroupNow,
+      };
+
       if (editingId) {
-        await updateDoc(doc(db, "events", editingId), payload);
+        await saveBooking(savePayload);
         await recordAuditLog("booking", "update", editingId, originalBooking, payload);
       } else {
-        const createdPayload = { ...payload, createdAt: Timestamp.now(), deleted: false };
-        const created = await addDoc(collection(db, "events"), createdPayload);
-        await updateLocationCounterSafely(db, currentLocationId, "bookingCount", 1);
-        await recordAuditLog("booking", "create", created.id, null, createdPayload);
+        const result = await saveBooking(savePayload);
+        const createdId = typeof result.data === "object" && result.data && "id" in result.data ? String(result.data.id) : "";
+        await recordAuditLog("booking", "create", createdId || "booking", null, payload);
       }
 
       setShowBookingModal(false);

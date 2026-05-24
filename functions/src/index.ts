@@ -61,6 +61,28 @@ type AccessCodeDocument = {
   role?: UserRole;
 };
 
+type SaveBookingRequest = {
+  editingId?: string;
+  group?: string;
+  room?: string;
+  roomId?: string;
+  startDate?: string;
+  endDate?: string;
+  startTime?: string;
+  endTime?: string;
+  reason?: string;
+  locationId?: string;
+  locationName?: string;
+  notifyOnThisBooking?: boolean;
+  notifyOffsets?: string[];
+  notifyForUid?: string;
+  notifyGroupOnThisBooking?: boolean;
+  notifyGroupOffsets?: string[];
+  notifyGroupAudience?: "all" | "selected";
+  notifyGroupRecipients?: string[];
+  notifyGroupNow?: boolean;
+};
+
 type UserRole = "manager" | "member" | "guest";
 
 type UserProfile = {
@@ -71,11 +93,11 @@ type UserProfile = {
 };
 
 function normalizeRole(role: unknown): UserRole {
-  if (role === "manager" || role === "superadmin") {
+  if (role === "manager" || role === "superadmin" || role === "administrator") {
     return "manager";
   }
 
-  if (role === "member" || role === "admin") {
+  if (role === "member" || role === "admin" || role === "collaborator" || role === "colaborator") {
     return "member";
   }
 
@@ -98,6 +120,29 @@ function cleanEmail(value: unknown) {
 
 function validEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function cleanText(value: unknown, maxLength: number) {
+  return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
+}
+
+function validDateKeyString(value: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+function validTimeString(value: string) {
+  return /^\d{2}:\d{2}$/.test(value);
+}
+
+function cleanNotificationOffsets(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => String(item))
+    .filter((item) => /^([1-9]\d*)(h|d)$/.test(item))
+    .slice(0, 5);
 }
 
 function userClaimsFromProfile(profile: UserProfile) {
@@ -525,6 +570,160 @@ export const sendAccessInviteEmail = onCall(
     );
 
     return { sent: true, id: result.data?.id ?? "" };
+  }
+);
+
+export const saveBooking = onCall(
+  {
+    region: "europe-west1",
+  },
+  async (request) => {
+    if (!request.auth?.uid || request.auth.token.email_verified !== true) {
+      throw new HttpsError("unauthenticated", "Trebuie să fii autentificat cu email verificat.");
+    }
+
+    const db = getFirestore();
+    const userSnapshot = await db.doc(`users/${request.auth.uid}`).get();
+    const userProfile = userSnapshot.exists ? userSnapshot.data() as UserProfile & {
+      allowedRoomIds?: string[];
+      displayName?: string;
+      email?: string;
+      groupName?: string;
+      isOwner?: boolean;
+      roomAccess?: string;
+    } : null;
+    const isOwner = userProfile?.isOwner === true || request.auth.token.email === "emanuelmuresan@gmail.com";
+    const role = normalizeRole(userProfile?.role ?? request.auth.token.role);
+    const payload = request.data as SaveBookingRequest;
+    const editingId = cleanText(payload.editingId, 160);
+    const locationId = cleanText(payload.locationId, 160);
+    const locationName = cleanText(payload.locationName, 180);
+    const group = cleanText(payload.group, 120);
+    const room = cleanText(payload.room, 120);
+    const roomId = cleanText(payload.roomId, 160);
+    const startDate = cleanText(payload.startDate, 10);
+    const endDate = cleanText(payload.endDate || payload.startDate, 10);
+    const startTime = cleanText(payload.startTime, 5);
+    const endTime = cleanText(payload.endTime, 5);
+    const reason = cleanText(payload.reason, 300);
+
+    if (!locationId || !group || !room || !validDateKeyString(startDate) || !validDateKeyString(endDate) || !validTimeString(startTime) || !validTimeString(endTime)) {
+      throw new HttpsError("invalid-argument", "Programarea nu are toate câmpurile obligatorii.");
+    }
+
+    if (!isOwner && userProfile?.locationId !== locationId) {
+      throw new HttpsError("permission-denied", "Nu ai acces la această locație.");
+    }
+
+    if (role === "guest") {
+      throw new HttpsError("permission-denied", "Ai nevoie de rol de administrator sau colaborator.");
+    }
+
+    if (!isOwner && role === "member" && cleanText(userProfile?.groupName, 120) !== group) {
+      throw new HttpsError("permission-denied", "Colaboratorii pot face programări doar pentru grupul lor.");
+    }
+
+    if (!isOwner && role !== "manager" && userProfile?.roomAccess === "selected" && !userProfile.allowedRoomIds?.includes(roomId)) {
+      throw new HttpsError("permission-denied", "Nu ai acces la sala aleasă.");
+    }
+
+    const locationSnapshot = await db.doc(`locations/${locationId}`).get();
+
+    if (!locationSnapshot.exists && !isOwner) {
+      throw new HttpsError("not-found", "Locația nu există.");
+    }
+
+    const location = locationSnapshot.data() ?? {};
+    const billingStatus = String(location.billingStatus ?? "");
+    const trialEndsAt = location.trialEndsAt as { toMillis?: () => number } | undefined;
+
+    if (!isOwner && billingStatus && billingStatus !== "active" && billingStatus !== "trialing") {
+      throw new HttpsError("failed-precondition", "Locația nu permite momentan modificări.");
+    }
+
+    if (!isOwner && billingStatus === "trialing" && trialEndsAt?.toMillis && trialEndsAt.toMillis() <= Date.now()) {
+      throw new HttpsError("failed-precondition", "Trialul locației a expirat.");
+    }
+
+    const notifyOffsets = payload.notifyOnThisBooking ? cleanNotificationOffsets(payload.notifyOffsets) : [];
+    const notifyGroupOffsets = payload.notifyGroupOnThisBooking ? cleanNotificationOffsets(payload.notifyGroupOffsets) : [];
+    const now = FieldValue.serverTimestamp();
+    const bookingPayload: Record<string, unknown> = {
+      group,
+      congregatie: group,
+      room,
+      roomId,
+      location: room,
+      startDate,
+      endDate,
+      startTime,
+      endTime,
+      orar: `${startTime} - ${endTime}`,
+      reason,
+      motiv: reason,
+      locationId,
+      locationName,
+      notifyOnThisBooking: payload.notifyOnThisBooking === true,
+      notifyOffsets,
+      notifyForUid: payload.notifyOnThisBooking === true ? request.auth.uid : "",
+      updatedBy: userProfile?.displayName || request.auth.token.email || "",
+      updatedAt: now,
+    };
+
+    if (payload.notifyGroupOnThisBooking === true) {
+      bookingPayload.notifyGroupOnThisBooking = true;
+      bookingPayload.notifyGroupOffsets = notifyGroupOffsets;
+      bookingPayload.notifyGroupAudience = payload.notifyGroupAudience === "selected" ? "selected" : "all";
+      bookingPayload.notifyGroupRecipients = Array.isArray(payload.notifyGroupRecipients)
+        ? payload.notifyGroupRecipients.map((item) => cleanEmail(item)).filter(Boolean).slice(0, 200)
+        : [];
+    }
+
+    if (payload.notifyGroupNow === true) {
+      bookingPayload.notifyGroupNowAt = now;
+      bookingPayload.notifyGroupNowBy = request.auth.token.email || "";
+      bookingPayload.notifyGroupAudience = payload.notifyGroupAudience === "selected" ? "selected" : "all";
+      bookingPayload.notifyGroupRecipients = Array.isArray(payload.notifyGroupRecipients)
+        ? payload.notifyGroupRecipients.map((item) => cleanEmail(item)).filter(Boolean).slice(0, 200)
+        : [];
+    }
+
+    if (editingId) {
+      const ref = db.doc(`events/${editingId}`);
+      const beforeSnapshot = await ref.get();
+
+      if (!beforeSnapshot.exists) {
+        throw new HttpsError("not-found", "Programarea nu mai există.");
+      }
+
+      const before = beforeSnapshot.data() ?? {};
+
+      if (!isOwner && role !== "manager" && before.authorEmail !== request.auth.token.email) {
+        throw new HttpsError("permission-denied", "Poți edita doar programările tale.");
+      }
+
+      await ref.update(bookingPayload);
+      return { id: editingId, saved: true };
+    }
+
+    bookingPayload.authorEmail = request.auth.token.email || "";
+    bookingPayload.authorName = userProfile?.displayName || request.auth.token.email || "Utilizator";
+    bookingPayload.createdAt = now;
+    bookingPayload.deleted = false;
+
+    const created = await db.collection("events").add(bookingPayload);
+
+    await db.doc(`locations/${locationId}`).set(
+      {
+        usage: {
+          bookingCount: FieldValue.increment(1),
+        },
+        updatedAt: now,
+      },
+      { merge: true }
+    );
+
+    return { id: created.id, saved: true };
   }
 );
 
