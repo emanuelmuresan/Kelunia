@@ -2073,7 +2073,6 @@ service cloud.firestore {
           || resource.data.locationId == userLocationId()
         );
       allow create: if signedInVerified()
-        && hasUserDoc()
         && validEventData(request.resource.data)
         && (
           isOwner()
