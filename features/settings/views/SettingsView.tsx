@@ -726,6 +726,10 @@ export function SettingsView({
               <span>Rol</span>
               <strong>{isOwner ? "Proprietar" : isSuperAdmin ? "Manager" : "Membru"}</strong>
             </div>
+            <div>
+              <span>Limba</span>
+              <strong>{personalDraft.language === "ro" ? "Romana" : "Limba selectata"}</strong>
+            </div>
             {!isOwner && (
               <div>
                 <span>{groupsLabelDraft.trim() || defaultGroupsLabel}</span>
