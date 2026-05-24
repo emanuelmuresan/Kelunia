@@ -48,6 +48,8 @@ export const emptyForm: BookingForm = {
   reason: "",
   notifyOnThisBooking: false,
   notifyOffsets: ["1h"],
+  notifyGroupOnThisBooking: false,
+  notifyGroupOffsets: ["1h"],
 };
 
 export const emptyFixedDraft: FixedScheduleDraft = {
@@ -60,8 +62,8 @@ export const emptyFixedDraft: FixedScheduleDraft = {
 };
 
 export const roleLabels: Record<UserRole, string> = {
-  manager: "Manager",
-  member: "Membru",
+  manager: "Administrator",
+  member: "Colaborator",
   guest: "Oaspete",
 };
 

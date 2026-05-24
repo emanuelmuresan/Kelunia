@@ -183,7 +183,7 @@ export function AccessCodesModal({
             Filtreaza dupa grup
             <select className="code-filter-select" value={groupFilter} onChange={(event) => setGroupFilter(event.target.value)}>
               <option value="all">Toate codurile</option>
-              <option value="__manager__">Manageri</option>
+              <option value="__manager__">Administratori</option>
               <option value="__without_group__">Fara grup</option>
               {groups.map((group) => <option key={group.id} value={group.name}>{group.name}</option>)}
             </select>
@@ -219,8 +219,8 @@ export function AccessCodesModal({
               >
                 <option value="">Alege rolul</option>
                 <option value="guest">Oaspete</option>
-                <option value="member">Membru</option>
-                <option value="manager">Manager</option>
+                <option value="member">Colaborator</option>
+                <option value="manager">Administrator</option>
               </select>
               <select
                 value={codeGenerator.groupName}
@@ -330,8 +330,8 @@ export function AccessCodesModal({
                     disabled={editDisabled}
                   >
                     <option value="guest">Oaspete</option>
-                    <option value="member">Membru</option>
-                    <option value="manager">Manager</option>
+                    <option value="member">Colaborator</option>
+                    <option value="manager">Administrator</option>
                   </select>
                   <select
                     value={draftGroupName}
@@ -485,7 +485,7 @@ export function AccessCodesModal({
               <span>Locatie</span>
               <strong>{inviteDraft.locationName}</strong>
               <span>Rol</span>
-              <strong>{inviteDraft.role === "manager" ? "Manager" : inviteDraft.role === "member" ? "Membru" : "Oaspete"}</strong>
+              <strong>{inviteDraft.role === "manager" ? "Administrator" : inviteDraft.role === "member" ? "Colaborator" : "Oaspete"}</strong>
               {inviteDraft.role !== "manager" && (
                 <>
                   <span>Grup</span>

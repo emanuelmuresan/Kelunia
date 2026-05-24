@@ -11,7 +11,7 @@ const problems = [
   },
   {
     title: "Transparență totală",
-    text: "Toți membrii văd în timp real cine ocupă spațiul, pentru ce activitate și în ce interval.",
+    text: "Toți colaboratorii văd în timp real cine ocupă spațiul, pentru ce activitate și în ce interval.",
   },
   {
     title: "Acces controlat",
@@ -37,7 +37,7 @@ const features = [
   },
   {
     title: "Permisiuni pe roluri",
-    text: "Administratorii controlează tot, membrii rezervă, iar publicul poate avea doar drept de vizualizare.",
+    text: "Administratorii controlează tot, colaboratorii rezervă, iar publicul poate avea doar drept de vizualizare.",
     icon: "/settings.png",
   },
 ];

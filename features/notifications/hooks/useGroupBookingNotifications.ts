@@ -63,6 +63,19 @@ export function useGroupBookingNotifications({
     const groupBookings = profile.notifyGroupBookings && profile.groupName.trim()
       ? bookings.filter((booking) => isGroupBooking(booking, profile.groupName))
       : [];
+    const groupBookingReminders = Array.from(
+      [
+        ...groupBookings.flatMap((booking) => legacyOffsets.map((offset) => ({ booking, offset }))),
+        ...bookings
+          .filter((booking) => booking.notifyGroupOnThisBooking && profile.groupName.trim() && isGroupBooking(booking, profile.groupName))
+          .flatMap((booking) => normalizeNotificationOffsetRules(booking.notifyGroupOffsets).map((offset) => ({ booking, offset }))),
+      ]
+        .reduce((unique, reminder) => {
+          unique.set(`${reminder.booking.id}:${notificationOffsetToKey(reminder.offset)}`, reminder);
+          return unique;
+        }, new Map<string, { booking: Booking; offset: { value: number; unit: "hours" | "days" } }>())
+        .values()
+    );
     const personalBookingNotifications = bookings.flatMap((booking) => {
       if (!booking.notifyOnThisBooking || booking.notifyForUid !== user.uid) {
         return [];
@@ -89,8 +102,7 @@ export function useGroupBookingNotifications({
 
     if (canUseNativeNotifications()) {
       void (async () => {
-        const groupNotifications = groupBookings.flatMap((booking) =>
-          legacyOffsets.flatMap((offset) => {
+        const groupNotifications = groupBookingReminders.flatMap(({ booking, offset }) => {
             const notifyAt = new Date(bookingStartDateTime(booking).getTime() - notificationOffsetToMs(offset));
 
             if (notifyAt.getTime() <= Date.now()) {
@@ -107,8 +119,7 @@ export function useGroupBookingNotifications({
                 extra: { bookingId: booking.id, url: "/dashboard" },
               },
             ];
-          })
-        );
+        });
         const personalNotifications = personalBookingNotifications.flatMap(({ booking, offset }) => {
           const notifyAt = new Date(bookingStartDateTime(booking).getTime() - notificationOffsetToMs(offset));
 
@@ -162,10 +173,8 @@ export function useGroupBookingNotifications({
       return;
     }
 
-    const groupTimers = bookings
-      .filter((booking) => profile.notifyGroupBookings && profile.groupName.trim() && isGroupBooking(booking, profile.groupName))
-      .flatMap((booking) =>
-        legacyOffsets.map((offset) => {
+    const groupTimers = groupBookingReminders
+      .map(({ booking, offset }) => {
           const notifyAt = new Date(bookingStartDateTime(booking).getTime() - notificationOffsetToMs(offset));
           const delay = notifyAt.getTime() - Date.now();
           const storageKey = notificationStorageKey(user.uid, booking.id, offset);
@@ -200,8 +209,7 @@ export function useGroupBookingNotifications({
               console.warn("Notificarea nu a putut fi afisata:", error);
             }
           }, delay);
-        })
-      );
+      });
     const personalTimers = personalBookingNotifications.map(({ booking, offset }) => {
       const notifyAt = new Date(bookingStartDateTime(booking).getTime() - notificationOffsetToMs(offset));
       const delay = notifyAt.getTime() - Date.now();

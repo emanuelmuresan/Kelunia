@@ -793,6 +793,8 @@ service cloud.firestore {
           "notifyOnThisBooking",
           "notifyOffsets",
           "notifyForUid",
+          "notifyGroupOnThisBooking",
+          "notifyGroupOffsets",
           "updatedAt",
           "createdAt",
           "deleted",
@@ -821,6 +823,8 @@ service cloud.firestore {
         && validOptionalBool(data, "notifyOnThisBooking")
         && validOptionalNotificationOffsetRules(data, "notifyOffsets")
         && validOptionalText(data, "notifyForUid", 160)
+        && validOptionalBool(data, "notifyGroupOnThisBooking")
+        && validOptionalNotificationOffsetRules(data, "notifyGroupOffsets")
         && data.updatedAt is timestamp
         && validOptionalTimestamp(data, "createdAt")
         && validSoftDeleteFields(data);

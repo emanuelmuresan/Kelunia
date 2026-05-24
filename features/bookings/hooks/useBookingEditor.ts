@@ -156,6 +156,8 @@ export function useBookingEditor({
       reason: booking.reason,
       notifyOnThisBooking: Boolean(booking.notifyOnThisBooking && booking.notifyForUid === user?.uid),
       notifyOffsets: booking.notifyOffsets?.length ? booking.notifyOffsets : ["1h"],
+      notifyGroupOnThisBooking: Boolean(booking.notifyGroupOnThisBooking),
+      notifyGroupOffsets: booking.notifyGroupOffsets?.length ? booking.notifyGroupOffsets : ["1h"],
     });
     setShowBookingModal(true);
   }
@@ -169,7 +171,7 @@ export function useBookingEditor({
     }
 
     if (!user || !canManageBookings) {
-      setFormError(licenseAccess.isReadOnly ? licenseAccess.message : "Ai nevoie de drepturi de membru sau manager pentru programări.");
+      setFormError(licenseAccess.isReadOnly ? licenseAccess.message : "Ai nevoie de drepturi de colaborator sau administrator pentru programări.");
       return;
     }
 
@@ -216,6 +218,7 @@ export function useBookingEditor({
 
     const originalBooking = editingId ? bookings.find((booking) => booking.id === editingId) : null;
     const bookingNotificationOffsets = normalizeNotificationOffsetRules(formData.notifyOffsets);
+    const groupNotificationOffsets = normalizeNotificationOffsetRules(formData.notifyGroupOffsets);
 
     if (formData.notifyOnThisBooking) {
       if (bookingNotificationOffsets.length === 0) {
@@ -229,6 +232,11 @@ export function useBookingEditor({
         setFormError("Notificările nu au fost permise pe acest dispozitiv.");
         return;
       }
+    }
+
+    if (formData.notifyGroupOnThisBooking && groupNotificationOffsets.length === 0) {
+      setFormError("Alege cel puțin un moment pentru reminderul de grup.");
+      return;
     }
 
     const payload = {
@@ -252,6 +260,8 @@ export function useBookingEditor({
       notifyOnThisBooking: formData.notifyOnThisBooking,
       notifyOffsets: formData.notifyOnThisBooking ? bookingNotificationOffsets.map(notificationOffsetToKey) : [],
       notifyForUid: formData.notifyOnThisBooking ? user.uid : "",
+      notifyGroupOnThisBooking: formData.notifyGroupOnThisBooking,
+      notifyGroupOffsets: formData.notifyGroupOnThisBooking ? groupNotificationOffsets.map(notificationOffsetToKey) : [],
       updatedAt: Timestamp.now(),
     };
 

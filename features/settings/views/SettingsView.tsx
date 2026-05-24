@@ -724,7 +724,7 @@ export function SettingsView({
             </div>
             <div>
               <span>Rol</span>
-              <strong>{isOwner ? "Proprietar" : isSuperAdmin ? "Manager" : "Membru"}</strong>
+              <strong>{isOwner ? "Proprietar" : isSuperAdmin ? "Administrator" : "Colaborator"}</strong>
             </div>
             <div>
               <span>Limba</span>
@@ -914,7 +914,7 @@ export function SettingsView({
               </div>
 
               <div>
-                <span>Manageri</span>
+                <span>Administratori</span>
                 <strong>
                   {currentLocationManagerAccountCount}/{currentLocationManagerLimit}
                 </strong>
@@ -1078,8 +1078,8 @@ export function SettingsView({
                 <span className="eyebrow">Acces</span>
                 <h3>{visibleManagedUsers.length} {visibleManagedUsers.length === 1 ? "utilizator" : "utilizatori"}</h3>
                 <p>
-                  {visibleManagedUsers.filter((item) => item.role === "manager").length} manageri ·{" "}
-                  {visibleManagedUsers.filter((item) => item.role !== "manager").length} membri si oaspeti
+                  {visibleManagedUsers.filter((item) => item.role === "manager").length} administratori ·{" "}
+                  {visibleManagedUsers.filter((item) => item.role !== "manager").length} colaboratori si oaspeti
                 </p>
               </div>
               <div className="owner-tool-actions">
@@ -1255,8 +1255,8 @@ export function SettingsView({
                     }
                   >
                     <option value="guest">Oaspete</option>
-                    <option value="member">Membru</option>
-                    <option value="manager">Manager</option>
+                    <option value="member">Colaborator</option>
+                    <option value="manager">Administrator</option>
                   </select>
 
                   <div className="user-room-access">

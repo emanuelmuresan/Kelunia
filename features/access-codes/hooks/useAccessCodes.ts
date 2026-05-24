@@ -120,11 +120,11 @@ export function useAccessCodes({
 
   function roleLabel(role: UserRole) {
     if (role === "manager") {
-      return "Manager";
+      return "Administrator";
     }
 
     if (role === "member") {
-      return "Membru";
+      return "Colaborator";
     }
 
     return "Oaspete";
@@ -273,7 +273,7 @@ export function useAccessCodes({
     }
 
     if (selectedRole === "manager" && currentLocationManagerCapacityUsed >= currentLocationManagerLimit) {
-      setCodesError(`Aceasta locatie are deja limita de ${currentLocationManagerLimit} manageri sau invitatii active de manager.`);
+      setCodesError(`Aceasta locatie are deja limita de ${currentLocationManagerLimit} administratori sau invitatii active de administrator.`);
       return;
     }
 
@@ -397,7 +397,7 @@ export function useAccessCodes({
     const managerCapacityAfterCurrentCode = currentLocationManagerCapacityUsed - (currentCodeUsesManagerSlot ? 1 : 0);
 
     if (nextRole === "manager" && managerCapacityAfterCurrentCode >= currentLocationManagerLimit) {
-      setCodesError(`Aceasta locatie are deja limita de ${currentLocationManagerLimit} manageri sau invitatii active de manager.`);
+      setCodesError(`Aceasta locatie are deja limita de ${currentLocationManagerLimit} administratori sau invitatii active de administrator.`);
       return;
     }
 
@@ -425,7 +425,7 @@ export function useAccessCodes({
     setCodesMessage("");
 
     if (!item.active && item.role === "manager" && currentLocationManagerCapacityUsed >= currentLocationManagerLimit) {
-      setCodesError(`Aceasta locatie are deja limita de ${currentLocationManagerLimit} manageri sau invitatii active de manager.`);
+      setCodesError(`Aceasta locatie are deja limita de ${currentLocationManagerLimit} administratori sau invitatii active de administrator.`);
       return;
     }
 

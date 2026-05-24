@@ -200,6 +200,8 @@ export interface Booking {
   notifyOnThisBooking?: boolean;
   notifyOffsets?: string[];
   notifyForUid?: string;
+  notifyGroupOnThisBooking?: boolean;
+  notifyGroupOffsets?: string[];
   createdAt?: unknown;
 }
 
@@ -214,6 +216,8 @@ export interface BookingForm {
   reason: string;
   notifyOnThisBooking: boolean;
   notifyOffsets: string[];
+  notifyGroupOnThisBooking: boolean;
+  notifyGroupOffsets: string[];
 }
 
 export interface RoomItem {

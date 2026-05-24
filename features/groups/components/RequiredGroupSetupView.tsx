@@ -74,7 +74,7 @@ export function RequiredGroupSetupView({
         {groupsReadError && <p className="error-line">{groupsReadError}</p>}
         {groupsLoaded && groups.length === 0 && !groupsReadError && (
           <p className="warning-line">
-            Nu exista grupuri pentru aceasta locatie. Managerul trebuie sa adauge grupurile in Setari inainte ca utilizatorii noi sa poata continua.
+            Nu exista grupuri pentru aceasta locatie. Administratorul trebuie sa adauge grupurile in Setari inainte ca utilizatorii noi sa poata continua.
           </p>
         )}
         {error && <p className="error-line">{error}</p>}

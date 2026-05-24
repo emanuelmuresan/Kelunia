@@ -65,6 +65,27 @@ export function BookingModal({
     onChange({ ...formData, notifyOffsets: nextOffsets });
   }
 
+  function updateGroupNotificationOffset(index: number, value: string) {
+    const current = formData.notifyGroupOffsets[index] ?? "1h";
+    const unit = current.endsWith("d") ? "d" : "h";
+    const max = unit === "h" ? 48 : 30;
+    const amount = Math.max(1, Math.min(max, Number(value) || 1));
+    const nextOffsets = syncLegacyOffsets(formData.notifyGroupOffsets.map((offset, offsetIndex) =>
+      offsetIndex === index ? `${amount}${unit}` : offset
+    ));
+    onChange({ ...formData, notifyGroupOffsets: nextOffsets });
+  }
+
+  function updateGroupNotificationOffsetUnit(index: number, unit: "h" | "d") {
+    const current = formData.notifyGroupOffsets[index] ?? "1h";
+    const amount = Math.max(1, Number(current.slice(0, -1)) || 1);
+    const nextAmount = unit === "h" ? Math.min(amount, 48) : Math.min(amount, 30);
+    const nextOffsets = syncLegacyOffsets(formData.notifyGroupOffsets.map((offset, offsetIndex) =>
+      offsetIndex === index ? `${nextAmount}${unit}` : offset
+    ));
+    onChange({ ...formData, notifyGroupOffsets: nextOffsets });
+  }
+
   return (
     <div className="modal-backdrop" role="presentation">
       <div className="modal-card" role="dialog" aria-modal="true" aria-label="Programare">
@@ -189,6 +210,70 @@ export function BookingModal({
                     type="button"
                   >
                     Adauga notificare
+                  </button>
+                )}
+              </>
+            )}
+
+            <label className="toggle-row">
+              <input
+                type="checkbox"
+                checked={formData.notifyGroupOnThisBooking}
+                onChange={(event) =>
+                  onChange({
+                    ...formData,
+                    notifyGroupOnThisBooking: event.target.checked,
+                    notifyGroupOffsets: formData.notifyGroupOffsets.length > 0 ? formData.notifyGroupOffsets : ["1h"],
+                  })
+                }
+              />
+              Trimite reminder pentru tot grupul
+            </label>
+
+            {formData.notifyGroupOnThisBooking && (
+              <>
+                {formData.notifyGroupOffsets.map((offset, index) => {
+                  const unit = offset.endsWith("d") ? "d" : "h";
+                  const amount = Math.max(1, Number(offset.slice(0, -1)) || 1);
+
+                  return (
+                    <label key={`group-${offset}-${index}`}>
+                      Reminder grup cu cat timp inainte
+                      <div className="inline-add">
+                        <input
+                          min={1}
+                          max={unit === "h" ? 48 : 30}
+                          type="number"
+                          value={amount}
+                          onChange={(event) => updateGroupNotificationOffset(index, event.target.value)}
+                        />
+                        <select value={unit} onChange={(event) => updateGroupNotificationOffsetUnit(index, event.target.value as "h" | "d")}>
+                          <option value="h">ore</option>
+                          <option value="d">zile</option>
+                        </select>
+                        <button
+                          className="secondary-button compact"
+                          onClick={() =>
+                            onChange({
+                              ...formData,
+                              notifyGroupOffsets: formData.notifyGroupOffsets.filter((_, offsetIndex) => offsetIndex !== index),
+                            })
+                          }
+                          type="button"
+                        >
+                          Sterge
+                        </button>
+                      </div>
+                    </label>
+                  );
+                })}
+                {formData.notifyGroupOffsets.length < 5 && (
+                  <button
+                    className="secondary-button compact"
+                    onClick={() => onChange({ ...formData, notifyGroupOffsets: [...formData.notifyGroupOffsets, "1h"] })}
+                    type="button"
+                  >
+                    Adauga reminder grup
                   </button>
                 )}
               </>

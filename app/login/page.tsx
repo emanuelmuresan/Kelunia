@@ -38,11 +38,11 @@ function assertAccessCodeCanBeUsed(data: Record<string, unknown>, role: UserRole
   const usage = accessCodeUsage(data, role);
 
   if (!usage.active) {
-    throw new Error("Codul de acces este oprit. Cere un cod nou de la manager.");
+    throw new Error("Codul de acces este oprit. Cere un cod nou de la administrator.");
   }
 
   if (usage.maxUses !== null && usage.usedCount >= usage.maxUses) {
-    throw new Error("Codul de acces a fost folosit de numărul maxim de persoane. Cere un cod nou de la manager.");
+    throw new Error("Codul de acces a fost folosit de numărul maxim de persoane. Cere un cod nou de la administrator.");
   }
 
   return usage;
@@ -254,7 +254,7 @@ export default function LoginPage() {
     }
 
     if (!isOwner && role !== "manager" && !cleanGroupName) {
-      throw new Error("Codul de acces nu are un grup setat. Cere un cod nou de la manager.");
+      throw new Error("Codul de acces nu are un grup setat. Cere un cod nou de la administrator.");
     }
 
     const accessCodeRef = !isOwner && cleanAccessCodeId ? doc(db, "accessCodes", cleanAccessCodeId) : null;
@@ -268,7 +268,7 @@ export default function LoginPage() {
         const locationSnap = await getDoc(doc(db, "locations", cleanLocationId));
 
         if (!locationSnap.exists()) {
-          throw new Error("Locația acestui cod nu mai există. Cere un cod nou de la manager.");
+          throw new Error("Locația acestui cod nu mai există. Cere un cod nou de la administrator.");
         }
 
         const locationData = locationSnap.data() ?? {};
@@ -700,7 +700,7 @@ export default function LoginPage() {
               <input
                 value={accessCode}
                 onChange={(event) => setAccessCode(event.target.value)}
-                placeholder="codul primit de la manager sau la licența locației"
+                placeholder="codul primit de la administrator sau la licența locației"
                 required
               />
             </label>
@@ -708,7 +708,7 @@ export default function LoginPage() {
 
           {mode === "register" && (
             <>
-              <p className="muted-note">Dacă acesta este cod de licență, vei deschide locația după ce intri în cont. Dacă este cod primit de la manager, locația este aleasă automat.</p>
+              <p className="muted-note">Dacă acesta este cod de licență, vei deschide locația după ce intri în cont. Dacă este cod primit de la administrator, locația este aleasă automat.</p>
             </>
           )}
 

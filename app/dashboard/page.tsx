@@ -1247,7 +1247,7 @@ export default function KeluniaPage() {
       );
     } catch (error) {
       console.error(`${label} nu a putut fi salvată:`, error);
-      setSpaceError("Firebase nu permite încă această modificare. Actualizează regulile Firestore pentru manager.");
+      setSpaceError("Firebase nu permite încă această modificare. Actualizează regulile Firestore pentru administrator.");
     }
   }
 
@@ -1270,7 +1270,7 @@ export default function KeluniaPage() {
       setSettingsMessage(kind === "room" ? "Sala a fost ștearsă." : "Grupul a fost șters.");
     } catch (error) {
       console.error("Elementul nu a putut fi șters:", error);
-      setSettingsError("Firebase nu permite încă ștergerea. Actualizează regulile Firestore pentru manager.");
+      setSettingsError("Firebase nu permite încă ștergerea. Actualizează regulile Firestore pentru administrator.");
     }
   }
 
@@ -1447,7 +1447,7 @@ export default function KeluniaPage() {
       setSettingsMessage(fixedEditingId ? "Programul a fost actualizat." : "Programul a fost adăugat.");
     } catch (error) {
       console.error("Programul nu a putut fi salvat:", error);
-      setFixedError("Firebase nu permite încă salvarea programului. Actualizează regulile Firestore pentru manager.");
+      setFixedError("Firebase nu permite încă salvarea programului. Actualizează regulile Firestore pentru administrator.");
     }
   }
 
@@ -1492,7 +1492,7 @@ export default function KeluniaPage() {
     ).length;
 
     if (nextRole === "manager" && otherSuperAdmins >= currentLocationManagerLimit) {
-      setSettingsError(`Aceasta locatie poate avea maximum ${currentLocationManagerLimit} manageri.`);
+      setSettingsError(`Aceasta locatie poate avea maximum ${currentLocationManagerLimit} administratori.`);
       return;
     }
 
@@ -1704,7 +1704,7 @@ export default function KeluniaPage() {
         <LocationSetupView
           address={locationSetupAddress}
           addressInputRef={locationSetupAddressInputRef}
-          displayName={profile?.displayName || user?.email || "Manager"}
+          displayName={profile?.displayName || user?.email || "Administrator"}
           error={locationSetupError}
           isLoading={locationSetupLoading}
           isOnline={isOnline}

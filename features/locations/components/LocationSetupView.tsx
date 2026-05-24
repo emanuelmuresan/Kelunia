@@ -42,7 +42,7 @@ export function LocationSetupView({
         <div>
           <span className="eyebrow">Kelunia</span>
           <h1>Deschide locatia</h1>
-          <p>{displayName} · Manager</p>
+          <p>{displayName} · Administrator</p>
         </div>
         <div className="topbar-actions">
           <InstallAppPrompt />

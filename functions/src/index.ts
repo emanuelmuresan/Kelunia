@@ -261,11 +261,11 @@ function passwordResetEmailHtml(link: string) {
 
 function roleLabel(role: UserRole) {
   if (role === "manager") {
-    return "Manager";
+    return "Administrator";
   }
 
   if (role === "member") {
-    return "Membru";
+    return "Colaborator";
   }
 
   return "Oaspete";

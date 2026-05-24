@@ -4659,3 +4659,110 @@ img {
     padding-right: max(28px, env(safe-area-inset-right));
   }
 }
+
+.translation-page {
+  min-height: 100vh;
+  padding: 32px;
+  background: #f5f8fc;
+  color: #172033;
+}
+
+.translation-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 520px);
+  gap: 24px;
+  align-items: end;
+  max-width: 1280px;
+  margin: 0 auto 22px;
+}
+
+.translation-hero h1 {
+  margin: 4px 0 0;
+  font-size: 2.2rem;
+}
+
+.translation-hero p {
+  margin: 0;
+  color: #58657a;
+  line-height: 1.6;
+}
+
+.translation-summary {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(120px, 1fr));
+  gap: 10px;
+  max-width: 1280px;
+  margin: 0 auto 18px;
+}
+
+.translation-summary div {
+  border: 1px solid #d9e4f2;
+  border-radius: 8px;
+  padding: 12px;
+  background: #fff;
+}
+
+.translation-summary span {
+  display: block;
+  color: #7c3cff;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.translation-summary strong {
+  display: block;
+  margin-top: 4px;
+}
+
+.translation-table-wrap {
+  max-width: 1280px;
+  margin: 0 auto;
+  overflow: auto;
+  border: 1px solid #d9e4f2;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.translation-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 1120px;
+}
+
+.translation-table th,
+.translation-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid #e7edf6;
+  text-align: left;
+  vertical-align: top;
+  font-size: 0.92rem;
+}
+
+.translation-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #eef5ff;
+  color: #40506a;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+}
+
+.translation-table code {
+  color: #0f766e;
+  font-weight: 700;
+}
+
+@media (max-width: 760px) {
+  .translation-page {
+    padding: 20px 14px;
+  }
+
+  .translation-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .translation-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
