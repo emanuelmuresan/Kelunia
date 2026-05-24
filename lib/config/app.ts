@@ -50,6 +50,8 @@ export const emptyForm: BookingForm = {
   notifyOffsets: ["1h"],
   notifyGroupOnThisBooking: false,
   notifyGroupOffsets: ["1h"],
+  notifyGroupAudience: "all",
+  notifyGroupRecipients: [],
 };
 
 export const emptyFixedDraft: FixedScheduleDraft = {

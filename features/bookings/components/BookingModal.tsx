@@ -1,7 +1,7 @@
 "use client";
 
 import type { FormEvent } from "react";
-import type { BookingForm, GroupItem, RoomItem } from "@/lib/types/domain";
+import type { BookingForm, GroupItem, ManagedUser, RoomItem } from "@/lib/types/domain";
 
 export type BookingFormState = BookingForm;
 
@@ -10,6 +10,7 @@ interface BookingModalProps {
   editingId: string | null;
   formData: BookingForm;
   groups: GroupItem[];
+  managedUsers: ManagedUser[];
   rooms: RoomItem[];
   groupsLabel?: string;
   roomsLabel?: string;
@@ -24,6 +25,7 @@ export function BookingModal({
   editingId,
   formData,
   groups,
+  managedUsers,
   rooms,
   groupsLabel = "Grup",
   roomsLabel = "Sala",
@@ -37,6 +39,10 @@ export function BookingModal({
   }
 
   const selectedRoomId = formData.roomId || rooms.find((room) => room.name === formData.room)?.id || "";
+  const selectedGroupMembers = managedUsers.filter((managedUser) =>
+    managedUser.groupName.trim().toLowerCase() === formData.group.trim().toLowerCase() &&
+    managedUser.email.trim()
+  );
 
   function syncLegacyOffsets(nextOffsets: string[]) {
     return nextOffsets
@@ -151,6 +157,19 @@ export function BookingModal({
             />
           </label>
           <div className="full-field notification-options booking-notification-options">
+            <div className="notification-quick-actions">
+              <button
+                className="primary-button compact"
+                disabled={!formData.group}
+                name="bookingAction"
+                type="submit"
+                value="notify-group-now"
+              >
+                Notifica-i acum
+              </button>
+              <span>{formData.group ? "Trimite reminder imediat pentru grupul ales." : "Alege intai grupul."}</span>
+            </div>
+
             <label className="toggle-row">
               <input
                 type="checkbox"
@@ -229,6 +248,53 @@ export function BookingModal({
               />
               Trimite reminder pentru tot grupul
             </label>
+
+            {(formData.notifyGroupOnThisBooking || formData.group) && (
+              <div className="notification-audience">
+                <label>
+                  Cui trimiti
+                  <select
+                    value={formData.notifyGroupAudience}
+                    onChange={(event) =>
+                      onChange({
+                        ...formData,
+                        notifyGroupAudience: event.target.value as "all" | "selected",
+                        notifyGroupRecipients: event.target.value === "all" ? [] : formData.notifyGroupRecipients,
+                      })
+                    }
+                  >
+                    <option value="all">Toti din grup</option>
+                    <option value="selected">Aleg persoane</option>
+                  </select>
+                </label>
+
+                {formData.notifyGroupAudience === "selected" && (
+                  <div className="recipient-check-grid">
+                    {selectedGroupMembers.length === 0 ? (
+                      <p className="empty-line">Nu exista utilizatori activi in grupul ales.</p>
+                    ) : (
+                      selectedGroupMembers.map((managedUser) => (
+                        <label className="toggle-row compact-toggle" key={managedUser.id}>
+                          <input
+                            type="checkbox"
+                            checked={formData.notifyGroupRecipients.includes(managedUser.email.toLowerCase())}
+                            onChange={(event) => {
+                              const email = managedUser.email.toLowerCase();
+                              const notifyGroupRecipients = event.target.checked
+                                ? Array.from(new Set([...formData.notifyGroupRecipients, email]))
+                                : formData.notifyGroupRecipients.filter((item) => item !== email);
+
+                              onChange({ ...formData, notifyGroupRecipients });
+                            }}
+                          />
+                          {managedUser.displayName || managedUser.email}
+                        </label>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {formData.notifyGroupOnThisBooking && (
               <>

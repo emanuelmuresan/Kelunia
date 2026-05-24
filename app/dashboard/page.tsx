@@ -2126,6 +2126,7 @@ export default function KeluniaPage() {
         editingId={editingId}
         formData={formData}
         groups={groups}
+        managedUsers={visibleManagedUsers}
         rooms={accessibleRooms}
         groupsLabel={groupsLabel}
         roomsLabel={roomsLabel}

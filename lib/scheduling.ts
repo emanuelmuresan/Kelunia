@@ -40,6 +40,10 @@ export function normalizeBooking(id: string, data: Record<string, unknown>): Boo
     notifyForUid: data.notifyForUid ? String(data.notifyForUid) : undefined,
     notifyGroupOnThisBooking: Boolean(data.notifyGroupOnThisBooking),
     notifyGroupOffsets: Array.isArray(data.notifyGroupOffsets) ? data.notifyGroupOffsets.map((item) => String(item)) : [],
+    notifyGroupAudience: data.notifyGroupAudience === "selected" ? "selected" : "all",
+    notifyGroupRecipients: Array.isArray(data.notifyGroupRecipients) ? data.notifyGroupRecipients.map((item) => String(item).toLowerCase()) : [],
+    notifyGroupNowAt: data.notifyGroupNowAt,
+    notifyGroupNowBy: data.notifyGroupNowBy ? String(data.notifyGroupNowBy) : undefined,
     createdAt: data.createdAt,
   };
 }

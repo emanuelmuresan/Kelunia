@@ -158,6 +158,8 @@ export function useBookingEditor({
       notifyOffsets: booking.notifyOffsets?.length ? booking.notifyOffsets : ["1h"],
       notifyGroupOnThisBooking: Boolean(booking.notifyGroupOnThisBooking),
       notifyGroupOffsets: booking.notifyGroupOffsets?.length ? booking.notifyGroupOffsets : ["1h"],
+      notifyGroupAudience: booking.notifyGroupAudience === "selected" ? "selected" : "all",
+      notifyGroupRecipients: booking.notifyGroupRecipients?.length ? booking.notifyGroupRecipients : [],
     });
     setShowBookingModal(true);
   }
@@ -219,6 +221,11 @@ export function useBookingEditor({
     const originalBooking = editingId ? bookings.find((booking) => booking.id === editingId) : null;
     const bookingNotificationOffsets = normalizeNotificationOffsetRules(formData.notifyOffsets);
     const groupNotificationOffsets = normalizeNotificationOffsetRules(formData.notifyGroupOffsets);
+    const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
+    const shouldNotifyGroupNow = submitter?.value === "notify-group-now";
+    const selectedGroupRecipients = formData.notifyGroupAudience === "selected"
+      ? formData.notifyGroupRecipients.map((email) => email.trim().toLowerCase()).filter(Boolean)
+      : [];
 
     if (formData.notifyOnThisBooking) {
       if (bookingNotificationOffsets.length === 0) {
@@ -236,6 +243,11 @@ export function useBookingEditor({
 
     if (formData.notifyGroupOnThisBooking && groupNotificationOffsets.length === 0) {
       setFormError("Alege cel puțin un moment pentru reminderul de grup.");
+      return;
+    }
+
+    if ((formData.notifyGroupOnThisBooking || shouldNotifyGroupNow) && formData.notifyGroupAudience === "selected" && selectedGroupRecipients.length === 0) {
+      setFormError("Alege cel puțin o persoană din grup sau trimite către tot grupul.");
       return;
     }
 
@@ -262,6 +274,14 @@ export function useBookingEditor({
       notifyForUid: formData.notifyOnThisBooking ? user.uid : "",
       notifyGroupOnThisBooking: formData.notifyGroupOnThisBooking,
       notifyGroupOffsets: formData.notifyGroupOnThisBooking ? groupNotificationOffsets.map(notificationOffsetToKey) : [],
+      notifyGroupAudience: formData.notifyGroupAudience,
+      notifyGroupRecipients: selectedGroupRecipients,
+      ...(shouldNotifyGroupNow
+        ? {
+          notifyGroupNowAt: Timestamp.now(),
+          notifyGroupNowBy: user.email ?? profile?.displayName ?? "",
+        }
+        : {}),
       updatedAt: Timestamp.now(),
     };
 
@@ -280,7 +300,7 @@ export function useBookingEditor({
       setEditingId(null);
     } catch (error) {
       console.error("Programarea nu a putut fi salvată:", error);
-      setFormError("Programarea nu a putut fi salvată.");
+      setFormError(error instanceof Error ? `Programarea nu a putut fi salvată: ${error.message}` : "Programarea nu a putut fi salvată.");
     }
   }
 

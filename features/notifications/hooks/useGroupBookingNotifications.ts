@@ -39,6 +39,22 @@ type NativeGroupBookingNotification = {
   extra: { bookingId: string; url: string };
 };
 
+function timestampToDate(value: unknown) {
+  if (!value) {
+    return null;
+  }
+
+  if (value instanceof Date) {
+    return value;
+  }
+
+  if (typeof value === "object" && "toDate" in value && typeof value.toDate === "function") {
+    return value.toDate() as Date;
+  }
+
+  return null;
+}
+
 export function useGroupBookingNotifications({
   bookings,
   fixedSchedules,
@@ -63,11 +79,22 @@ export function useGroupBookingNotifications({
     const groupBookings = profile.notifyGroupBookings && profile.groupName.trim()
       ? bookings.filter((booking) => isGroupBooking(booking, profile.groupName))
       : [];
+    const isTargetedGroupBooking = (booking: Booking) => {
+      if (!profile.groupName.trim() || !isGroupBooking(booking, profile.groupName)) {
+        return false;
+      }
+
+      if (booking.notifyGroupAudience !== "selected") {
+        return true;
+      }
+
+      return booking.notifyGroupRecipients?.some((email) => email.trim().toLowerCase() === user.email?.trim().toLowerCase());
+    };
     const groupBookingReminders = Array.from(
       [
         ...groupBookings.flatMap((booking) => legacyOffsets.map((offset) => ({ booking, offset }))),
         ...bookings
-          .filter((booking) => booking.notifyGroupOnThisBooking && profile.groupName.trim() && isGroupBooking(booking, profile.groupName))
+          .filter((booking) => booking.notifyGroupOnThisBooking && isTargetedGroupBooking(booking))
           .flatMap((booking) => normalizeNotificationOffsetRules(booking.notifyGroupOffsets).map((offset) => ({ booking, offset }))),
       ]
         .reduce((unique, reminder) => {
@@ -99,6 +126,13 @@ export function useGroupBookingNotifications({
             .flatMap((date) => legacyOffsets.map((offset) => ({ schedule, date, offset })));
         })
       : [];
+    const instantGroupReminders = bookings
+      .filter((booking) => booking.notifyGroupNowAt && isTargetedGroupBooking(booking))
+      .map((booking) => {
+        const sentAt = timestampToDate(booking.notifyGroupNowAt);
+        return sentAt ? { booking, sentAt } : null;
+      })
+      .filter((item): item is { booking: Booking; sentAt: Date } => item !== null);
 
     if (canUseNativeNotifications()) {
       void (async () => {
@@ -155,6 +189,25 @@ export function useGroupBookingNotifications({
           }];
         });
         const notifications: NativeGroupBookingNotification[] = [...groupNotifications, ...personalNotifications, ...fixedNotifications];
+        const instantNotifications = instantGroupReminders.flatMap(({ booking, sentAt }) => {
+          const storageKey = `kelunia-group-now:${user.uid}:${booking.id}:${sentAt.getTime()}`;
+
+          if (window.localStorage.getItem(storageKey)) {
+            return [];
+          }
+
+          window.localStorage.setItem(storageKey, "1");
+
+          return [{
+            id: nativeNotificationId(user.uid, `group-now:${booking.id}:${sentAt.getTime()}`, { value: 1, unit: "hours" }),
+            title: "Reminder grup",
+            body: `${booking.group}, ${formatDateLabel(booking.startDate, { year: "numeric" })}, ${booking.startTime}-${booking.endTime}, ${booking.room}`,
+            schedule: { at: new Date(Date.now() + 1000) },
+            iconColor: "#1da4fe",
+            extra: { bookingId: booking.id, url: "/dashboard" },
+          }];
+        });
+        notifications.push(...instantNotifications);
 
         if (notifications.length === 0) {
           return;
@@ -172,6 +225,21 @@ export function useGroupBookingNotifications({
     if (!("Notification" in window) || Notification.permission !== "granted") {
       return;
     }
+
+    instantGroupReminders.forEach(({ booking, sentAt }) => {
+      const storageKey = `kelunia-group-now:${user.uid}:${booking.id}:${sentAt.getTime()}`;
+
+      if (window.localStorage.getItem(storageKey)) {
+        return;
+      }
+
+      window.localStorage.setItem(storageKey, "1");
+      new Notification("Reminder grup", {
+        body: `${booking.group}, ${formatDateLabel(booking.startDate, { year: "numeric" })}, ${booking.startTime}-${booking.endTime}, ${booking.room}`,
+        icon: "/icon-192.png",
+        tag: storageKey,
+      });
+    });
 
     const groupTimers = groupBookingReminders
       .map(({ booking, offset }) => {

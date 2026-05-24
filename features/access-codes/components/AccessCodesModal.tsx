@@ -176,6 +176,9 @@ export function AccessCodesModal({
             <span className="eyebrow">Acces</span>
             <h2>Coduri de acces</h2>
           </div>
+          <button className="secondary-button compact" onClick={onClose} type="button">
+            Inchide
+          </button>
         </div>
 
         <div className="code-toolbar">

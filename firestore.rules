@@ -795,6 +795,10 @@ service cloud.firestore {
           "notifyForUid",
           "notifyGroupOnThisBooking",
           "notifyGroupOffsets",
+          "notifyGroupAudience",
+          "notifyGroupRecipients",
+          "notifyGroupNowAt",
+          "notifyGroupNowBy",
           "updatedAt",
           "createdAt",
           "deleted",
@@ -825,6 +829,10 @@ service cloud.firestore {
         && validOptionalText(data, "notifyForUid", 160)
         && validOptionalBool(data, "notifyGroupOnThisBooking")
         && validOptionalNotificationOffsetRules(data, "notifyGroupOffsets")
+        && (!hasKey(data, "notifyGroupAudience") || data.notifyGroupAudience in ["all", "selected"])
+        && validOptionalStringList(data, "notifyGroupRecipients", 200)
+        && validOptionalTimestamp(data, "notifyGroupNowAt")
+        && validOptionalText(data, "notifyGroupNowBy", 180)
         && data.updatedAt is timestamp
         && validOptionalTimestamp(data, "createdAt")
         && validSoftDeleteFields(data);

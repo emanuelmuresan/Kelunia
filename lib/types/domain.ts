@@ -202,6 +202,10 @@ export interface Booking {
   notifyForUid?: string;
   notifyGroupOnThisBooking?: boolean;
   notifyGroupOffsets?: string[];
+  notifyGroupAudience?: "all" | "selected";
+  notifyGroupRecipients?: string[];
+  notifyGroupNowAt?: unknown;
+  notifyGroupNowBy?: string;
   createdAt?: unknown;
 }
 
@@ -218,6 +222,8 @@ export interface BookingForm {
   notifyOffsets: string[];
   notifyGroupOnThisBooking: boolean;
   notifyGroupOffsets: string[];
+  notifyGroupAudience: "all" | "selected";
+  notifyGroupRecipients: string[];
 }
 
 export interface RoomItem {
