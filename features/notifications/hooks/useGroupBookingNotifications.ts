@@ -36,8 +36,33 @@ type NativeGroupBookingNotification = {
   body: string;
   schedule: { at: Date };
   iconColor: string;
+  ongoing: boolean;
+  autoCancel: boolean;
   extra: { bookingId: string; url: string };
 };
+
+function notificationBody(booking: Booking) {
+  return `${booking.group}, ${formatDateLabel(booking.startDate, { year: "numeric" })}, ${booking.startTime}-${booking.endTime}, ${booking.room}`;
+}
+
+function nativeBookingNotification(
+  id: number,
+  title: string,
+  body: string,
+  at: Date,
+  bookingId: string
+): NativeGroupBookingNotification {
+  return {
+    id,
+    title,
+    body,
+    schedule: { at },
+    iconColor: "#1da4fe",
+    ongoing: true,
+    autoCancel: false,
+    extra: { bookingId, url: "/dashboard" },
+  };
+}
 
 function timestampToDate(value: unknown) {
   if (!value) {
@@ -147,9 +172,11 @@ export function useGroupBookingNotifications({
               {
                 id: nativeNotificationId(user.uid, booking.id, offset),
                 title: notificationTitle(offset),
-                body: `${booking.group}, ${formatDateLabel(booking.startDate, { year: "numeric" })}, ${booking.startTime}-${booking.endTime}, ${booking.room}`,
+                body: notificationBody(booking),
                 schedule: { at: notifyAt },
                 iconColor: "#1da4fe",
+                ongoing: true,
+                autoCancel: false,
                 extra: { bookingId: booking.id, url: "/dashboard" },
               },
             ];
@@ -161,14 +188,15 @@ export function useGroupBookingNotifications({
             return [];
           }
 
-          return [{
-            id: nativeNotificationId(user.uid, booking.id, offset),
-            title: notificationTitle(offset),
-            body: `${booking.group}, ${formatDateLabel(booking.startDate, { year: "numeric" })}, ${booking.startTime}-${booking.endTime}, ${booking.room}`,
-            schedule: { at: notifyAt },
-            iconColor: "#1da4fe",
-            extra: { bookingId: booking.id, url: "/dashboard" },
-          }];
+          return [
+            nativeBookingNotification(
+              nativeNotificationId(user.uid, booking.id, offset),
+              notificationTitle(offset),
+              notificationBody(booking),
+              notifyAt,
+              booking.id
+            ),
+          ];
         });
         const fixedNotifications = recurringNotifications.flatMap(({ schedule, date, offset }) => {
           const occurrenceDateKey = dateKey(date);
@@ -179,14 +207,15 @@ export function useGroupBookingNotifications({
             return [];
           }
 
-          return [{
-            id: nativeNotificationId(user.uid, `fixed:${schedule.id}:${occurrenceDateKey}`, offset),
-            title: notificationTitle(offset),
-            body: `${schedule.group}, ${formatDateLabel(occurrenceDateKey, { year: "numeric" })}, ${schedule.startTime}-${schedule.endTime}, ${schedule.room}`,
-            schedule: { at: notifyAt },
-            iconColor: "#1da4fe",
-            extra: { bookingId: `fixed:${schedule.id}`, url: "/dashboard" },
-          }];
+          return [
+            nativeBookingNotification(
+              nativeNotificationId(user.uid, `fixed:${schedule.id}:${occurrenceDateKey}`, offset),
+              notificationTitle(offset),
+              `${schedule.group}, ${formatDateLabel(occurrenceDateKey, { year: "numeric" })}, ${schedule.startTime}-${schedule.endTime}, ${schedule.room}`,
+              notifyAt,
+              `fixed:${schedule.id}`
+            ),
+          ];
         });
         const notifications: NativeGroupBookingNotification[] = [...groupNotifications, ...personalNotifications, ...fixedNotifications];
         const instantNotifications = instantGroupReminders.flatMap(({ booking, sentAt }) => {
@@ -198,14 +227,15 @@ export function useGroupBookingNotifications({
 
           window.localStorage.setItem(storageKey, "1");
 
-          return [{
-            id: nativeNotificationId(user.uid, `group-now:${booking.id}:${sentAt.getTime()}`, { value: 1, unit: "hours" }),
-            title: "Reminder grup",
-            body: `${booking.group}, ${formatDateLabel(booking.startDate, { year: "numeric" })}, ${booking.startTime}-${booking.endTime}, ${booking.room}`,
-            schedule: { at: new Date(Date.now() + 1000) },
-            iconColor: "#1da4fe",
-            extra: { bookingId: booking.id, url: "/dashboard" },
-          }];
+          return [
+            nativeBookingNotification(
+              nativeNotificationId(user.uid, `group-now:${booking.id}:${sentAt.getTime()}`, { value: 1, unit: "hours" }),
+              "Reminder grup",
+              notificationBody(booking),
+              new Date(Date.now() + 1000),
+              booking.id
+            ),
+          ];
         });
         notifications.push(...instantNotifications);
 
@@ -235,9 +265,10 @@ export function useGroupBookingNotifications({
 
       window.localStorage.setItem(storageKey, "1");
       new Notification("Reminder grup", {
-        body: `${booking.group}, ${formatDateLabel(booking.startDate, { year: "numeric" })}, ${booking.startTime}-${booking.endTime}, ${booking.room}`,
+        body: notificationBody(booking),
         icon: "/icon-192.png",
         tag: storageKey,
+        requireInteraction: true,
       });
     });
 
@@ -252,7 +283,7 @@ export function useGroupBookingNotifications({
           }
 
           return window.setTimeout(async () => {
-            const body = `${booking.group}, ${formatDateLabel(booking.startDate, { year: "numeric" })}, ${booking.startTime}-${booking.endTime}, ${booking.room}`;
+            const body = notificationBody(booking);
             window.localStorage.setItem(storageKey, "1");
 
             try {
@@ -263,6 +294,7 @@ export function useGroupBookingNotifications({
                   icon: "/icon-192.png",
                   badge: "/icon-192.png",
                   tag: storageKey,
+                  requireInteraction: true,
                   data: { url: "/" },
                 });
                 return;
@@ -272,6 +304,7 @@ export function useGroupBookingNotifications({
                 body,
                 icon: "/icon-192.png",
                 tag: notificationOffsetToKey(offset),
+                requireInteraction: true,
               });
             } catch (error) {
               console.warn("Notificarea nu a putut fi afisata:", error);
@@ -288,9 +321,9 @@ export function useGroupBookingNotifications({
       }
 
       return window.setTimeout(() => {
-        const body = `${booking.group}, ${formatDateLabel(booking.startDate, { year: "numeric" })}, ${booking.startTime}-${booking.endTime}, ${booking.room}`;
+        const body = notificationBody(booking);
         window.localStorage.setItem(storageKey, "1");
-        new Notification(notificationTitle(offset), { body, icon: "/icon-192.png", tag: notificationOffsetToKey(offset) });
+        new Notification(notificationTitle(offset), { body, icon: "/icon-192.png", tag: notificationOffsetToKey(offset), requireInteraction: true });
       }, delay);
     });
     const recurringTimers = recurringNotifications.map(({ schedule, date, offset }) => {
@@ -307,7 +340,7 @@ export function useGroupBookingNotifications({
       return window.setTimeout(() => {
         const body = `${schedule.group}, ${formatDateLabel(occurrenceDateKey, { year: "numeric" })}, ${schedule.startTime}-${schedule.endTime}, ${schedule.room}`;
         window.localStorage.setItem(storageKey, "1");
-        new Notification(notificationTitle(offset), { body, icon: "/icon-192.png", tag: notificationOffsetToKey(offset) });
+        new Notification(notificationTitle(offset), { body, icon: "/icon-192.png", tag: notificationOffsetToKey(offset), requireInteraction: true });
       }, delay);
     });
     const timers = [...groupTimers, ...personalTimers, ...recurringTimers].filter((timer): timer is number => timer !== null);

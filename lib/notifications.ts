@@ -9,6 +9,8 @@ type LocalNotificationSchedule = {
     smallIcon?: string;
     iconColor?: string;
     channelId?: string;
+    ongoing?: boolean;
+    autoCancel?: boolean;
     extra?: Record<string, unknown>;
   }>;
 };
