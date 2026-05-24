@@ -42,11 +42,16 @@ service cloud.firestore {
     }
 
     function isManagerRole(role) {
-      return role == "manager" || role == "superadmin";
+      return role == "manager"
+        || role == "superadmin"
+        || role == "administrator"
+        || role == "admin";
     }
 
     function isMemberRole(role) {
-      return role == "member" || role == "admin";
+      return role == "member"
+        || role == "collaborator"
+        || role == "colaborator";
     }
 
     function isGuestRole(role) {
@@ -433,6 +438,16 @@ service cloud.firestore {
           && roomId.size() > 0
           && userData().allowedRoomIds is list
           && userData().allowedRoomIds.hasAny([roomId])
+        );
+    }
+
+    function bookingGroupAllowed(data) {
+      return isOwner()
+        || isLocationSuperAdmin()
+        || (
+          isMemberRole(userData().role)
+          && hasKey(userData(), "groupName")
+          && userData().groupName == data.group
         );
     }
 
@@ -2064,11 +2079,13 @@ service cloud.firestore {
           isOwner()
           || request.resource.data.locationId == userLocationId()
         )
+        && bookingGroupAllowed(request.resource.data)
         && roomAccessAllows(request.resource.data.roomId)
         && locationWriteEnabled(request.resource.data.locationId);
       allow update: if validEventData(request.resource.data)
         && locationWriteEnabled(resource.data.locationId)
         && roomAccessAllows(request.resource.data.roomId)
+        && bookingGroupAllowed(request.resource.data)
         && (
           (
             (isOwner() || canManageLocation(resource.data.locationId))
