@@ -46,14 +46,23 @@ export function BookingModal({
 
   function syncLegacyOffsets(nextOffsets: string[]) {
     return nextOffsets
-      .filter((offset) => /^([1-9]\d*)(h|d)$/.test(offset))
+      .filter((offset) => /^([1-9]\d*)(m|h|d)$/.test(offset))
       .slice(0, 5);
   }
 
+  function offsetParts(offset = "15m"): { amount: number; unit: "m" | "h" | "d" } {
+    const unit = offset.endsWith("d") ? "d" : offset.endsWith("h") ? "h" : "m";
+    const amount = Math.max(1, Number(offset.slice(0, -1)) || 1);
+    return { amount, unit };
+  }
+
+  function maxForUnit(unit: "m" | "h" | "d") {
+    return unit === "m" ? 120 : unit === "h" ? 48 : 30;
+  }
+
   function updateNotificationOffset(index: number, value: string) {
-    const current = formData.notifyOffsets[index] ?? "1h";
-    const unit = current.endsWith("d") ? "d" : "h";
-    const max = unit === "h" ? 48 : 30;
+    const { unit } = offsetParts(formData.notifyOffsets[index]);
+    const max = maxForUnit(unit);
     const amount = Math.max(1, Math.min(max, Number(value) || 1));
     const nextOffsets = syncLegacyOffsets(formData.notifyOffsets.map((offset, offsetIndex) =>
       offsetIndex === index ? `${amount}${unit}` : offset
@@ -61,10 +70,9 @@ export function BookingModal({
     onChange({ ...formData, notifyOffsets: nextOffsets });
   }
 
-  function updateNotificationOffsetUnit(index: number, unit: "h" | "d") {
-    const current = formData.notifyOffsets[index] ?? "1h";
-    const amount = Math.max(1, Number(current.slice(0, -1)) || 1);
-    const nextAmount = unit === "h" ? Math.min(amount, 48) : Math.min(amount, 30);
+  function updateNotificationOffsetUnit(index: number, unit: "m" | "h" | "d") {
+    const { amount } = offsetParts(formData.notifyOffsets[index]);
+    const nextAmount = Math.min(amount, maxForUnit(unit));
     const nextOffsets = syncLegacyOffsets(formData.notifyOffsets.map((offset, offsetIndex) =>
       offsetIndex === index ? `${nextAmount}${unit}` : offset
     ));
@@ -72,9 +80,8 @@ export function BookingModal({
   }
 
   function updateGroupNotificationOffset(index: number, value: string) {
-    const current = formData.notifyGroupOffsets[index] ?? "1h";
-    const unit = current.endsWith("d") ? "d" : "h";
-    const max = unit === "h" ? 48 : 30;
+    const { unit } = offsetParts(formData.notifyGroupOffsets[index]);
+    const max = maxForUnit(unit);
     const amount = Math.max(1, Math.min(max, Number(value) || 1));
     const nextOffsets = syncLegacyOffsets(formData.notifyGroupOffsets.map((offset, offsetIndex) =>
       offsetIndex === index ? `${amount}${unit}` : offset
@@ -82,10 +89,9 @@ export function BookingModal({
     onChange({ ...formData, notifyGroupOffsets: nextOffsets });
   }
 
-  function updateGroupNotificationOffsetUnit(index: number, unit: "h" | "d") {
-    const current = formData.notifyGroupOffsets[index] ?? "1h";
-    const amount = Math.max(1, Number(current.slice(0, -1)) || 1);
-    const nextAmount = unit === "h" ? Math.min(amount, 48) : Math.min(amount, 30);
+  function updateGroupNotificationOffsetUnit(index: number, unit: "m" | "h" | "d") {
+    const { amount } = offsetParts(formData.notifyGroupOffsets[index]);
+    const nextAmount = Math.min(amount, maxForUnit(unit));
     const nextOffsets = syncLegacyOffsets(formData.notifyGroupOffsets.map((offset, offsetIndex) =>
       offsetIndex === index ? `${nextAmount}${unit}` : offset
     ));
@@ -178,7 +184,7 @@ export function BookingModal({
                   onChange({
                     ...formData,
                     notifyOnThisBooking: event.target.checked,
-                    notifyOffsets: formData.notifyOffsets.length > 0 ? formData.notifyOffsets : ["1h"],
+                    notifyOffsets: formData.notifyOffsets.length > 0 ? formData.notifyOffsets : ["15m"],
                   })
                 }
               />
@@ -188,8 +194,7 @@ export function BookingModal({
             {formData.notifyOnThisBooking && (
               <>
                 {formData.notifyOffsets.map((offset, index) => {
-                  const unit = offset.endsWith("d") ? "d" : "h";
-                  const amount = Math.max(1, Number(offset.slice(0, -1)) || 1);
+                  const { unit, amount } = offsetParts(offset);
 
                   return (
                     <label key={`${offset}-${index}`}>
@@ -197,12 +202,14 @@ export function BookingModal({
                       <div className="inline-add">
                         <input
                           min={1}
-                          max={unit === "h" ? 48 : 30}
+                          max={maxForUnit(unit)}
                           type="number"
                           value={amount}
+                          onFocus={(event) => event.currentTarget.select()}
                           onChange={(event) => updateNotificationOffset(index, event.target.value)}
                         />
-                        <select value={unit} onChange={(event) => updateNotificationOffsetUnit(index, event.target.value as "h" | "d")}>
+                        <select value={unit} onChange={(event) => updateNotificationOffsetUnit(index, event.target.value as "m" | "h" | "d")}>
+                          <option value="m">minute</option>
                           <option value="h">ore</option>
                           <option value="d">zile</option>
                         </select>
@@ -225,7 +232,7 @@ export function BookingModal({
                 {formData.notifyOffsets.length < 5 && (
                   <button
                     className="secondary-button compact"
-                    onClick={() => onChange({ ...formData, notifyOffsets: [...formData.notifyOffsets, "1h"] })}
+                    onClick={() => onChange({ ...formData, notifyOffsets: [...formData.notifyOffsets, "15m"] })}
                     type="button"
                   >
                     Adauga notificare
@@ -242,7 +249,7 @@ export function BookingModal({
                   onChange({
                     ...formData,
                     notifyGroupOnThisBooking: event.target.checked,
-                    notifyGroupOffsets: formData.notifyGroupOffsets.length > 0 ? formData.notifyGroupOffsets : ["1h"],
+                    notifyGroupOffsets: formData.notifyGroupOffsets.length > 0 ? formData.notifyGroupOffsets : ["15m"],
                   })
                 }
               />
@@ -299,8 +306,7 @@ export function BookingModal({
             {formData.notifyGroupOnThisBooking && (
               <>
                 {formData.notifyGroupOffsets.map((offset, index) => {
-                  const unit = offset.endsWith("d") ? "d" : "h";
-                  const amount = Math.max(1, Number(offset.slice(0, -1)) || 1);
+                  const { unit, amount } = offsetParts(offset);
 
                   return (
                     <label key={`group-${offset}-${index}`}>
@@ -308,12 +314,14 @@ export function BookingModal({
                       <div className="inline-add">
                         <input
                           min={1}
-                          max={unit === "h" ? 48 : 30}
+                          max={maxForUnit(unit)}
                           type="number"
                           value={amount}
+                          onFocus={(event) => event.currentTarget.select()}
                           onChange={(event) => updateGroupNotificationOffset(index, event.target.value)}
                         />
-                        <select value={unit} onChange={(event) => updateGroupNotificationOffsetUnit(index, event.target.value as "h" | "d")}>
+                        <select value={unit} onChange={(event) => updateGroupNotificationOffsetUnit(index, event.target.value as "m" | "h" | "d")}>
+                          <option value="m">minute</option>
                           <option value="h">ore</option>
                           <option value="d">zile</option>
                         </select>
@@ -336,7 +344,7 @@ export function BookingModal({
                 {formData.notifyGroupOffsets.length < 5 && (
                   <button
                     className="secondary-button compact"
-                    onClick={() => onChange({ ...formData, notifyGroupOffsets: [...formData.notifyGroupOffsets, "1h"] })}
+                    onClick={() => onChange({ ...formData, notifyGroupOffsets: [...formData.notifyGroupOffsets, "15m"] })}
                     type="button"
                   >
                     Adauga reminder grup

@@ -47,9 +47,9 @@ export const emptyForm: BookingForm = {
   endTime: "",
   reason: "",
   notifyOnThisBooking: false,
-  notifyOffsets: ["1h"],
+  notifyOffsets: ["15m"],
   notifyGroupOnThisBooking: false,
-  notifyGroupOffsets: ["1h"],
+  notifyGroupOffsets: ["15m"],
   notifyGroupAudience: "all",
   notifyGroupRecipients: [],
 };

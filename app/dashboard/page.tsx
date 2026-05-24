@@ -5,6 +5,7 @@ import type { TouchEvent } from "react";
 import { useRouter } from "next/navigation";
 import { registerPlugin } from "@capacitor/core";
 import { signOut } from "firebase/auth";
+import { httpsCallable } from "firebase/functions";
 import {
   addDoc,
   collection,
@@ -15,7 +16,7 @@ import {
   Timestamp,
   updateDoc,
 } from "firebase/firestore";
-import { auth, db } from "@/lib/firebase";
+import { auth, cloudFunctions, db } from "@/lib/firebase";
 import { useAuth, type AppLanguage, type UserRole } from "@/context/AuthContext";
 import { AccessCodesModal } from "@/features/access-codes/components/AccessCodesModal";
 import { useAccessCodeGroupSync } from "@/features/access-codes/hooks/useAccessCodeGroupSync";
@@ -764,6 +765,37 @@ export default function KeluniaPage() {
     setSelectedBooking(null);
     openCreateForm(date, { defaultStartTime: "12:00" });
   }
+
+  async function notifySelectedBookingNow() {
+    if (!selectedBooking) {
+      return;
+    }
+
+    try {
+      const saveBooking = httpsCallable(cloudFunctions, "saveBooking");
+      await saveBooking({
+        editingId: selectedBooking.id,
+        group: selectedBooking.group,
+        room: selectedBooking.room,
+        roomId: selectedBooking.roomId,
+        locationId: selectedBooking.locationId || currentLocationId,
+        locationName: selectedBooking.locationName || locationName,
+        startDate: selectedBooking.startDate,
+        endDate: selectedBooking.endDate,
+        startTime: selectedBooking.startTime,
+        endTime: selectedBooking.endTime,
+        reason: selectedBooking.reason,
+        notifyGroupAudience: "all",
+        notifyGroupRecipients: [],
+        notifyGroupNow: true,
+      });
+      setSelectedBooking(null);
+    } catch (error) {
+      console.error("Notificarea nu a putut fi trimisa:", error);
+      alert(error instanceof Error ? error.message : "Notificarea nu a putut fi trimisa.");
+    }
+  }
+
   const {
     openPasswordModal,
     passwordDraft,
@@ -916,6 +948,57 @@ export default function KeluniaPage() {
       void nativeListener?.remove();
     };
   }, [lockSessionKey, pinLockEnabled, profile?.lockOnHide]);
+
+  useEffect(() => {
+    let nativeListener: { remove: () => Promise<void> } | null = null;
+
+    void LocalNotifications.addListener("localNotificationActionPerformed", (event) => {
+      const bookingId = String(event.notification?.extra?.bookingId ?? "");
+
+      if (!bookingId || bookingId.startsWith("fixed:")) {
+        return;
+      }
+
+      const booking = bookings.find((item) => item.id === bookingId);
+
+      if (booking) {
+        setSelectedBooking(booking);
+        setActiveView("calendar");
+      }
+    })
+      .then((listener) => {
+        nativeListener = listener;
+      })
+      .catch(() => {
+        nativeListener = null;
+      });
+
+    return () => {
+      void nativeListener?.remove();
+    };
+  }, [bookings, setActiveView]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const bookingId = new URLSearchParams(window.location.search).get("booking");
+
+    if (!bookingId || bookingId.startsWith("fixed:")) {
+      return;
+    }
+
+    const booking = bookings.find((item) => item.id === bookingId);
+
+    if (!booking) {
+      return;
+    }
+
+    setSelectedBooking(booking);
+    setActiveView("calendar");
+    window.history.replaceState(null, "", "/dashboard");
+  }, [bookings, setActiveView]);
 
   useEffect(() => {
     if (!appLocked || !profile?.useBiometrics || !user) {
@@ -2165,6 +2248,7 @@ export default function KeluniaPage() {
             removeBooking(selectedBooking);
           }
         }}
+        onNotify={notifySelectedBookingNow}
       />
       {appLockOverlay}
     </main>

@@ -141,7 +141,26 @@ function cleanNotificationOffsets(value: unknown) {
 
   return value
     .map((item) => String(item))
-    .filter((item) => /^([1-9]\d*)(h|d)$/.test(item))
+    .filter((item) => {
+      const match = item.match(/^([1-9]\d*)(m|h|d)$/);
+
+      if (!match) {
+        return false;
+      }
+
+      const amount = Number(match[1]);
+      const unit = match[2];
+
+      if (unit === "m") {
+        return amount <= 120;
+      }
+
+      if (unit === "h") {
+        return amount <= 48;
+      }
+
+      return amount <= 30;
+    })
     .slice(0, 5);
 }
 

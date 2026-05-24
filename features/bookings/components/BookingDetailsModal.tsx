@@ -14,6 +14,7 @@ type BookingDetailsModalProps = {
   onClose: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onNotify?: () => void;
 };
 
 export function BookingDetailsModal({
@@ -25,6 +26,7 @@ export function BookingDetailsModal({
   onClose,
   onEdit,
   onDelete,
+  onNotify,
 }: BookingDetailsModalProps) {
   if (!booking) {
     return null;
@@ -96,6 +98,16 @@ export function BookingDetailsModal({
         <div className="modal-actions">
           {canEdit && (
             <>
+              {onNotify && (
+                <button
+                  className="secondary-button"
+                  onClick={onNotify}
+                  type="button"
+                >
+                  Notificări
+                </button>
+              )}
+
               <button
                 className="secondary-button"
                 onClick={onEdit}

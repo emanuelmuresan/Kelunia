@@ -16,6 +16,10 @@ type LocalNotificationSchedule = {
 };
 
 type LocalNotificationsPlugin = {
+  addListener: (
+    eventName: "localNotificationActionPerformed",
+    listener: (event: { notification?: { extra?: Record<string, unknown> } }) => void
+  ) => Promise<{ remove: () => Promise<void> }>;
   checkPermissions: () => Promise<{ display?: string }>;
   requestPermissions: () => Promise<{ display?: string }>;
   schedule: (options: LocalNotificationSchedule) => Promise<unknown>;
@@ -23,7 +27,7 @@ type LocalNotificationsPlugin = {
 
 export const LocalNotifications = registerPlugin<LocalNotificationsPlugin>("LocalNotifications");
 
-export type NotificationOffsetUnit = "hours" | "days";
+export type NotificationOffsetUnit = "minutes" | "hours" | "days";
 
 export type NotificationOffsetRule = {
   value: number;
@@ -31,6 +35,10 @@ export type NotificationOffsetRule = {
 };
 
 export function notificationOffsetToKey(offset: NotificationOffsetRule) {
+  if (offset.unit === "minutes") {
+    return `${offset.value}m`;
+  }
+
   return `${offset.value}${offset.unit === "hours" ? "h" : "d"}`;
 }
 
@@ -64,14 +72,18 @@ export function normalizeNotificationOffsetRules(value: unknown) {
       return [];
     }
 
-    const match = item.trim().match(/^(\d+)(h|d)$/);
+    const match = item.trim().match(/^(\d+)(m|h|d)$/);
 
     if (!match) {
       return [];
     }
 
     const amount = Number(match[1]);
-    const unit = match[2] === "h" ? "hours" : "days";
+    const unit = match[2] === "m" ? "minutes" : match[2] === "h" ? "hours" : "days";
+
+    if (unit === "minutes" && amount >= 1 && amount <= 120) {
+      return [{ value: amount, unit }];
+    }
 
     if (unit === "hours" && amount >= 1 && amount <= 48) {
       return [{ value: amount, unit }];
@@ -93,11 +105,23 @@ export function normalizeNotificationOffsetRules(value: unknown) {
 }
 
 export function notificationOffsetToMs(offset: NotificationOffsetRule) {
+  if (offset.unit === "minutes") {
+    return offset.value * 60 * 1000;
+  }
+
   const hours = offset.unit === "hours" ? offset.value : offset.value * 24;
   return hours * 60 * 60 * 1000;
 }
 
 export function notificationTitle(offset: NotificationOffsetRule) {
+  if (offset.unit === "minutes") {
+    if (offset.value === 1) {
+      return "Programare peste un minut";
+    }
+
+    return `Programare peste ${offset.value} minute`;
+  }
+
   if (offset.unit === "hours") {
     if (offset.value === 1) {
       return "Programare peste o ora";

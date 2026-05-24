@@ -377,9 +377,9 @@ export function SettingsView({
   }
 
   function updateNotificationOffset(index: number, value: string) {
-    const current = personalDraft.notifyOffsets[index] ?? "1d";
-    const unit = current.endsWith("h") ? "h" : "d";
-    const max = unit === "h" ? 48 : 30;
+    const current = personalDraft.notifyOffsets[index] ?? "15m";
+    const unit = current.endsWith("d") ? "d" : current.endsWith("h") ? "h" : "m";
+    const max = unit === "m" ? 120 : unit === "h" ? 48 : 30;
     const nextValue = Math.max(1, Math.min(max, Number(value) || 1));
     const nextOffsets = personalDraft.notifyOffsets.map((offset, offsetIndex) =>
       offsetIndex === index ? `${nextValue}${unit}` : offset
@@ -392,10 +392,10 @@ export function SettingsView({
     });
   }
 
-  function updateNotificationOffsetUnit(index: number, unit: "h" | "d") {
-    const current = personalDraft.notifyOffsets[index] ?? "1d";
+  function updateNotificationOffsetUnit(index: number, unit: "m" | "h" | "d") {
+    const current = personalDraft.notifyOffsets[index] ?? "15m";
     const currentValue = Math.max(1, Number(current.slice(0, -1)) || 1);
-    const nextValue = unit === "h" ? Math.min(currentValue, 48) : Math.min(currentValue, 30);
+    const nextValue = unit === "m" ? Math.min(currentValue, 120) : unit === "h" ? Math.min(currentValue, 48) : Math.min(currentValue, 30);
     const nextOffsets = personalDraft.notifyOffsets.map((offset, offsetIndex) =>
       offsetIndex === index ? `${nextValue}${unit}` : offset
     );
@@ -408,7 +408,7 @@ export function SettingsView({
   }
 
   function addNotificationOffset() {
-    const nextOffsets = [...personalDraft.notifyOffsets, "1h"].slice(0, 5);
+    const nextOffsets = [...personalDraft.notifyOffsets, "15m"].slice(0, 5);
 
     setPersonalDraft({
       ...personalDraft,
@@ -1492,7 +1492,7 @@ export function SettingsView({
                       Include si programarile recurente ale grupului meu
                     </label>
                     {personalDraft.notifyOffsets.map((offset, index) => {
-                      const unit = offset.endsWith("h") ? "h" : "d";
+                      const unit = offset.endsWith("d") ? "d" : offset.endsWith("h") ? "h" : "m";
                       const amount = Math.max(1, Number(offset.slice(0, -1)) || 1);
 
                       return (
@@ -1501,12 +1501,14 @@ export function SettingsView({
                         <div className="inline-add">
                           <input
                             min={1}
-                            max={unit === "h" ? 48 : 30}
+                            max={unit === "m" ? 120 : unit === "h" ? 48 : 30}
                             type="number"
                             value={amount}
+                            onFocus={(event) => event.currentTarget.select()}
                             onChange={(event) => updateNotificationOffset(index, event.target.value)}
                           />
-                          <select value={unit} onChange={(event) => updateNotificationOffsetUnit(index, event.target.value as "h" | "d")}>
+                          <select value={unit} onChange={(event) => updateNotificationOffsetUnit(index, event.target.value as "m" | "h" | "d")}>
+                            <option value="m">minute</option>
                             <option value="h">ore</option>
                             <option value="d">zile</option>
                           </select>

@@ -41,6 +41,18 @@ type NativeGroupBookingNotification = {
   extra: { bookingId: string; url: string };
 };
 
+function bookingUrl(bookingId: string) {
+  return `/dashboard?booking=${encodeURIComponent(bookingId)}`;
+}
+
+function openBookingFromWebNotification(notification: Notification, bookingId: string) {
+  notification.onclick = () => {
+    window.focus();
+    window.location.assign(bookingUrl(bookingId));
+    notification.close();
+  };
+}
+
 function notificationBody(booking: Booking) {
   return `${booking.group}, ${formatDateLabel(booking.startDate, { year: "numeric" })}, ${booking.startTime}-${booking.endTime}, ${booking.room}`;
 }
@@ -60,7 +72,7 @@ function nativeBookingNotification(
     iconColor: "#1da4fe",
     ongoing: true,
     autoCancel: false,
-    extra: { bookingId, url: "/dashboard" },
+    extra: { bookingId, url: bookingUrl(bookingId) },
   };
 }
 
@@ -125,7 +137,7 @@ export function useGroupBookingNotifications({
         .reduce((unique, reminder) => {
           unique.set(`${reminder.booking.id}:${notificationOffsetToKey(reminder.offset)}`, reminder);
           return unique;
-        }, new Map<string, { booking: Booking; offset: { value: number; unit: "hours" | "days" } }>())
+        }, new Map<string, { booking: Booking; offset: { value: number; unit: "minutes" | "hours" | "days" } }>())
         .values()
     );
     const personalBookingNotifications = bookings.flatMap((booking) => {
@@ -177,7 +189,7 @@ export function useGroupBookingNotifications({
                 iconColor: "#1da4fe",
                 ongoing: true,
                 autoCancel: false,
-                extra: { bookingId: booking.id, url: "/dashboard" },
+                extra: { bookingId: booking.id, url: bookingUrl(booking.id) },
               },
             ];
         });
@@ -264,12 +276,13 @@ export function useGroupBookingNotifications({
       }
 
       window.localStorage.setItem(storageKey, "1");
-      new Notification("Reminder grup", {
+      const notification = new Notification("Reminder grup", {
         body: notificationBody(booking),
         icon: "/icon-192.png",
         tag: storageKey,
         requireInteraction: true,
       });
+      openBookingFromWebNotification(notification, booking.id);
     });
 
     const groupTimers = groupBookingReminders
@@ -295,17 +308,18 @@ export function useGroupBookingNotifications({
                   badge: "/icon-192.png",
                   tag: storageKey,
                   requireInteraction: true,
-                  data: { url: "/" },
+                  data: { url: bookingUrl(booking.id) },
                 });
                 return;
               }
 
-              new Notification(notificationTitle(offset), {
+              const notification = new Notification(notificationTitle(offset), {
                 body,
                 icon: "/icon-192.png",
                 tag: notificationOffsetToKey(offset),
                 requireInteraction: true,
               });
+              openBookingFromWebNotification(notification, booking.id);
             } catch (error) {
               console.warn("Notificarea nu a putut fi afisata:", error);
             }
@@ -323,7 +337,8 @@ export function useGroupBookingNotifications({
       return window.setTimeout(() => {
         const body = notificationBody(booking);
         window.localStorage.setItem(storageKey, "1");
-        new Notification(notificationTitle(offset), { body, icon: "/icon-192.png", tag: notificationOffsetToKey(offset), requireInteraction: true });
+        const notification = new Notification(notificationTitle(offset), { body, icon: "/icon-192.png", tag: notificationOffsetToKey(offset), requireInteraction: true });
+        openBookingFromWebNotification(notification, booking.id);
       }, delay);
     });
     const recurringTimers = recurringNotifications.map(({ schedule, date, offset }) => {

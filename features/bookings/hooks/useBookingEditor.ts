@@ -155,9 +155,9 @@ export function useBookingEditor({
       endTime: booking.endTime,
       reason: booking.reason,
       notifyOnThisBooking: Boolean(booking.notifyOnThisBooking && booking.notifyForUid === user?.uid),
-      notifyOffsets: booking.notifyOffsets?.length ? booking.notifyOffsets : ["1h"],
+      notifyOffsets: booking.notifyOffsets?.length ? booking.notifyOffsets : ["15m"],
       notifyGroupOnThisBooking: Boolean(booking.notifyGroupOnThisBooking),
-      notifyGroupOffsets: booking.notifyGroupOffsets?.length ? booking.notifyGroupOffsets : ["1h"],
+      notifyGroupOffsets: booking.notifyGroupOffsets?.length ? booking.notifyGroupOffsets : ["15m"],
       notifyGroupAudience: booking.notifyGroupAudience === "selected" ? "selected" : "all",
       notifyGroupRecipients: booking.notifyGroupRecipients?.length ? booking.notifyGroupRecipients : [],
     });
