@@ -2212,6 +2212,22 @@ img {
   flex: 1 1 74px;
 }
 
+@media (max-width: 1180px) {
+  .code-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .code-chip,
+  .code-room-access,
+  .code-row-actions {
+    grid-column: 1 / -1;
+  }
+
+  .code-row-actions {
+    justify-content: stretch;
+  }
+}
+
 .license-list {
   overflow: visible;
 }
@@ -4592,6 +4608,15 @@ img {
     min-height: 46px;
     justify-content: flex-start;
     padding: 0 12px;
+    font-size: 0.94rem;
+  }
+
+  .app-tabs .tab-label {
+    display: inline;
+  }
+
+  .app-tabs .install-button::before {
+    content: none;
   }
 
   .app-tabs-spacer {
