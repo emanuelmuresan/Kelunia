@@ -2057,9 +2057,9 @@ service cloud.firestore {
           isOwner()
           || resource.data.locationId == userLocationId()
         );
-      allow create: if isLocationAdmin()
+      allow create: if (isOwner() || isLocationAdmin())
         && validEventData(request.resource.data)
-        && request.resource.data.locationId == userLocationId()
+        && (isOwner() || request.resource.data.locationId == userLocationId())
         && roomAccessAllows(request.resource.data.roomId)
         && locationWriteEnabled(request.resource.data.locationId);
       allow update: if validEventData(request.resource.data)
@@ -2067,7 +2067,7 @@ service cloud.firestore {
         && roomAccessAllows(request.resource.data.roomId)
         && (
           (
-            canManageLocation(resource.data.locationId)
+            (isOwner() || canManageLocation(resource.data.locationId))
             && request.resource.data.locationId == resource.data.locationId
           )
           || (
@@ -2080,7 +2080,7 @@ service cloud.firestore {
             )
           )
         );
-      allow delete: if (canManageLocation(resource.data.locationId) && locationWriteEnabled(resource.data.locationId))
+      allow delete: if ((isOwner() || canManageLocation(resource.data.locationId)) && locationWriteEnabled(resource.data.locationId))
         || (
           isLocationAdmin()
           && resource.data.locationId == userLocationId()
