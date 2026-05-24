@@ -274,8 +274,12 @@ export function useBookingEditor({
       notifyForUid: formData.notifyOnThisBooking ? user.uid : "",
       notifyGroupOnThisBooking: formData.notifyGroupOnThisBooking,
       notifyGroupOffsets: formData.notifyGroupOnThisBooking ? groupNotificationOffsets.map(notificationOffsetToKey) : [],
-      notifyGroupAudience: formData.notifyGroupAudience,
-      notifyGroupRecipients: selectedGroupRecipients,
+      ...((formData.notifyGroupOnThisBooking || shouldNotifyGroupNow)
+        ? {
+          notifyGroupAudience: formData.notifyGroupAudience,
+          notifyGroupRecipients: selectedGroupRecipients,
+        }
+        : {}),
       ...(shouldNotifyGroupNow
         ? {
           notifyGroupNowAt: Timestamp.now(),
