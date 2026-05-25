@@ -110,6 +110,7 @@ import { useCommunityApplications } from "@/features/landing/hooks/useCommunityA
 import { useNewsletter } from "@/features/newsletter/hooks/useNewsletter";
 import { useOnlineStatus } from "@/features/network/hooks/useOnlineStatus";
 import { useGroupBookingNotifications } from "@/features/notifications/hooks/useGroupBookingNotifications";
+import { hasKeluniaPushConfig, listenKeluniaForegroundPush, registerKeluniaPushToken } from "@/lib/push-notifications";
 import { useLocationResources } from "@/features/resources/hooks/useLocationResources";
 import { AppLockModal } from "@/features/security/components/AppLockModal";
 import { useCalendarSettings } from "@/features/settings/hooks/useCalendarSettings";
@@ -780,9 +781,10 @@ export default function KeluniaPage() {
 
     try {
       const notificationsAllowed = await requestKeluniaNotificationPermission();
+      const pushRegistered = notificationsAllowed ? await registerKeluniaPushToken(user, profile) : false;
       const saveBooking = httpsCallable(cloudFunctions, "saveBooking");
 
-      await saveBooking({
+      const result = await saveBooking({
         editingId: selectedBooking.id,
         group: selectedBooking.group,
         room: selectedBooking.room,
@@ -798,11 +800,16 @@ export default function KeluniaPage() {
         notifyGroupRecipients: [],
         notifyGroupNow: true,
       });
+      const pushSent = Number((result.data as { pushSent?: unknown } | undefined)?.pushSent ?? 0);
 
       setSelectedBookingNotice(
-        notificationsAllowed
-          ? "Reminderul a fost trimis. Pe dispozitivele cu notificările activate va apărea imediat."
-          : "Reminderul a fost trimis, dar pe acest dispozitiv notificările nu sunt activate."
+        !hasKeluniaPushConfig()
+          ? "Reminderul a fost salvat, dar notificările push PWA trebuie configurate în Firebase."
+          : pushSent > 0
+            ? `Reminderul a fost trimis către ${pushSent} dispozitiv${pushSent === 1 ? "" : "e"}.`
+            : pushRegistered
+              ? "Reminderul a fost trimis, dar nu am găsit încă alte dispozitive active pentru grup."
+              : "Reminderul a fost trimis, dar pe acest dispozitiv notificările nu sunt activate."
       );
     } catch (error) {
       console.error("Notificarea nu a putut fi trimisa:", error);
@@ -1019,6 +1026,54 @@ export default function KeluniaPage() {
   }, [bookings, setActiveView]);
 
   useEffect(() => {
+    if (!user || !profile || typeof window === "undefined" || !("Notification" in window) || Notification.permission !== "granted") {
+      return;
+    }
+
+    void registerKeluniaPushToken(user, profile);
+  }, [profile, user]);
+
+  useEffect(() => {
+    let unsubscribe: (() => void) | undefined;
+    let cancelled = false;
+
+    void listenKeluniaForegroundPush(async (payload: { data?: Record<string, string>; notification?: { body?: string; title?: string } }) => {
+      const data = payload.data ?? {};
+      const title = data.title || payload.notification?.title || "Kelunia";
+      const body = data.body || payload.notification?.body || "";
+
+      if (!("serviceWorker" in navigator) || !("Notification" in window) || Notification.permission !== "granted") {
+        return;
+      }
+
+      const registration = await navigator.serviceWorker.ready;
+      await registration.showNotification(title, {
+        body,
+        badge: "/icon-192.png",
+        data: {
+          bookingId: data.bookingId || "",
+          url: data.url || "/dashboard",
+        },
+        icon: "/icon-192.png",
+        requireInteraction: true,
+        tag: data.tag || data.bookingId || "kelunia-notification",
+      });
+    }).then((nextUnsubscribe: () => void) => {
+      if (cancelled) {
+        nextUnsubscribe();
+        return;
+      }
+
+      unsubscribe = nextUnsubscribe;
+    });
+
+    return () => {
+      cancelled = true;
+      unsubscribe?.();
+    };
+  }, []);
+
+  useEffect(() => {
     if (!appLocked || !profile?.useBiometrics || !user) {
       return;
     }
@@ -1169,6 +1224,8 @@ export default function KeluniaPage() {
         setSettingsError("Notificările nu au fost permise pe acest dispozitiv.");
         return;
       }
+
+      await registerKeluniaPushToken(user, profile);
     }
 
     const usePin = effectiveDraft.usePin || effectiveDraft.useBiometrics;

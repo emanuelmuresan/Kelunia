@@ -1,13 +1,17 @@
 import { initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
+import { getMessaging } from "firebase-admin/messaging";
 import { logger } from "firebase-functions";
 import { defineSecret, defineString } from "firebase-functions/params";
 import { onDocumentCreated, onDocumentWritten } from "firebase-functions/v2/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { Resend } from "resend";
+import { createHash } from "node:crypto";
 
 initializeApp();
+
+const db = getFirestore();
 
 const resendApiKey = defineSecret("RESEND_API_KEY");
 const emailFrom = defineString("EMAIL_FROM", {
@@ -86,10 +90,26 @@ type SaveBookingRequest = {
 type UserRole = "manager" | "member" | "guest";
 
 type UserProfile = {
+  allowedRoomIds?: string[];
+  displayName?: string;
+  email?: string;
+  groupName?: string;
   isOwner?: boolean;
   locationId?: string;
   locationSetupRequired?: boolean;
   role?: string;
+  roomAccess?: string;
+};
+
+type NotificationTokenDocument = {
+  displayName?: string;
+  email?: string;
+  groupName?: string;
+  locationId?: string;
+  locationName?: string;
+  platform?: string;
+  token?: string;
+  uid?: string;
 };
 
 function normalizeRole(role: unknown): UserRole {
@@ -116,6 +136,10 @@ function emailText(applicationId: string, message: CommunityMessage) {
 
 function cleanEmail(value: unknown) {
   return typeof value === "string" ? value.trim().toLowerCase() : "";
+}
+
+function tokenDocumentId(token: string) {
+  return createHash("sha256").update(token).digest("hex");
 }
 
 function validEmail(value: string) {
@@ -162,6 +186,84 @@ function cleanNotificationOffsets(value: unknown) {
       return amount <= 30;
     })
     .slice(0, 5);
+}
+
+function bookingNotificationBody(booking: Record<string, unknown>) {
+  return `${cleanText(booking.group, 120)}, ${cleanText(booking.startDate, 10)}, ${cleanText(booking.startTime, 5)}-${cleanText(booking.endTime, 5)}, ${cleanText(booking.room, 120)}`;
+}
+
+async function sendInstantBookingPush(
+  bookingId: string,
+  bookingPayload: Record<string, unknown>,
+  senderUid: string,
+  locationId: string,
+  group: string,
+  audience: "all" | "selected",
+  recipients: string[]
+) {
+  const locationTokensSnapshot = await db
+    .collection("notificationTokens")
+    .where("locationId", "==", locationId)
+    .get();
+  const groupKey = group.trim().toLowerCase();
+  const recipientSet = new Set(recipients.map((email) => email.trim().toLowerCase()).filter(Boolean));
+  const tokenDocs = locationTokensSnapshot.docs.filter((tokenDoc) => {
+    const tokenData = tokenDoc.data() as NotificationTokenDocument;
+    const sameGroup = cleanText(tokenData.groupName, 120).toLowerCase() === groupKey;
+    const selectedRecipient = audience !== "selected" || recipientSet.has(cleanEmail(tokenData.email));
+
+    return Boolean(tokenData.token) && sameGroup && selectedRecipient && tokenData.uid !== senderUid;
+  });
+  const uniqueTokens = [...new Set(tokenDocs.map((tokenDoc) => String((tokenDoc.data() as NotificationTokenDocument).token)))];
+
+  if (uniqueTokens.length === 0) {
+    return { sent: 0 };
+  }
+
+  const url = `/dashboard?booking=${encodeURIComponent(bookingId)}`;
+  let sent = 0;
+
+  for (let index = 0; index < uniqueTokens.length; index += 500) {
+    const tokens = uniqueTokens.slice(index, index + 500);
+    const response = await getMessaging().sendEachForMulticast({
+      tokens,
+      data: {
+        bookingId,
+        body: bookingNotificationBody(bookingPayload),
+        tag: `booking-now-${bookingId}`,
+        title: "Reminder grup",
+        url,
+      },
+      webpush: {
+        headers: {
+          Urgency: "high",
+        },
+        fcmOptions: {
+          link: `${appBaseUrl.value()}${url}`,
+        },
+      },
+    });
+
+    sent += response.successCount;
+
+    const batch = db.batch();
+    let invalidCount = 0;
+
+    response.responses.forEach((result, tokenIndex) => {
+      const code = result.error?.code;
+
+      if (code === "messaging/registration-token-not-registered" || code === "messaging/invalid-registration-token") {
+        batch.delete(db.doc(`notificationTokens/${tokenDocumentId(tokens[tokenIndex])}`));
+        invalidCount += 1;
+      }
+    });
+
+    if (invalidCount > 0) {
+      await batch.commit();
+    }
+  }
+
+  return { sent };
 }
 
 function userClaimsFromProfile(profile: UserProfile) {
@@ -592,6 +694,50 @@ export const sendAccessInviteEmail = onCall(
   }
 );
 
+export const registerNotificationToken = onCall(
+  {
+    region: "europe-west1",
+  },
+  async (request) => {
+    if (!request.auth?.uid || request.auth.token.email_verified !== true) {
+      throw new HttpsError("unauthenticated", "Trebuie să fii autentificat cu email verificat.");
+    }
+
+    const payload = request.data as NotificationTokenDocument;
+    const token = cleanText(payload.token, 4096);
+    const locationId = cleanText(payload.locationId, 160);
+
+    if (!token || !locationId) {
+      throw new HttpsError("invalid-argument", "Tokenul de notificări nu este valid.");
+    }
+
+    const userSnapshot = await db.doc(`users/${request.auth.uid}`).get();
+    const userProfile = userSnapshot.exists ? userSnapshot.data() as UserProfile : null;
+    const isOwner = userProfile?.isOwner === true || request.auth.token.email === "emanuelmuresan@gmail.com";
+
+    if (!isOwner && userProfile?.locationId !== locationId) {
+      throw new HttpsError("permission-denied", "Nu ai acces la această locație.");
+    }
+
+    await db.doc(`notificationTokens/${tokenDocumentId(token)}`).set(
+      {
+        displayName: cleanText(payload.displayName || userProfile?.displayName || request.auth.token.email, 180),
+        email: cleanEmail(payload.email || userProfile?.email || request.auth.token.email),
+        groupName: cleanText(payload.groupName || userProfile?.groupName, 120),
+        locationId,
+        locationName: cleanText(payload.locationName || "", 180),
+        platform: cleanText(payload.platform || "pwa", 40),
+        token,
+        uid: request.auth.uid,
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    return { registered: true };
+  }
+);
+
 export const saveBooking = onCall(
   {
     region: "europe-west1",
@@ -707,6 +853,8 @@ export const saveBooking = onCall(
         : [];
     }
 
+    let pushResult = { sent: 0 };
+
     if (editingId) {
       const ref = db.doc(`events/${editingId}`);
       const beforeSnapshot = await ref.get();
@@ -722,7 +870,20 @@ export const saveBooking = onCall(
       }
 
       await ref.update(bookingPayload);
-      return { id: editingId, saved: true };
+
+      if (payload.notifyGroupNow === true) {
+        pushResult = await sendInstantBookingPush(
+          editingId,
+          { ...before, ...bookingPayload },
+          request.auth.uid,
+          locationId,
+          group,
+          bookingPayload.notifyGroupAudience === "selected" ? "selected" : "all",
+          Array.isArray(bookingPayload.notifyGroupRecipients) ? bookingPayload.notifyGroupRecipients as string[] : []
+        );
+      }
+
+      return { id: editingId, pushSent: pushResult.sent, saved: true };
     }
 
     bookingPayload.authorEmail = request.auth.token.email || "";
@@ -742,7 +903,19 @@ export const saveBooking = onCall(
       { merge: true }
     );
 
-    return { id: created.id, saved: true };
+    if (payload.notifyGroupNow === true) {
+      pushResult = await sendInstantBookingPush(
+        created.id,
+        bookingPayload,
+        request.auth.uid,
+        locationId,
+        group,
+        bookingPayload.notifyGroupAudience === "selected" ? "selected" : "all",
+        Array.isArray(bookingPayload.notifyGroupRecipients) ? bookingPayload.notifyGroupRecipients as string[] : []
+      );
+    }
+
+    return { id: created.id, pushSent: pushResult.sent, saved: true };
   }
 );
 

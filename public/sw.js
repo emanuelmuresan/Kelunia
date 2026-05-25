@@ -1,4 +1,4 @@
-const CACHE_NAME = "kelunia-shell-v15";
+const CACHE_NAME = "kelunia-shell-v16";
 const APP_SHELL = ["/", "/dashboard", "/login", "/manifest.json", "/icon-192.png", "/icon-512.png", "/kelunia-logo.png", "/semnatura.png"];
 const IS_LOCAL =
   self.location.hostname === "localhost" ||
@@ -95,6 +95,40 @@ self.addEventListener("fetch", (event) => {
           return response;
         })
         .catch(() => cached || Response.error());
+    })
+  );
+});
+
+self.addEventListener("push", (event) => {
+  if (!event.data) {
+    return;
+  }
+
+  let payload = {};
+
+  try {
+    payload = event.data.json();
+  } catch {
+    payload = { data: { body: event.data.text() } };
+  }
+
+  const data = payload.data || {};
+  const notification = payload.notification || {};
+  const title = data.title || notification.title || "Kelunia";
+  const body = data.body || notification.body || "";
+  const url = data.url || payload.fcmOptions?.link || "/dashboard";
+
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body,
+      icon: data.icon || notification.icon || "/icon-192.png",
+      badge: data.badge || "/icon-192.png",
+      tag: data.tag || data.bookingId || "kelunia-notification",
+      requireInteraction: true,
+      data: {
+        bookingId: data.bookingId || "",
+        url,
+      },
     })
   );
 });
