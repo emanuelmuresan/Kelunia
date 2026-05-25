@@ -1026,7 +1026,7 @@ export default function KeluniaPage() {
   }, [bookings, setActiveView]);
 
   useEffect(() => {
-    if (!user || !profile || typeof window === "undefined" || !("Notification" in window) || Notification.permission !== "granted") {
+    if (!user || !profile || typeof window === "undefined") {
       return;
     }
 

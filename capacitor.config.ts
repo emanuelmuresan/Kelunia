@@ -8,6 +8,11 @@ const config: CapacitorConfig = {
     androidScheme: "https",
     appStartPath: "/login.html",
   },
+  plugins: {
+    PushNotifications: {
+      presentationOptions: ["badge", "sound", "banner", "list"],
+    },
+  },
 };
 
 export default config;

@@ -8,6 +8,7 @@ import { onDocumentCreated, onDocumentWritten } from "firebase-functions/v2/fire
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { Resend } from "resend";
 import { createHash } from "node:crypto";
+import { connect } from "node:http2";
 
 initializeApp();
 
@@ -19,6 +20,18 @@ const emailFrom = defineString("EMAIL_FROM", {
 });
 const appBaseUrl = defineString("APP_BASE_URL", {
   default: "https://www.kelunia.com",
+});
+const apnsBundleId = defineString("APNS_BUNDLE_ID", {
+  default: "com.emanuelmuresan.kelunia",
+});
+const apnsKeyId = defineString("APNS_KEY_ID", {
+  default: "",
+});
+const apnsTeamId = defineString("APNS_TEAM_ID", {
+  default: "",
+});
+const apnsPrivateKey = defineString("APNS_PRIVATE_KEY", {
+  default: "",
 });
 
 type CommunityMessage = {
@@ -109,6 +122,7 @@ type NotificationTokenDocument = {
   locationName?: string;
   platform?: string;
   token?: string;
+  tokenType?: "apns" | "fcm";
   uid?: string;
 };
 
@@ -192,6 +206,95 @@ function bookingNotificationBody(booking: Record<string, unknown>) {
   return `${cleanText(booking.group, 120)}, ${cleanText(booking.startDate, 10)}, ${cleanText(booking.startTime, 5)}-${cleanText(booking.endTime, 5)}, ${cleanText(booking.room, 120)}`;
 }
 
+async function apnsJwt() {
+  const keyId = apnsKeyId.value().trim();
+  const teamId = apnsTeamId.value().trim();
+  const privateKey = apnsPrivateKey.value().replace(/\\n/g, "\n").trim();
+
+  if (!keyId || !teamId || !privateKey) {
+    return "";
+  }
+
+  const { SignJWT, importPKCS8 } = await import("jose");
+  const key = await importPKCS8(privateKey, "ES256");
+
+  return new SignJWT({})
+    .setProtectedHeader({ alg: "ES256", kid: keyId })
+    .setIssuer(teamId)
+    .setIssuedAt()
+    .sign(key);
+}
+
+function sendApnsRequest(host: string, token: string, jwt: string, payload: Record<string, unknown>) {
+  return new Promise<{ status: number; body: string }>((resolve, reject) => {
+    const client = connect(`https://${host}`);
+    const chunks: Buffer[] = [];
+    const request = client.request({
+      ":method": "POST",
+      ":path": `/3/device/${token}`,
+      authorization: `bearer ${jwt}`,
+      "apns-push-type": "alert",
+      "apns-priority": "10",
+      "apns-topic": apnsBundleId.value().trim() || "com.emanuelmuresan.kelunia",
+    });
+
+    request.setEncoding("utf8");
+    request.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
+    request.on("response", (headers) => {
+      const status = Number(headers[":status"] ?? 0);
+      request.on("end", () => {
+        client.close();
+        resolve({ status, body: Buffer.concat(chunks).toString("utf8") });
+      });
+    });
+    request.on("error", (error) => {
+      client.close();
+      reject(error);
+    });
+    request.end(JSON.stringify(payload));
+  });
+}
+
+async function sendApnsPush(tokens: string[], bookingId: string, body: string, url: string) {
+  const jwt = await apnsJwt();
+
+  if (!jwt || tokens.length === 0) {
+    return { invalidTokens: [] as string[], sent: 0 };
+  }
+
+  const payload = {
+    aps: {
+      alert: {
+        title: "Reminder grup",
+        body,
+      },
+      sound: "default",
+    },
+    bookingId,
+    url,
+  };
+  const invalidTokens: string[] = [];
+  let sent = 0;
+
+  for (const token of tokens) {
+    let result = await sendApnsRequest("api.sandbox.push.apple.com", token, jwt, payload);
+
+    if (result.status === 400 && result.body.includes("BadDeviceToken")) {
+      result = await sendApnsRequest("api.push.apple.com", token, jwt, payload);
+    }
+
+    if (result.status >= 200 && result.status < 300) {
+      sent += 1;
+    }
+
+    if (result.status === 410 || (result.status === 400 && result.body.includes("BadDeviceToken"))) {
+      invalidTokens.push(token);
+    }
+  }
+
+  return { invalidTokens, sent };
+}
+
 async function sendInstantBookingPush(
   bookingId: string,
   bookingPayload: Record<string, unknown>,
@@ -213,22 +316,30 @@ async function sendInstantBookingPush(
 
     return Boolean(tokenData.token) && sameGroup && selectedRecipient;
   });
-  const uniqueTokens = [...new Set(tokenDocs.map((tokenDoc) => String((tokenDoc.data() as NotificationTokenDocument).token)))];
+  const fcmTokens = [...new Set(tokenDocs
+    .map((tokenDoc) => tokenDoc.data() as NotificationTokenDocument)
+    .filter((tokenData) => tokenData.tokenType !== "apns")
+    .map((tokenData) => String(tokenData.token)))];
+  const apnsTokens = [...new Set(tokenDocs
+    .map((tokenDoc) => tokenDoc.data() as NotificationTokenDocument)
+    .filter((tokenData) => tokenData.tokenType === "apns")
+    .map((tokenData) => String(tokenData.token)))];
 
-  if (uniqueTokens.length === 0) {
+  if (fcmTokens.length === 0 && apnsTokens.length === 0) {
     return { sent: 0 };
   }
 
   const url = `/dashboard?booking=${encodeURIComponent(bookingId)}`;
+  const body = bookingNotificationBody(bookingPayload);
   let sent = 0;
 
-  for (let index = 0; index < uniqueTokens.length; index += 500) {
-    const tokens = uniqueTokens.slice(index, index + 500);
+  for (let index = 0; index < fcmTokens.length; index += 500) {
+    const tokens = fcmTokens.slice(index, index + 500);
     const response = await getMessaging().sendEachForMulticast({
       tokens,
       data: {
         bookingId,
-        body: bookingNotificationBody(bookingPayload),
+        body,
         tag: `booking-now-${bookingId}`,
         title: "Reminder grup",
         url,
@@ -260,6 +371,15 @@ async function sendInstantBookingPush(
     if (invalidCount > 0) {
       await batch.commit();
     }
+  }
+
+  const apnsResult = await sendApnsPush(apnsTokens, bookingId, body, url);
+  sent += apnsResult.sent;
+
+  if (apnsResult.invalidTokens.length > 0) {
+    const batch = db.batch();
+    apnsResult.invalidTokens.forEach((token) => batch.delete(db.doc(`notificationTokens/${tokenDocumentId(token)}`)));
+    await batch.commit();
   }
 
   return { sent };
@@ -727,6 +847,7 @@ export const registerNotificationToken = onCall(
         locationName: cleanText(payload.locationName || "", 180),
         platform: cleanText(payload.platform || "pwa", 40),
         token,
+        tokenType: payload.tokenType === "apns" ? "apns" : "fcm",
         uid: request.auth.uid,
         updatedAt: FieldValue.serverTimestamp(),
       },
