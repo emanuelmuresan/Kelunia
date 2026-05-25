@@ -195,7 +195,6 @@ function bookingNotificationBody(booking: Record<string, unknown>) {
 async function sendInstantBookingPush(
   bookingId: string,
   bookingPayload: Record<string, unknown>,
-  senderUid: string,
   locationId: string,
   group: string,
   audience: "all" | "selected",
@@ -212,7 +211,7 @@ async function sendInstantBookingPush(
     const sameGroup = cleanText(tokenData.groupName, 120).toLowerCase() === groupKey;
     const selectedRecipient = audience !== "selected" || recipientSet.has(cleanEmail(tokenData.email));
 
-    return Boolean(tokenData.token) && sameGroup && selectedRecipient && tokenData.uid !== senderUid;
+    return Boolean(tokenData.token) && sameGroup && selectedRecipient;
   });
   const uniqueTokens = [...new Set(tokenDocs.map((tokenDoc) => String((tokenDoc.data() as NotificationTokenDocument).token)))];
 
@@ -875,7 +874,6 @@ export const saveBooking = onCall(
         pushResult = await sendInstantBookingPush(
           editingId,
           { ...before, ...bookingPayload },
-          request.auth.uid,
           locationId,
           group,
           bookingPayload.notifyGroupAudience === "selected" ? "selected" : "all",
@@ -907,7 +905,6 @@ export const saveBooking = onCall(
       pushResult = await sendInstantBookingPush(
         created.id,
         bookingPayload,
-        request.auth.uid,
         locationId,
         group,
         bookingPayload.notifyGroupAudience === "selected" ? "selected" : "all",
