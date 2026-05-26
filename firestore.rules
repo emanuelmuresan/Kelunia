@@ -742,9 +742,55 @@ service cloud.firestore {
         && request.resource.data.isOwner == true;
     }
 
+    function validOwnUserSettingsShape(data) {
+      return validOptionalText(data, "displayName", 120)
+        && validOptionalText(data, "groupName", 120)
+        && validOptionalText(data, "group", 120)
+        && validOptionalBool(data, "usePin")
+        && validOptionalText(data, "pinHash", 180)
+        && validOptionalBool(data, "pinSet")
+        && validOptionalBool(data, "lockOnHide")
+        && validOptionalBool(data, "useBiometrics")
+        && (!hasKey(data, "language") || data.language == "ro")
+        && validOptionalBool(data, "notifyGroupBookings")
+        && validOptionalBool(data, "notifyFixedGroupSchedules")
+        && validOptionalBool(data, "notifyWeekBefore")
+        && validOptionalBool(data, "notifyDayBefore")
+        && validOptionalNotificationOffsetRules(data, "notifyOffsets")
+        && validOptionalNotificationOffsets(data, "notifyOffsetsDays");
+    }
+
     function validOwnUserUpdate(userId) {
       return signedInVerified()
         && request.auth.uid == userId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "displayName",
+          "groupName",
+          "group",
+          "usePin",
+          "pinHash",
+          "pinSet",
+          "lockOnHide",
+          "useBiometrics",
+          "language",
+          "notifyGroupBookings",
+          "notifyFixedGroupSchedules",
+          "notifyWeekBefore",
+          "notifyDayBefore",
+          "notifyOffsets",
+          "notifyOffsetsDays"
+        ])
+        && validOwnUserSettingsShape(request.resource.data)
+        && (
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(["groupName", "group"])
+          || request.resource.data.groupName == request.resource.data.group
+        );
+    }
+
+    function validOwnUserMetadataUpdate(userId) {
+      return signedInVerified()
+        && request.auth.uid == userId
+        && validUserDataShape(request.resource.data)
         && request.resource.data.role == resource.data.role
         && request.resource.data.isOwner == resource.data.isOwner
         && request.resource.data.locationId == resource.data.locationId
@@ -1802,12 +1848,17 @@ service cloud.firestore {
       allow create: if validUserCreate(userId);
 
       allow update: if signedInVerified()
-        && validUserDataShape(request.resource.data)
         && (
-          validOwnerSyncUpdate(userId)
-          || validOwnUserUpdate(userId)
-          || validLocationSetupUserUpdate(userId)
-          || validManagerUserUpdate()
+          validOwnUserUpdate(userId)
+          || (
+            validUserDataShape(request.resource.data)
+            && (
+              validOwnerSyncUpdate(userId)
+              || validOwnUserMetadataUpdate(userId)
+              || validLocationSetupUserUpdate(userId)
+              || validManagerUserUpdate()
+            )
+          )
         );
 
       allow delete: if signedInVerified()
