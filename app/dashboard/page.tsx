@@ -1266,15 +1266,19 @@ export default function KeluniaPage() {
 
     try {
       await setDoc(doc(db, "users", user.uid), payload, { merge: true });
-      await recordAuditLog("user", "update", user.uid, profile, payload, payload.locationId as string, payload.locationName as string);
+      setSettingsError("");
+      setSettingsMessage("Setările au fost salvate.");
+
+      void recordAuditLog("user", "update", user.uid, profile, payload, payload.locationId as string, payload.locationName as string);
+
       if (usePin) {
         markAppUnlocked();
       }
       setPendingPinHash(null);
-      setSettingsMessage("Setările au fost salvate.");
     } catch (error) {
       console.error("Setările nu au putut fi salvate:", error);
       setSettingsError("Setările nu au putut fi salvate. Verifică regulile Firebase.");
+      setSettingsMessage("");
     }
   }
 
