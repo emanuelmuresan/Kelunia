@@ -1,4 +1,4 @@
-package com.kelunia.app;
+package com.emanuelmuresan.kelunia;
 
 import android.graphics.Color;
 import android.os.Build;

@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "544594584246",
+    "project_id": "kelunia-890fe",
+    "storage_bucket": "kelunia-890fe.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:544594584246:android:6fcff7ba244e232cd6fc17",
+        "android_client_info": {
+          "package_name": "com.emanuelmuresan.kelunia"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "544594584246-64gp847pfnepatnimuje6cbt9d0vlorv.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCTUh4D093lkWZ5KSUaGs8AzyW6vkVDS_s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "544594584246-64gp847pfnepatnimuje6cbt9d0vlorv.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
