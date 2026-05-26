@@ -1232,14 +1232,21 @@ export default function KeluniaPage() {
     const savedRoomAccess = isOwner || role === "manager" ? "all" : normalizeRoomAccessMode(profile?.roomAccess);
     const savedAllowedRoomIds = savedRoomAccess === "selected" ? normalizeAllowedRoomIds(profile?.allowedRoomIds) : [];
     const payload: Record<string, unknown> = {
+      uid: user.uid,
       email: user.email,
       displayName: effectiveDraft.displayName,
       groupName: isOwner ? "" : effectiveDraft.groupName,
+      group: isOwner ? "" : effectiveDraft.groupName,
       role,
+      isOwner,
       locationId: isOwner ? "" : profile?.locationId ?? "main-location",
       locationName: isOwner ? defaultLocationName : profile?.locationName ?? locationName,
+      accessCodeId: profile?.accessCodeId ?? "",
       roomAccess: savedRoomAccess,
       allowedRoomIds: savedAllowedRoomIds,
+      pendingLicenseId: profile?.pendingLicenseId ?? "",
+      pendingLicenseCode: "",
+      locationSetupRequired: false,
       usePin,
       lockOnHide: usePin ? effectiveDraft.lockOnHide : false,
       useBiometrics: usePin ? effectiveDraft.useBiometrics : false,
