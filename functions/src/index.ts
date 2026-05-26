@@ -337,6 +337,16 @@ async function sendInstantBookingPush(
     const tokens = fcmTokens.slice(index, index + 500);
     const response = await getMessaging().sendEachForMulticast({
       tokens,
+      android: {
+        priority: "high",
+        notification: {
+          body,
+          clickAction: "OPEN_BOOKING",
+          sound: "default",
+          tag: `booking-now-${bookingId}`,
+          title: "Reminder grup",
+        },
+      },
       data: {
         bookingId,
         body,
