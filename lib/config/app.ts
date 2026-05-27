@@ -1,5 +1,6 @@
 import type { UserRole } from "@/context/AuthContext";
 import type { AuditAction, AuditEntityType } from "@/lib/audit";
+import { appText, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 import type { Booking, BookingForm, FixedSchedule, FixedScheduleDraft, GroupItem, RoomItem } from "@/lib/types/domain";
 
 export const auditActionLabels: Record<AuditAction, string> = {
@@ -69,8 +70,20 @@ export const roleLabels: Record<UserRole, string> = {
   guest: "Oaspete",
 };
 
-export function appRoleLabel(profile: { isOwner?: boolean } | null | undefined, currentRole: UserRole) {
-  return profile?.isOwner ? "Proprietar" : roleLabels[currentRole];
+export function appRoleLabel(profile: { isOwner?: boolean } | null | undefined, currentRole: UserRole, locale: SupportedLocale = "ro") {
+  if (profile?.isOwner) {
+    return appText(locale, "role.owner");
+  }
+
+  if (currentRole === "manager") {
+    return appText(locale, "role.administrator");
+  }
+
+  if (currentRole === "member") {
+    return appText(locale, "role.collaborator");
+  }
+
+  return appText(locale, "role.guest");
 }
 
 export const memberAccessCodeMaxUses = 10;

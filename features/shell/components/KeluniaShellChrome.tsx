@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { InstallAppPrompt } from "@/components/InstallAppPrompt";
+import { appText, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 import type { AppView } from "@/lib/types/domain";
 
 type NavigationItem = [AppView, string];
@@ -16,6 +17,7 @@ type KeluniaShellChromeProps = {
   offlineMessage: string;
   showLicenseWarning: boolean;
   userLabel?: string;
+  language?: SupportedLocale;
   onNavigate: (view: AppView) => void;
   onSignOut: () => void;
 };
@@ -45,6 +47,7 @@ export function KeluniaShellChrome({
   offlineMessage,
   showLicenseWarning,
   userLabel,
+  language = "ro",
   onNavigate,
   onSignOut,
 }: KeluniaShellChromeProps) {
@@ -65,7 +68,7 @@ export function KeluniaShellChrome({
               ))}
             </h1>
           )}
-          <p>{userLabel ?? "Rezervări clare pentru fiecare spațiu al comunității."}</p>
+          <p>{userLabel ?? appText(language, "public.subtitle")}</p>
         </div>
       </header>
 
@@ -73,24 +76,22 @@ export function KeluniaShellChrome({
       {isSignedIn && showLicenseWarning && <p className="warning-line settings-alert">{licenseMessage}</p>}
 
       {!isSignedIn && (
-        <section className="public-intro" aria-label="Despre Kelunia">
+        <section className="public-intro" aria-label="Kelunia">
           <div className="public-intro-copy">
             <span className="eyebrow">Kelunia</span>
-            <h2>Un calendar liniștit pentru locuri folosite cu grijă.</h2>
-            <p>
-              Organizează săli, grupuri și rezervări într-un singur loc, cu acces simplu pentru fiecare rol și o vedere clară asupra săptămânii.
-            </p>
+            <h2>{appText(language, "public.title")}</h2>
+            <p>{appText(language, "public.subtitle")}</p>
             <div className="intro-tags" aria-label="Caracteristici">
-              <span>Calendar</span>
-              <span>Rezervări</span>
-              <span>Locații</span>
+              <span>{appText(language, "public.feature.calendar")}</span>
+              <span>{appText(language, "public.feature.bookings")}</span>
+              <span>{appText(language, "public.feature.locations")}</span>
             </div>
           </div>
           <img src="/kelunia-logo.png" alt="Kelunia" />
         </section>
       )}
 
-      <nav className="app-tabs" aria-label="Navigare">
+      <nav className="app-tabs" aria-label={appText(language, "nav.aria")}>
         {navigationItems.map(([value, label]) => (
           <button
             key={value}
@@ -107,14 +108,14 @@ export function KeluniaShellChrome({
         <span className="app-tabs-spacer" aria-hidden="true" />
         <InstallAppPrompt />
         {isSignedIn ? (
-          <button className="logout-button app-tab-action app-tab-logout" onClick={onSignOut} aria-label="Ieșire" title="Ieșire" type="button">
+          <button className="logout-button app-tab-action app-tab-logout" onClick={onSignOut} aria-label={appText(language, "action.signOut")} title={appText(language, "action.signOut")} type="button">
             <span className="logout-door" aria-hidden="true" />
-            <span className="tab-label">Ieșire</span>
+            <span className="tab-label">{appText(language, "action.signOut")}</span>
           </button>
         ) : (
-          <Link className="app-tab-link app-tab-login" href="/login" aria-label="Intră în cont" title="Intră în cont">
+          <Link className="app-tab-link app-tab-login" href="/login" aria-label={appText(language, "auth.signIn")} title={appText(language, "auth.signIn")}>
             <span className="tab-icon tab-icon-login" aria-hidden="true" />
-            <span className="tab-label">Intră în cont</span>
+            <span className="tab-label">{appText(language, "auth.signIn")}</span>
           </Link>
         )}
       </nav>

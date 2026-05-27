@@ -4,12 +4,13 @@ import React, { createContext, useContext, useEffect, useRef, useState } from "r
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { doc, getDoc, setDoc, type DocumentData, type DocumentReference } from "firebase/firestore";
+import { normalizeSupportedLocale, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 import { normalizeAllowedRoomIds, normalizeRoomAccessMode } from "@/lib/room-access";
 import { normalizeNotificationOffsetRules, normalizeNotificationOffsets, notificationOffsetToKey } from "@/lib/notifications";
 import type { RoomAccessMode } from "@/lib/types/domain";
 
 export type UserRole = "manager" | "member" | "guest";
-export type AppLanguage = "ro";
+export type AppLanguage = SupportedLocale;
 
 export interface UserProfile {
   uid: string;
@@ -87,7 +88,7 @@ function normalizeRole(role: unknown): UserRole {
 }
 
 function normalizeLanguage(language: unknown): AppLanguage {
-  return language === "ro" ? "ro" : "ro";
+  return normalizeSupportedLocale(language);
 }
 
 function isConfiguredOwner(email: string) {

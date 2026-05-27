@@ -112,6 +112,7 @@ import { useOnlineStatus } from "@/features/network/hooks/useOnlineStatus";
 import { useGroupBookingNotifications } from "@/features/notifications/hooks/useGroupBookingNotifications";
 import { hasKeluniaPushConfig, listenKeluniaForegroundPush, registerKeluniaPushToken } from "@/lib/push-notifications";
 import { useLocationResources } from "@/features/resources/hooks/useLocationResources";
+import { appText } from "@/lib/i18n/app-copy-catalog";
 import { AppLockModal } from "@/features/security/components/AppLockModal";
 import { useCalendarSettings } from "@/features/settings/hooks/useCalendarSettings";
 import { usePasswordManagement } from "@/features/settings/hooks/usePasswordManagement";
@@ -143,6 +144,7 @@ function isInteractiveSwipeTarget(target: EventTarget | null) {
 export default function KeluniaPage() {
   const { user, profile, role, isSuperAdmin, isOwner, loading: authLoading } = useAuth();
   const router = useRouter();
+  const language = profile?.language ?? "ro";
 
   const [activeView, setActiveView] = useState<AppView>("calendar");
   const [calendarMode, setCalendarMode] = useState<CalendarMode>("month");
@@ -1909,7 +1911,7 @@ export default function KeluniaPage() {
           onSave={saveRequiredGroup}
           onSignOut={confirmSignOut}
           selectedGroup={groupSetupDraft}
-          userLabel={`${profile?.displayName || user?.email} - ${appRoleLabel(profile, role)}`}
+          userLabel={`${profile?.displayName || user?.email} - ${appRoleLabel(profile, role, language)}`}
         />
         {appLockOverlay}
       </>
@@ -1919,10 +1921,10 @@ export default function KeluniaPage() {
   const navigationItems: Array<[AppView, string]> = [
     ...(currentLocationId && fixedPageEnabled ? [["fixed", fixedSectionTitle] as [AppView, string]] : []),
     ...(currentLocationId ? [
-      ["calendar", "Calendar"] as [AppView, string],
+      ["calendar", appText(language, "nav.calendar")] as [AppView, string],
       ["list", listViewTitle] as [AppView, string],
     ] : []),
-    ["settings", "Setări"],
+    ["settings", appText(language, "nav.settings")],
   ];
 
   const swipeViews = navigationItems.map(([view]) => view);
@@ -1980,7 +1982,7 @@ export default function KeluniaPage() {
           <img src="/icon-192.png" alt="Kelunia" />
         </div>
         <h1>Kelunia</h1>
-        <p>Se încarcă...</p>
+        <p>{appText(language, "loading.generic")}</p>
       </div>
     );
   }
@@ -1997,10 +1999,11 @@ export default function KeluniaPage() {
         isOnline={isOnline}
         isSignedIn={Boolean(user)}
         licenseMessage={licenseAccess.message}
+        language={language}
         navigationItems={navigationItems}
         offlineMessage={offlineReadOnlyMessage}
         showLicenseWarning={Boolean(user && currentLocationId && licenseAccess.isReadOnly)}
-        userLabel={profile ? `${profile.displayName} · ${appRoleLabel(profile, role)}` : undefined}
+        userLabel={profile ? `${profile.displayName} · ${appRoleLabel(profile, role, language)}` : undefined}
         onNavigate={setActiveView}
         onSignOut={confirmSignOut}
       />

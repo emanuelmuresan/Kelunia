@@ -16,6 +16,7 @@ import { isInstalledAppShell } from "@/lib/app-shell";
 import { useAuth, type AppLanguage, type UserRole } from "@/context/AuthContext";
 import { maxUsesForAccessRole, normalizeRole, readOptionalNumber } from "@/lib/access-codes";
 import { defaultLocationName } from "@/lib/config/app";
+import { appText, supportedLocales } from "@/lib/i18n/app-copy-catalog";
 import { normalizeAllowedRoomIds, normalizeRoomAccessMode } from "@/lib/room-access";
 import { passwordSecurityError } from "@/lib/security/password";
 import type { RoomAccessMode } from "@/lib/types/domain";
@@ -513,7 +514,7 @@ export default function LoginPage() {
         setMode("login");
         setPassword("");
         setConfirmPassword("");
-        setMessage("Ți-am trimis un email de verificare. Confirmă adresa, apoi intră în cont.");
+        setMessage(appText(language, "auth.verificationSent"));
         return;
       }
 
@@ -563,7 +564,7 @@ export default function LoginPage() {
           setMode("login");
           setPassword("");
           setConfirmPassword("");
-          setMessage("Ți-am trimis un email de verificare. Confirmă adresa, apoi intră în cont.");
+          setMessage(appText(language, "auth.verificationSent"));
           return;
         }
 
@@ -571,7 +572,7 @@ export default function LoginPage() {
         setMode("login");
         setPassword("");
         setConfirmPassword("");
-        setMessage("Ți-am trimis un email de verificare. Confirmă adresa, apoi intră în cont.");
+        setMessage(appText(language, "auth.verificationSent"));
         return;
       }
     } catch (err) {
@@ -582,16 +583,16 @@ export default function LoginPage() {
   }
 
   const title = {
-    login: "Bine ai revenit",
-    trial: "Începe trialul",
-    register: "Cont cu cod",
-    reset: "Recuperare parolă",
+    login: appText(language, "auth.title.login"),
+    trial: appText(language, "auth.title.trial"),
+    register: appText(language, "auth.title.register"),
+    reset: appText(language, "auth.title.reset"),
   }[mode];
   const subtitle = {
-    login: "Intră direct în calendarul locației tale.",
-    trial: "Creează un spațiu de test și confirmă emailul.",
-    register: "Folosește codul primit pentru locația ta.",
-    reset: "Primești un link sigur pentru o parolă nouă.",
+    login: appText(language, "auth.subtitle.login"),
+    trial: appText(language, "auth.subtitle.trial"),
+    register: appText(language, "auth.subtitle.register"),
+    reset: appText(language, "auth.subtitle.reset"),
   }[mode];
 
   if (authLoading || user?.emailVerified) {
@@ -601,7 +602,7 @@ export default function LoginPage() {
           <img src="/icon-192.png" alt="Kelunia" />
         </div>
         <h1>Kelunia</h1>
-        <p>Se pregătește calendarul...</p>
+        <p>{appText(language, "loading.calendar")}</p>
       </main>
     );
   }
@@ -610,11 +611,13 @@ export default function LoginPage() {
     <main className="auth-shell">
       <section className="auth-card">
         <div className="auth-top-row">
-          {!installedAppShell && <Link href="/" className="back-link">← Acasă</Link>}
+          {!installedAppShell && <Link href="/" className="back-link">← {appText(language, "action.backHome")}</Link>}
           <label className="language-selector auth-language-selector">
-            Limba
+            {appText(language, "common.language")}
             <select value={language} onChange={(event) => setLanguage(event.target.value as AppLanguage)}>
-              <option value="ro">Romana</option>
+              {supportedLocales.map((locale) => (
+                <option key={locale.code} value={locale.code}>{locale.label}</option>
+              ))}
             </select>
           </label>
         </div>
@@ -628,10 +631,10 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <div className="auth-switcher" role="group" aria-label="Tip cont">
-          <button className={mode === "login" ? "active" : ""} onClick={() => setMode("login")} type="button">Intră</button>
-          <button className={mode === "trial" ? "active" : ""} onClick={() => setMode("trial")} type="button">Trial</button>
-          <button className={mode === "register" ? "active" : ""} onClick={() => setMode("register")} type="button">Am cod</button>
+        <div className="auth-switcher" role="group" aria-label={appText(language, "auth.type")}>
+          <button className={mode === "login" ? "active" : ""} onClick={() => setMode("login")} type="button">{appText(language, "auth.mode.login")}</button>
+          <button className={mode === "trial" ? "active" : ""} onClick={() => setMode("trial")} type="button">{appText(language, "auth.mode.trial")}</button>
+          <button className={mode === "register" ? "active" : ""} onClick={() => setMode("register")} type="button">{appText(language, "auth.mode.code")}</button>
         </div>
 
         {error && <p className="error-line">{error}</p>}
@@ -639,13 +642,13 @@ export default function LoginPage() {
 
         <form className="auth-form" onSubmit={handleSubmit}>
           <label>
-            Email
+            {appText(language, "auth.email")}
             <input
               type="email"
               name="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              placeholder="emailul tău, ex. nume@email.com"
+              placeholder={appText(language, "auth.emailPlaceholder")}
               autoComplete="email"
               required
             />
@@ -653,13 +656,13 @@ export default function LoginPage() {
 
           {mode !== "reset" && (
             <label>
-              Parolă
+              {appText(language, "auth.password")}
               <input
                 type="password"
                 name="password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                placeholder={mode === "login" ? "parola contului tău" : "minimum 8 caractere, litere și cifre"}
+                placeholder={mode === "login" ? appText(language, "auth.loginPasswordPlaceholder") : appText(language, "auth.passwordPlaceholder")}
                 autoComplete={mode === "login" ? "current-password" : "new-password"}
                 required
               />
@@ -668,13 +671,13 @@ export default function LoginPage() {
 
           {(mode === "register" || mode === "trial") && (
             <label>
-              Repetă parola
+              {appText(language, "auth.confirmPassword")}
               <input
                 type="password"
                 name="confirmPassword"
                 value={confirmPassword}
                 onChange={(event) => setConfirmPassword(event.target.value)}
-                placeholder="scrie aceeași parolă încă o dată"
+                placeholder={appText(language, "auth.confirmPasswordPlaceholder")}
                 autoComplete="new-password"
                 required
               />
@@ -683,11 +686,11 @@ export default function LoginPage() {
 
           {(mode === "register" || mode === "trial") && (
             <label>
-              Nume și prenume
+              {appText(language, "auth.displayName")}
               <input
                 value={displayName}
                 onChange={(event) => setDisplayName(event.target.value)}
-                placeholder="ex. Emanuel Mureșan"
+                placeholder={appText(language, "auth.displayNamePlaceholder")}
                 autoComplete="name"
                 required
               />
@@ -696,11 +699,11 @@ export default function LoginPage() {
 
           {mode === "register" && (
             <label>
-              Cod acces
+              {appText(language, "auth.accessCode")}
               <input
                 value={accessCode}
                 onChange={(event) => setAccessCode(event.target.value)}
-                placeholder="codul primit de la administrator sau la licența locației"
+                placeholder={appText(language, "auth.accessCodePlaceholder")}
                 required
               />
             </label>
@@ -708,20 +711,20 @@ export default function LoginPage() {
 
           {mode === "register" && (
             <>
-              <p className="muted-note">Dacă acesta este cod de licență, vei deschide locația după ce intri în cont. Dacă este cod primit de la administrator, locația este aleasă automat.</p>
+              <p className="muted-note">{appText(language, "auth.accessCodeHelp")}</p>
             </>
           )}
 
           <button className="primary-button" disabled={loading} type="submit">
-            {loading ? "Se procesează..." : mode === "login" ? "Intră în cont" : mode === "reset" ? "Trimite email" : mode === "trial" ? "Începe trial" : "Creează cont"}
+            {loading ? appText(language, "auth.loading") : mode === "login" ? appText(language, "auth.signIn") : mode === "reset" ? appText(language, "auth.resetSubmit") : mode === "trial" ? appText(language, "auth.trialSubmit") : appText(language, "auth.createAccount")}
           </button>
         </form>
 
         <div className="auth-links">
           {mode === "login" ? (
-            <button onClick={() => setMode("reset")} type="button">Am uitat parola</button>
+            <button onClick={() => setMode("reset")} type="button">{appText(language, "auth.forgotPassword")}</button>
           ) : (
-            <button onClick={() => setMode("login")} type="button">Înapoi la login</button>
+            <button onClick={() => setMode("login")} type="button">{appText(language, "auth.backToLogin")}</button>
           )}
         </div>
       </section>

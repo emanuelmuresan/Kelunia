@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import type { AppLanguage, UserRole } from "@/context/AuthContext";
 import { useCommunityApplicationMessages } from "@/features/landing/hooks/useCommunityApplications";
 import { db } from "@/lib/firebase";
+import { appText, localeLabel, supportedLocales } from "@/lib/i18n/app-copy-catalog";
 import { billingStatusLabel, dateFromFirestoreValue, planLabel } from "@/lib/licensing";
 import { roomAccessLabel } from "@/lib/room-access";
 import type {
@@ -727,8 +728,8 @@ export function SettingsView({
               <strong>{isOwner ? "Proprietar" : isSuperAdmin ? "Administrator" : "Colaborator"}</strong>
             </div>
             <div>
-              <span>Limba</span>
-              <strong>{personalDraft.language === "ro" ? "Romana" : "Limba selectata"}</strong>
+              <span>{appText(personalDraft.language, "common.language")}</span>
+              <strong>{localeLabel(personalDraft.language)}</strong>
             </div>
             {!isOwner && (
               <div>
@@ -1377,7 +1378,7 @@ export function SettingsView({
 
           <div className="settings-form">
             <label>
-              Limba
+              {appText(personalDraft.language, "common.language")}
               <select
                 value={personalDraft.language}
                 onChange={(event) =>
@@ -1387,7 +1388,9 @@ export function SettingsView({
                   })
                 }
               >
-                <option value="ro">Romana</option>
+                {supportedLocales.map((locale) => (
+                  <option key={locale.code} value={locale.code}>{locale.label}</option>
+                ))}
               </select>
             </label>
 
