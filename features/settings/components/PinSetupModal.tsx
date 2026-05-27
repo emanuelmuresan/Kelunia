@@ -1,5 +1,6 @@
 "use client";
 
+import { appText, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 import type { PinIntent } from "@/lib/types/domain";
 
 type PinDraft = {
@@ -15,6 +16,7 @@ type PinSetupModalProps = {
   onClose: () => void;
   onChange: (value: PinDraft) => void;
   onSave: () => void;
+  language?: SupportedLocale;
 };
 
 export function PinSetupModal({
@@ -24,6 +26,7 @@ export function PinSetupModal({
   onClose,
   onChange,
   onSave,
+  language = "ro",
 }: PinSetupModalProps) {
   if (!pinIntent) {
     return null;
@@ -37,25 +40,25 @@ export function PinSetupModal({
         className="modal-card small-card"
         role="dialog"
         aria-modal="true"
-        aria-label="Setare PIN"
+        aria-label={appText(language, "settings.pinSetup")}
       >
         <div className="modal-head">
           <div>
             <span className="eyebrow">
-              {isBiometric ? "PIN de rezervă" : "Blocare"}
+              {isBiometric ? appText(language, "settings.backupPin") : appText(language, "settings.security")}
             </span>
 
             <h2>
               {isBiometric
-                ? "Alege PIN-ul pentru biometrie"
-                : "Alege PIN-ul"}
+                ? appText(language, "settings.biometricPinTitle")
+                : appText(language, "settings.choosePin")}
             </h2>
           </div>
 
           <button
             onClick={onClose}
             type="button"
-            aria-label="Închide"
+            aria-label={appText(language, "booking.close")}
           >
             ×
           </button>
@@ -63,7 +66,7 @@ export function PinSetupModal({
 
         <div className="settings-form">
           <label>
-            PIN
+            {appText(language, "settings.pin")}
 
             <input
               inputMode="numeric"
@@ -81,7 +84,7 @@ export function PinSetupModal({
           </label>
 
           <label>
-            Confirmare PIN
+            {appText(language, "settings.confirmPin")}
 
             <input
               inputMode="numeric"
@@ -110,7 +113,7 @@ export function PinSetupModal({
               onClick={onClose}
               type="button"
             >
-              Anulează
+              {appText(language, "action.cancel")}
             </button>
 
             <button
@@ -118,7 +121,7 @@ export function PinSetupModal({
               onClick={onSave}
               type="button"
             >
-              Salvează PIN
+              {appText(language, "settings.savePin")}
             </button>
           </div>
         </div>

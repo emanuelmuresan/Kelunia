@@ -1,5 +1,7 @@
 "use client";
 
+import { appText, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
+
 type PasswordDraft = {
   current: string;
   next: string;
@@ -15,6 +17,7 @@ type PasswordModalProps = {
   onChange: (value: PasswordDraft) => void;
   onSave: () => void;
   onReset: () => void;
+  language?: SupportedLocale;
 };
 
 export function PasswordModal({
@@ -26,6 +29,7 @@ export function PasswordModal({
   onChange,
   onSave,
   onReset,
+  language = "ro",
 }: PasswordModalProps) {
   if (!open) {
     return null;
@@ -37,18 +41,18 @@ export function PasswordModal({
         className="modal-card small-card"
         role="dialog"
         aria-modal="true"
-        aria-label="Schimbare parolă"
+        aria-label={appText(language, "settings.password")}
       >
         <div className="modal-head">
           <div>
-            <span className="eyebrow">Cont</span>
-            <h2>Schimbă parola</h2>
+            <span className="eyebrow">{appText(language, "settings.account")}</span>
+            <h2>{appText(language, "settings.password")}</h2>
           </div>
 
           <button
             onClick={onClose}
             type="button"
-            aria-label="Închide"
+            aria-label={appText(language, "booking.close")}
           >
             ×
           </button>
@@ -56,7 +60,7 @@ export function PasswordModal({
 
         <div className="settings-form">
           <label>
-            Parola actuală
+            {appText(language, "settings.currentPassword")}
 
             <input
               type="password"
@@ -72,7 +76,7 @@ export function PasswordModal({
           </label>
 
           <label>
-            Parola nouă
+            {appText(language, "settings.newPassword")}
 
             <input
               type="password"
@@ -88,7 +92,7 @@ export function PasswordModal({
           </label>
 
           <label>
-            Confirmă parola nouă
+            {appText(language, "settings.confirmNewPassword")}
 
             <input
               type="password"
@@ -121,7 +125,7 @@ export function PasswordModal({
               onClick={onReset}
               type="button"
             >
-              Trimite email resetare
+              {appText(language, "settings.resetPasswordEmail")}
             </button>
 
             <button
@@ -129,7 +133,7 @@ export function PasswordModal({
               onClick={onSave}
               type="button"
             >
-              Schimbă parola
+              {appText(language, "settings.password")}
             </button>
           </div>
         </div>

@@ -2193,6 +2193,7 @@ export default function KeluniaPage() {
         passwordDraft={passwordDraft}
         passwordError={passwordError}
         passwordMessage={passwordMessage}
+        language={language}
         onClose={() => setPasswordModal(false)}
         onChange={setPasswordDraft}
         onSave={savePasswordChange}
@@ -2223,6 +2224,7 @@ export default function KeluniaPage() {
         onCopyInviteLink={copyInviteLink}
         onSendInvite={sendAccessInvite}
         onSendInviteEmail={sendInviteEmailFromModal}
+        language={language}
       />
 
       <LicenseCodesModal
@@ -2248,6 +2250,7 @@ export default function KeluniaPage() {
         isOwner={isOwner}
         locationEditor={locationEditor}
         locationError={locationError}
+        language={language}
         onClose={() => setLocationEditor(null)}
         onChange={setLocationEditor}
         onSave={saveLocation}
@@ -2257,6 +2260,7 @@ export default function KeluniaPage() {
         pinIntent={pinIntent}
         pinDraft={pinDraft}
         pinError={pinError}
+        language={language}
         onClose={closePinSetup}
         onChange={setPinDraft}
         onSave={confirmPinSetup}
@@ -2267,6 +2271,7 @@ export default function KeluniaPage() {
         spaceError={spaceError}
         groupLabel={groupsLabel}
         roomLabel={roomsLabel}
+        language={language}
         onClose={() => setSpaceEditor(null)}
         onChange={setSpaceEditor}
         onSave={saveSpaceItem}

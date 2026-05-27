@@ -1,6 +1,7 @@
 "use client";
 
 import { billingStatusLabel, planLabel } from "@/lib/licensing";
+import { appText, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 import type { LocationEditor } from "@/lib/types/domain";
 import type { BillingStatus, LocationPlan } from "@/lib/types/domain";
 
@@ -8,6 +9,7 @@ type LocationEditorModalProps = {
   isOwner: boolean;
   locationEditor: LocationEditor | null;
   locationError: string;
+  language?: SupportedLocale;
   onClose: () => void;
   onChange: (value: LocationEditor) => void;
   onSave: () => void;
@@ -17,6 +19,7 @@ export function LocationEditorModal({
   isOwner,
   locationEditor,
   locationError,
+  language = "ro",
   onClose,
   onChange,
   onSave,
@@ -46,23 +49,23 @@ export function LocationEditorModal({
         className="modal-card small-card"
         role="dialog"
         aria-modal="true"
-        aria-label="Locație"
+        aria-label={appText(language, "settings.location")}
       >
         <div className="modal-head">
           <div>
-            <span className="eyebrow">Locație</span>
+            <span className="eyebrow">{appText(language, "settings.location")}</span>
 
             <h2>
               {locationEditor.id
-                ? "Editează locația"
-                : "Adaugă locație"}
+                ? appText(language, "settings.editLocation")
+                : appText(language, "settings.addLocation")}
             </h2>
           </div>
 
           <button
             onClick={onClose}
             type="button"
-            aria-label="Închide"
+            aria-label={appText(language, "booking.close")}
           >
             ×
           </button>
@@ -70,7 +73,7 @@ export function LocationEditorModal({
 
         <div className="settings-form">
           <label>
-            Nume locație
+            {appText(language, "settings.locationName")}
 
             <input
               autoFocus
@@ -88,7 +91,7 @@ export function LocationEditorModal({
           {isOwner && locationEditor.id && (
             <>
               <label>
-                Tip licenta
+                {appText(language, "settings.licenseType")}
                 <select
                   value={locationEditor.plan}
                   onChange={(event) => {
@@ -100,7 +103,7 @@ export function LocationEditorModal({
                     });
                   }}
                 >
-                  <option value="">Alege licenta</option>
+                  <option value="">{appText(language, "settings.chooseLicense")}</option>
                   {planOptions.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label || planLabel(option.value)}
@@ -110,7 +113,7 @@ export function LocationEditorModal({
               </label>
 
               <label>
-                Status licenta
+                {appText(language, "settings.licenseStatus")}
                 <select
                   value={locationEditor.billingStatus}
                   onChange={(event) =>
@@ -120,7 +123,7 @@ export function LocationEditorModal({
                     })
                   }
                 >
-                  <option value="">Alege statusul</option>
+                  <option value="">{appText(language, "settings.chooseStatus")}</option>
                   {statusOptions.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label || billingStatusLabel(option.value)}
@@ -130,11 +133,11 @@ export function LocationEditorModal({
               </label>
 
               <label>
-                Valabilitate noua
+                {appText(language, "settings.newDuration")}
                 <input
                   inputMode="numeric"
                   value={locationEditor.durationDays}
-                  placeholder="ex. 365 - gol pastreaza data"
+                  placeholder={appText(language, "settings.durationPlaceholder")}
                   onChange={(event) =>
                     onChange({
                       ...locationEditor,
@@ -145,7 +148,7 @@ export function LocationEditorModal({
               </label>
 
               <p className="muted-note">
-                Daca lasi valabilitatea goala, se schimba doar planul/statusul si se pastreaza data existenta.
+                {appText(language, "settings.durationHint")}
               </p>
             </>
           )}
@@ -162,7 +165,7 @@ export function LocationEditorModal({
               onClick={onClose}
               type="button"
             >
-              Anulează
+              {appText(language, "action.cancel")}
             </button>
 
             <button
@@ -170,7 +173,7 @@ export function LocationEditorModal({
               onClick={onSave}
               type="button"
             >
-              {locationEditor.id ? "Salvează" : "Adaugă"}
+              {locationEditor.id ? appText(language, "action.save") : appText(language, "booking.add")}
             </button>
           </div>
         </div>

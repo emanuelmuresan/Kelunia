@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { UserRole } from "@/context/AuthContext";
 import type { AccessInviteDraft, CodeGeneratorState } from "@/features/access-codes/hooks/useAccessCodes";
+import { appText, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 import { roomAccessLabel } from "@/lib/room-access";
 import type { GroupItem, LocationCode, LocationItem, RoomAccessMode, RoomItem } from "@/lib/types/domain";
 
@@ -36,6 +37,7 @@ interface AccessCodesModalProps {
   onCopyInviteLink: (code: string) => void;
   onSendInvite: (item: LocationCode) => void;
   onSendInviteEmail: () => void;
+  language?: SupportedLocale;
 }
 
 type AccessCodeDraft = {
@@ -69,6 +71,7 @@ export function AccessCodesModal({
   onCopyInviteLink,
   onSendInvite,
   onSendInviteEmail,
+  language = "ro",
 }: AccessCodesModalProps) {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [groupFilter, setGroupFilter] = useState("all");
@@ -170,41 +173,41 @@ export function AccessCodesModal({
   return (
     <>
     <div className="modal-backdrop" role="presentation">
-      <div className="modal-card manager-card" role="dialog" aria-modal="true" aria-label="Coduri de acces">
+      <div className="modal-card manager-card" role="dialog" aria-modal="true" aria-label={appText(language, "settings.accessCodes")}>
         <div className="modal-head">
           <div>
-            <span className="eyebrow">Acces</span>
-            <h2>Coduri de acces</h2>
+            <span className="eyebrow">{appText(language, "settings.access")}</span>
+            <h2>{appText(language, "settings.accessCodes")}</h2>
           </div>
           <button className="secondary-button compact" onClick={onClose} type="button">
-            Inchide
+            {appText(language, "booking.close")}
           </button>
         </div>
 
         <div className="code-toolbar">
           <label>
-            Filtreaza dupa grup
+            {appText(language, "access.filterByGroup")}
             <select className="code-filter-select" value={groupFilter} onChange={(event) => setGroupFilter(event.target.value)}>
-              <option value="all">Toate codurile</option>
-              <option value="__manager__">Administratori</option>
-              <option value="__without_group__">Fara grup</option>
+              <option value="all">{appText(language, "access.allCodes")}</option>
+              <option value="__manager__">{appText(language, "settings.administrators")}</option>
+              <option value="__without_group__">{appText(language, "access.noGroup")}</option>
               {groups.map((group) => <option key={group.id} value={group.name}>{group.name}</option>)}
             </select>
           </label>
 
           <button className="primary-button compact" onClick={() => setShowCreateForm((current) => !current)} type="button">
-            {showCreateForm ? "Inchide" : "Cod nou"}
+            {showCreateForm ? appText(language, "booking.close") : appText(language, "access.createCode")}
           </button>
         </div>
 
         <p className="muted-note">
-          Opreste pastreaza codul in istoric, dar nu mai poate fi folosit. Sterge il ascunde din lista activa si il scoate din evidenta curenta.
+          {appText(language, "access.closeKeepsHistory")}
         </p>
 
         {showCreateForm && (
           <div className="code-create-panel">
             <div className="mini-section-head">
-              <h3>Genereaza cod</h3>
+              <h3>{appText(language, "access.generateCode")}</h3>
             </div>
             <div className="code-add-grid">
               <select
@@ -220,24 +223,24 @@ export function AccessCodesModal({
                   });
                 }}
               >
-                <option value="">Alege rolul</option>
-                <option value="guest">Oaspete</option>
-                <option value="member">Colaborator</option>
-                <option value="manager">Administrator</option>
+                <option value="">{appText(language, "access.role")}</option>
+                <option value="guest">{appText(language, "role.guest")}</option>
+                <option value="member">{appText(language, "role.collaborator")}</option>
+                <option value="manager">{appText(language, "role.administrator")}</option>
               </select>
               <select
                 value={codeGenerator.groupName}
                 onChange={(event) => onCodeGeneratorChange({ ...codeGenerator, groupName: event.target.value })}
                 disabled={!codeGenerator.role || codeGenerator.role === "manager"}
               >
-                <option value="">{codeGenerator.role === "manager" ? "Fara grup" : "Alege grupul"}</option>
+                <option value="">{codeGenerator.role === "manager" ? appText(language, "access.noGroup") : appText(language, "booking.selectGroup")}</option>
                 {groups.map((group) => <option key={group.id} value={group.name}>{group.name}</option>)}
               </select>
               <select
                 value={codeGenerator.locationId}
                 onChange={(event) => onCodeGeneratorChange({ ...codeGenerator, locationId: event.target.value })}
               >
-                <option value="">Alege locatia</option>
+                <option value="">{appText(language, "settings.location")}</option>
                 {editableCodeLocations.map((location) => (
                   <option key={location.id} value={location.id}>{location.name}</option>
                 ))}
@@ -246,7 +249,7 @@ export function AccessCodesModal({
                 type="email"
                 value={codeGenerator.inviteEmail}
                 onChange={(event) => onCodeGeneratorChange({ ...codeGenerator, inviteEmail: event.target.value })}
-                placeholder="email pentru invitatie - optional"
+                placeholder={appText(language, "access.recipientEmail")}
               />
               <select
                 value={codeGenerator.roomAccess}
@@ -259,13 +262,13 @@ export function AccessCodesModal({
                 }
                 disabled={!codeGenerator.role || codeGenerator.role === "manager"}
               >
-                <option value="all">Toate salile</option>
-                <option value="selected">Doar sali alese</option>
+                <option value="all">{appText(language, "settings.roomsAll")}</option>
+                <option value="selected">{appText(language, "settings.roomsSelected")}</option>
               </select>
               {codeGenerator.roomAccess === "selected" && codeGenerator.role && codeGenerator.role !== "manager" && (
                 <div className="room-check-grid">
                   {rooms.length === 0 ? (
-                    <p className="empty-line">Adauga intai sali pentru aceasta locatie.</p>
+                    <p className="empty-line">{appText(language, "settings.noItems")}</p>
                   ) : (
                     rooms.map((room) => (
                       <label className="toggle-row compact-toggle" key={room.id}>
@@ -286,21 +289,21 @@ export function AccessCodesModal({
                 </div>
               )}
               <button className="secondary-button compact" disabled={codesWorking} onClick={onGenerate} type="button">
-                {codesWorking ? "Se genereaza..." : "Genereaza"}
+                {codesWorking ? appText(language, "action.generating") : appText(language, "action.generate")}
               </button>
             </div>
           </div>
         )}
 
         <div className="mini-section-head code-list-head">
-          <h3>{visibleAccessCodes.length} coduri afisate</h3>
+          <h3>{appText(language, "access.codesShown").replace("{{count}}", String(visibleAccessCodes.length))}</h3>
         </div>
 
         <div className="mini-list">
           {accessCodes.length === 0 ? (
-            <p className="empty-line">Nu exista coduri pe locatii.</p>
+            <p className="empty-line">{appText(language, "access.noCodes")}</p>
           ) : visibleAccessCodes.length === 0 ? (
-            <p className="empty-line">Nu exista coduri pentru filtrul ales.</p>
+            <p className="empty-line">{appText(language, "access.noFilterCodes")}</p>
           ) : (
             visibleAccessCodes.map((item) => {
               const codeDraft = codeDraftFor(item);
@@ -332,16 +335,16 @@ export function AccessCodesModal({
                     }}
                     disabled={editDisabled}
                   >
-                    <option value="guest">Oaspete</option>
-                    <option value="member">Colaborator</option>
-                    <option value="manager">Administrator</option>
+                    <option value="guest">{appText(language, "role.guest")}</option>
+                    <option value="member">{appText(language, "role.collaborator")}</option>
+                    <option value="manager">{appText(language, "role.administrator")}</option>
                   </select>
                   <select
                     value={draftGroupName}
                     onChange={(event) => setCodeDraft(item, { ...codeDraft, groupName: event.target.value })}
                     disabled={editDisabled || draftRole === "manager"}
                   >
-                    <option value="">{draftRole === "manager" ? "Fara grup" : "Alege grupul"}</option>
+                    <option value="">{draftRole === "manager" ? appText(language, "access.noGroup") : appText(language, "booking.selectGroup")}</option>
                     {groups.map((group) => <option key={group.id} value={group.name}>{group.name}</option>)}
                   </select>
                   <div className="code-room-access">
@@ -367,13 +370,13 @@ export function AccessCodesModal({
                       }}
                       disabled={editDisabled || draftRole === "manager"}
                     >
-                      <option value="all">Toate salile</option>
-                      <option value="selected">Sali alese</option>
+                      <option value="all">{appText(language, "settings.roomsAll")}</option>
+                      <option value="selected">{appText(language, "settings.roomsSelected")}</option>
                     </select>
                     {draftRole !== "manager" && draftRoomAccess === "selected" && (
                       <div className="room-check-grid code-room-check-grid">
                         {rooms.length === 0 ? (
-                          <p className="empty-line">Adauga intai sali pentru aceasta locatie.</p>
+                          <p className="empty-line">{appText(language, "settings.noItems")}</p>
                         ) : (
                           rooms.map((room) => (
                             <label className="toggle-row compact-toggle" key={room.id}>
@@ -399,7 +402,7 @@ export function AccessCodesModal({
                   <span className="code-usage">{accessCodeUsageLabel(item)}</span>
                   <div className="code-row-actions">
                     <button onClick={() => onCopy(item.code)} type="button">
-                      Copiaza
+                      {appText(language, "action.copy")}
                     </button>
                     <button onClick={() => onCopyInviteLink(item.code)} type="button">
                       Link
@@ -410,7 +413,7 @@ export function AccessCodesModal({
                     {isEditingCode ? (
                       <>
                         <button className="secondary-button compact" onClick={() => closeCodeEditor(item.id)} type="button">
-                          Renunta
+                          {appText(language, "action.cancel")}
                         </button>
                         <button
                           className="primary-button compact"
@@ -418,23 +421,23 @@ export function AccessCodesModal({
                           onClick={() => saveCodeEditor(item)}
                           type="button"
                         >
-                          Salveaza
+                          {appText(language, "action.save")}
                         </button>
                       </>
                     ) : (
                       <button className="secondary-button compact" disabled={codesWorking} onClick={() => openCodeEditor(item)} type="button">
-                        Editeaza
+                        {appText(language, "settings.edit")}
                       </button>
                     )}
                     <button onClick={() => onToggleActive(item)} type="button">
-                      {item.active ? "Opreste" : "Activeaza"}
+                      {item.active ? appText(language, "action.cancel") : appText(language, "action.activate")}
                     </button>
                     <button
                       onClick={() => onRemove(item)}
                       type="button"
-                      aria-label="Sterge codul"
+                      aria-label={appText(language, "action.delete")}
                     >
-                      Sterge
+                      {appText(language, "action.delete")}
                     </button>
                   </div>
                 </div>
@@ -447,7 +450,7 @@ export function AccessCodesModal({
         {codesMessage && <p className="success-line manager-alert">{codesMessage}</p>}
 
         <div className="modal-actions">
-          <button className="primary-button" onClick={onClose} type="button">Gata</button>
+          <button className="primary-button" onClick={onClose} type="button">{appText(language, "action.done")}</button>
         </div>
       </div>
     </div>
@@ -458,23 +461,23 @@ export function AccessCodesModal({
           className="modal-card small-card"
           role="dialog"
           aria-modal="true"
-          aria-label="Trimite invitatie prin email"
+          aria-label={appText(language, "access.emailInvite")}
           onMouseDown={(event) => event.stopPropagation()}
         >
           <div className="section-heading">
             <div>
               <span className="eyebrow">Email Kelunia</span>
-              <h2>Trimite invitatia</h2>
+              <h2>{appText(language, "access.emailInvite")}</h2>
             </div>
           </div>
 
           <p className="muted-note">
-            Emailul pleaca de la Kelunia, cu domeniul configurat in Resend. Nu se deschide aplicatia ta de email.
+            {appText(language, "access.emailNote")}
           </p>
 
           <div className="settings-form newsletter-compose">
             <label>
-              Email destinatar
+              {appText(language, "access.recipientEmail")}
               <input
                 type="email"
                 value={inviteDraft.email}
@@ -483,16 +486,16 @@ export function AccessCodesModal({
               />
             </label>
             <div className="settings-summary-grid">
-              <span>Cod</span>
+              <span>{appText(language, "settings.codes")}</span>
               <strong>{inviteDraft.code}</strong>
-              <span>Locatie</span>
+              <span>{appText(language, "settings.location")}</span>
               <strong>{inviteDraft.locationName}</strong>
-              <span>Rol</span>
-              <strong>{inviteDraft.role === "manager" ? "Administrator" : inviteDraft.role === "member" ? "Colaborator" : "Oaspete"}</strong>
+              <span>{appText(language, "settings.role")}</span>
+              <strong>{inviteDraft.role === "manager" ? appText(language, "role.administrator") : inviteDraft.role === "member" ? appText(language, "role.collaborator") : appText(language, "role.guest")}</strong>
               {inviteDraft.role !== "manager" && (
                 <>
-                  <span>Grup</span>
-                  <strong>{inviteDraft.groupName || "setat in invitatie"}</strong>
+                  <span>{appText(language, "settings.group")}</span>
+                  <strong>{inviteDraft.groupName || appText(language, "settings.notSet")}</strong>
                 </>
               )}
             </div>
@@ -507,10 +510,10 @@ export function AccessCodesModal({
 
           <div className="modal-actions">
             <button className="secondary-button" onClick={() => onInviteDraftChange(null)} disabled={codesWorking} type="button">
-              Renunta
+              {appText(language, "action.cancel")}
             </button>
             <button className="primary-button" onClick={onSendInviteEmail} disabled={codesWorking} type="button">
-              {codesWorking ? "Se trimite..." : "Trimite"}
+              {codesWorking ? appText(language, "booking.sending") : appText(language, "action.send")}
             </button>
           </div>
         </section>
