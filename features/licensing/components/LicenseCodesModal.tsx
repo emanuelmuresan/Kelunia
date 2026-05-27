@@ -11,6 +11,7 @@ import {
   dateFromFirestoreValue,
   planLabel,
 } from "@/lib/licensing";
+import { appText, type SupportedLocale, type UiCopyKey } from "@/lib/i18n/app-copy-catalog";
 import type { BillingStatus, LicenseCodeItem, LocationItem, LocationPlan } from "@/lib/types/domain";
 
 interface LicenseCodesModalProps {
@@ -30,6 +31,7 @@ interface LicenseCodesModalProps {
   onToggleActive: (item: LicenseCodeItem) => void;
   onUpdate: (item: LicenseCodeItem, draft: LicenseCodeUpdateDraft) => Promise<void>;
   onRemove: (item: LicenseCodeItem) => Promise<void>;
+  language?: SupportedLocale;
 }
 
 const planOptions: Array<{ value: LocationPlan; label: string }> = [
@@ -202,7 +204,9 @@ export function LicenseCodesModal({
   onToggleActive,
   onUpdate,
   onRemove,
+  language = "ro",
 }: LicenseCodesModalProps) {
+  const t = (key: UiCopyKey) => appText(language, key);
   const [createOpen, setCreateOpen] = useState(false);
   const [emailDraft, setEmailDraft] = useState({
     licenseId: "",
@@ -239,7 +243,7 @@ export function LicenseCodesModal({
   }
 
   async function sendEmail(item: LicenseCodeItem) {
-    if (!window.confirm(`Trimiti licenta ${item.code} catre ${emailDraft.toEmail}?`)) {
+    if (!window.confirm(t("license.confirmSend").replace("{{code}}", item.code).replace("{{email}}", emailDraft.toEmail))) {
       return;
     }
 
@@ -252,7 +256,7 @@ export function LicenseCodesModal({
       return;
     }
 
-    if (!window.confirm(`Salvezi modificarile pentru licenta ${editingLicense.code}?`)) {
+    if (!window.confirm(t("license.confirmSave").replace("{{code}}", editingLicense.code))) {
       return;
     }
 
@@ -262,7 +266,7 @@ export function LicenseCodesModal({
   }
 
   async function removeLicense(item: LicenseCodeItem) {
-    if (!window.confirm(`Stergi definitiv licenta ${item.code}?`)) {
+    if (!window.confirm(t("license.confirmDelete").replace("{{code}}", item.code))) {
       return;
     }
 
@@ -272,7 +276,7 @@ export function LicenseCodesModal({
   }
 
   function generateWithConfirmation() {
-    if (!window.confirm("Generezi o licenta noua?")) {
+    if (!window.confirm(t("license.confirmCreate"))) {
       return;
     }
 
@@ -282,48 +286,48 @@ export function LicenseCodesModal({
   return (
     <>
       <div className="modal-backdrop" role="presentation">
-        <div className="modal-card manager-card license-manager-card" role="dialog" aria-modal="true" aria-label="Coduri de licenta">
+        <div className="modal-card manager-card license-manager-card" role="dialog" aria-modal="true" aria-label={t("license.title")}>
           <div className="modal-head">
             <div>
-              <span className="eyebrow">Owner</span>
-              <h2>Licente</h2>
+              <span className="eyebrow">{t("role.owner")}</span>
+              <h2>{t("license.title")}</h2>
             </div>
-            <button onClick={onClose} type="button" aria-label="Inchide">x</button>
+            <button onClick={onClose} type="button" aria-label={t("booking.close")}>x</button>
           </div>
 
           <div className="settings-summary-list compact-summary-list">
             <div>
-              <span>Total</span>
+              <span>{t("license.total")}</span>
               <strong>{licenseCodes.length}</strong>
             </div>
             <div>
-              <span>Disponibile</span>
+              <span>{t("license.available")}</span>
               <strong>{availableCount}</strong>
             </div>
             <div>
-              <span>Folosite</span>
+              <span>{t("license.used")}</span>
               <strong>{usedCount}</strong>
             </div>
             <div>
-              <span>Oprite</span>
+              <span>{t("license.stopped")}</span>
               <strong>{inactiveCount}</strong>
             </div>
           </div>
 
           <div className="modal-actions">
             <button className="primary-button" onClick={() => setCreateOpen((current) => !current)} type="button">
-              {createOpen ? "Inchide generarea" : "Genereaza licenta"}
+              {createOpen ? t("license.createClose") : t("license.create")}
             </button>
           </div>
 
           {createOpen && (
             <div className="code-create-panel">
               <div className="mini-section-head">
-                <h3>Licenta noua</h3>
+                <h3>{t("license.new")}</h3>
               </div>
               <div className="license-add-grid">
                 <label>
-                  Plan
+                  {t("settings.plan")}
                   <select
                     value={draft.plan}
                     onChange={(event) => {
@@ -331,7 +335,7 @@ export function LicenseCodesModal({
                       onChange({ ...draft, plan: nextPlan, durationDays: "" });
                     }}
                   >
-                    <option value="">Alege planul</option>
+                    <option value="">{t("settings.plan")}</option>
                     {planOptions.map((option) => (
                       <option key={option.value} value={option.value}>{option.label}</option>
                     ))}
@@ -339,7 +343,7 @@ export function LicenseCodesModal({
                 </label>
 
                 <label>
-                  Valabilitate zile
+                  {t("settings.validity")}
                   <input
                     inputMode="numeric"
                     value={draft.durationDays}
@@ -349,7 +353,7 @@ export function LicenseCodesModal({
                 </label>
 
                 <label>
-                  Nume locatie
+                  {t("settings.locationName")}
                   <input
                     value={draft.locationName}
                     onChange={(event) => onChange({ ...draft, locationName: event.target.value })}
@@ -358,7 +362,7 @@ export function LicenseCodesModal({
                 </label>
 
                 <label className="license-address-field">
-                  Adresa
+                  {t("settings.currentLocation")}
                   <input
                     value={draft.address}
                     onChange={(event) => onChange({ ...draft, address: event.target.value })}
@@ -367,19 +371,19 @@ export function LicenseCodesModal({
                 </label>
 
                 <button className="primary-button compact" disabled={working} onClick={generateWithConfirmation} type="button">
-                  {working ? "Se genereaza..." : "Genereaza"}
+                  {working ? t("action.generating") : t("action.generate")}
                 </button>
               </div>
             </div>
           )}
 
           <div className="mini-section-head code-list-head">
-            <h3>Lista licente</h3>
+            <h3>{t("license.list")}</h3>
           </div>
 
           <div className="mini-list license-list">
             {licenseCodes.length === 0 ? (
-              <p className="empty-line">Nu exista coduri de licenta.</p>
+              <p className="empty-line">{t("license.noCodes")}</p>
             ) : (
               licenseCodes.map((item) => {
                 const linkedLocation = linkedLocationFor(item);
@@ -406,7 +410,7 @@ export function LicenseCodesModal({
 
                     <div className="license-row-actions">
                       <button className="secondary-button compact" onClick={() => onCopy(item.code)} type="button">
-                        Copiaza
+                        {t("action.copy")}
                       </button>
                       <button
                         className="secondary-button compact"
@@ -417,11 +421,11 @@ export function LicenseCodesModal({
                         Email
                       </button>
                       <button className="primary-button compact" onClick={() => openEdit(item)} type="button">
-                        Deschide
+                        {t("settings.edit")}
                       </button>
                     </div>
 
-                    <small className="license-email-status">Email: {emailStatusLabel(lastEmailRequest)}</small>
+                    <small className="license-email-status">{t("license.emailStatus")}: {emailStatusLabel(lastEmailRequest)}</small>
                   </div>
                 );
               })
@@ -432,7 +436,7 @@ export function LicenseCodesModal({
           {message && <p className="success-line manager-alert">{message}</p>}
 
           <div className="modal-actions">
-            <button className="primary-button" onClick={onClose} type="button">Gata</button>
+            <button className="primary-button" onClick={onClose} type="button">{t("action.done")}</button>
           </div>
         </div>
       </div>
@@ -443,22 +447,22 @@ export function LicenseCodesModal({
             className="modal-card small-card"
             role="dialog"
             aria-modal="true"
-            aria-label="Editeaza licenta"
+            aria-label={t("license.edit")}
             onMouseDown={(event) => event.stopPropagation()}
           >
             <div className="section-heading">
               <div>
-                <span className="eyebrow">Licenta</span>
+                <span className="eyebrow">{t("license.title")}</span>
                 <h2>{editingLicense.code}</h2>
               </div>
-              <button className="icon-button" onClick={() => setEditingLicense(null)} type="button" aria-label="Inchide">
+              <button className="icon-button" onClick={() => setEditingLicense(null)} type="button" aria-label={t("booking.close")}>
                 x
               </button>
             </div>
 
             <div className="settings-form">
               <label>
-                Plan
+                {t("settings.plan")}
                 <select
                   value={editDraft.plan}
                   onChange={(event) => setEditDraft({ ...editDraft, plan: event.target.value as LocationPlan })}
@@ -470,7 +474,7 @@ export function LicenseCodesModal({
               </label>
 
               <label>
-                Status billing
+                {t("license.billingStatus")}
                 <select
                   value={editDraft.billingStatus}
                   onChange={(event) => setEditDraft({ ...editDraft, billingStatus: event.target.value as BillingStatus })}
@@ -482,7 +486,7 @@ export function LicenseCodesModal({
               </label>
 
               <label>
-                Nume locatie
+                {t("settings.locationName")}
                 <input
                   value={editDraft.locationName}
                   onChange={(event) => setEditDraft({ ...editDraft, locationName: event.target.value })}
@@ -490,7 +494,7 @@ export function LicenseCodesModal({
               </label>
 
               <label>
-                Adresa
+                {t("settings.currentLocation")}
                 <input
                   value={editDraft.address}
                   onChange={(event) => setEditDraft({ ...editDraft, address: event.target.value })}
@@ -498,7 +502,7 @@ export function LicenseCodesModal({
               </label>
 
               <label>
-                Expira la
+                {t("license.expiresAt")}
                 <input
                   type="date"
                   value={editDraft.expiryDate}
@@ -512,28 +516,28 @@ export function LicenseCodesModal({
                   checked={editDraft.active}
                   onChange={(event) => setEditDraft({ ...editDraft, active: event.target.checked })}
                 />
-                Licenta activa
+                {t("settings.active")}
               </label>
             </div>
 
             <div className="settings-summary-list compact-summary-list">
               <div>
-                <span>Cod</span>
+                <span>{t("settings.codes")}</span>
                 <strong>{editingLicense.code}</strong>
               </div>
               <div>
-                <span>Client</span>
-                <strong>{editingLicense.usedBy || editingLicense.claimedBy || "neatribuit"}</strong>
+                <span>{t("license.client")}</span>
+                <strong>{editingLicense.usedBy || editingLicense.claimedBy || t("license.noneAssigned")}</strong>
               </div>
               <div>
-                <span>Expira</span>
+                <span>{t("license.expires")}</span>
                 <strong>{formatDate(endDateForLicense(editingLicense, linkedLocationFor(editingLicense)))}</strong>
               </div>
             </div>
 
             <div className="modal-actions split-actions">
               <button className="danger-button" disabled={working} onClick={() => removeLicense(editingLicense)} type="button">
-                Sterge
+                {t("action.delete")}
               </button>
               <button
                 className="secondary-button"
@@ -547,10 +551,10 @@ export function LicenseCodesModal({
                 }}
                 type="button"
               >
-                {editingLicense.active ? "Opreste" : "Activeaza"}
+                {editingLicense.active ? t("action.cancel") : t("action.activate")}
               </button>
               <button className="primary-button" disabled={working} onClick={saveEdit} type="button">
-                Salveaza
+                {t("action.save")}
               </button>
             </div>
           </section>
@@ -563,22 +567,22 @@ export function LicenseCodesModal({
             className="modal-card small-card"
             role="dialog"
             aria-modal="true"
-            aria-label="Trimite licenta prin email"
+            aria-label={t("license.send")}
             onMouseDown={(event) => event.stopPropagation()}
           >
             <div className="section-heading">
               <div>
                 <span className="eyebrow">Email</span>
-                <h2>Trimite licenta</h2>
+                <h2>{t("license.send")}</h2>
               </div>
-              <button className="icon-button" onClick={() => setEmailDraft({ licenseId: "", toEmail: "", message: "" })} type="button" aria-label="Inchide">
+              <button className="icon-button" onClick={() => setEmailDraft({ licenseId: "", toEmail: "", message: "" })} type="button" aria-label={t("booking.close")}>
                 x
               </button>
             </div>
 
             <div className="settings-form newsletter-compose">
               <label>
-                Email destinatar
+                {t("access.recipientEmail")}
                 <input
                   type="email"
                   value={emailDraft.toEmail}
@@ -597,7 +601,7 @@ export function LicenseCodesModal({
 
             <div className="modal-actions">
               <button className="secondary-button" onClick={() => setEmailDraft({ licenseId: "", toEmail: "", message: "" })} disabled={working} type="button">
-                Renunta
+                {t("action.cancel")}
               </button>
               <button
                 className="primary-button"
@@ -611,7 +615,7 @@ export function LicenseCodesModal({
                 }}
                 type="button"
               >
-                {working ? "Se trimite..." : "Trimite"}
+                {working ? t("booking.sending") : t("action.send")}
               </button>
             </div>
           </section>

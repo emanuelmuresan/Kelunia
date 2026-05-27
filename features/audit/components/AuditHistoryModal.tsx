@@ -6,6 +6,7 @@ import {
   auditActionLabels,
   auditEntityLabels,
 } from "@/lib/config/app";
+import { appText, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 
 import type { AuditLogItem } from "@/lib/types/domain";
 
@@ -18,6 +19,7 @@ type AuditHistoryModalProps = {
 
   onClose: () => void;
   onReload: () => void;
+  language?: SupportedLocale;
 };
 
 export function AuditHistoryModal({
@@ -27,6 +29,7 @@ export function AuditHistoryModal({
   auditError,
   onClose,
   onReload,
+  language = "ro",
 }: AuditHistoryModalProps) {
   if (!open) {
     return null;
@@ -40,7 +43,7 @@ export function AuditHistoryModal({
       return `${name} · ${email}`;
     }
 
-    return name || email || "Utilizator";
+    return name || email || appText(language, "audit.user");
   }
 
   return (
@@ -49,23 +52,23 @@ export function AuditHistoryModal({
         className="modal-card audit-card"
         role="dialog"
         aria-modal="true"
-        aria-label="Istoric modificări"
+        aria-label={appText(language, "audit.title")}
       >
         <div className="modal-head">
           <div>
             <span className="eyebrow">
-              Istoric
+              {appText(language, "audit.title")}
             </span>
 
             <h2>
-              Ultimele modificări
+              {appText(language, "audit.lastChanges")}
             </h2>
           </div>
 
           <button
             onClick={onClose}
             type="button"
-            aria-label="Închide"
+            aria-label={appText(language, "booking.close")}
           >
             ×
           </button>
@@ -73,7 +76,7 @@ export function AuditHistoryModal({
 
         <div className="audit-toolbar">
           <p className="muted-note">
-            Ultimele 50 de schimbări pentru locația curentă.
+            {appText(language, "audit.limitNote")}
           </p>
 
           <button
@@ -83,8 +86,8 @@ export function AuditHistoryModal({
             type="button"
           >
             {auditLoading
-              ? "Se încarcă..."
-              : "Reîncarcă"}
+              ? appText(language, "loading.generic")
+              : appText(language, "audit.reload")}
           </button>
         </div>
 
@@ -96,11 +99,11 @@ export function AuditHistoryModal({
 
         {auditLoading && auditLogs.length === 0 ? (
           <p className="empty-line">
-            Se încarcă istoricul...
+            {appText(language, "audit.loading")}
           </p>
         ) : auditLogs.length === 0 ? (
           <p className="empty-line">
-            Nu există încă modificări înregistrate pentru locația curentă.
+            {appText(language, "audit.empty")}
           </p>
         ) : (
           <div className="audit-list">

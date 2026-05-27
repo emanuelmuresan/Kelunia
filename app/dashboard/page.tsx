@@ -2184,6 +2184,7 @@ export default function KeluniaPage() {
         auditLogs={auditLogs}
         auditLoading={auditLoading}
         auditError={auditError}
+        language={language}
         onClose={() => setShowAuditModal(false)}
         onReload={loadAuditLogs}
       />
@@ -2244,6 +2245,7 @@ export default function KeluniaPage() {
         onToggleActive={toggleLicenseCodeActive}
         onUpdate={updateLicenseCode}
         onRemove={deleteLicenseCode}
+        language={language}
       />
 
       <LocationEditorModal
