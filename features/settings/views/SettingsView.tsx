@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import type { AppLanguage, UserRole } from "@/context/AuthContext";
 import { useCommunityApplicationMessages } from "@/features/landing/hooks/useCommunityApplications";
 import { db } from "@/lib/firebase";
-import { appText, localeLabel, supportedLocales } from "@/lib/i18n/app-copy-catalog";
+import { appText, localeLabel, supportedLocales, type UiCopyKey } from "@/lib/i18n/app-copy-catalog";
 import { billingStatusLabel, dateFromFirestoreValue, planLabel } from "@/lib/licensing";
 import { roomAccessLabel } from "@/lib/room-access";
 import type {
@@ -201,6 +201,8 @@ export function SettingsView({
   onSendNewsletterCampaign,
   onEnableOwnerNotifications,
 }: SettingsViewProps) {
+  const language = personalDraft.language;
+  const t = (key: UiCopyKey) => appText(language, key);
   const showLocationSettings = !isOwner || Boolean(currentLocationId);
   const [selectedCommunityApplication, setSelectedCommunityApplication] = useState<CommunityApplication | null>(null);
   const [communityReplyDraft, setCommunityReplyDraft] = useState("");
@@ -711,8 +713,8 @@ export function SettingsView({
       <article className="settings-panel">
         <div className="section-heading">
           <div>
-            <span className="eyebrow">Profil</span>
-            <h2>Setări personale</h2>
+            <span className="eyebrow">{t("settings.profile")}</span>
+            <h2>{t("settings.personal")}</h2>
           </div>
         </div>
 
@@ -720,12 +722,12 @@ export function SettingsView({
           <>
           <div className="settings-summary-list profile-summary-list">
             <div>
-              <span>Nume</span>
-              <strong>{personalDraft.displayName || "Nesetat"}</strong>
+              <span>{t("settings.name")}</span>
+              <strong>{personalDraft.displayName || t("settings.notSet")}</strong>
             </div>
             <div>
-              <span>Rol</span>
-              <strong>{isOwner ? "Proprietar" : isSuperAdmin ? "Administrator" : "Colaborator"}</strong>
+              <span>{t("settings.role")}</span>
+              <strong>{isOwner ? t("role.owner") : isSuperAdmin ? t("role.administrator") : t("role.collaborator")}</strong>
             </div>
             <div>
               <span>{appText(personalDraft.language, "common.language")}</span>
@@ -734,30 +736,30 @@ export function SettingsView({
             {!isOwner && (
               <div>
                 <span>{groupsLabelDraft.trim() || defaultGroupsLabel}</span>
-                <strong>{personalDraft.groupName || "Neales"}</strong>
+                <strong>{personalDraft.groupName || t("settings.notChosen")}</strong>
               </div>
             )}
             <div>
-              <span>Securitate</span>
+              <span>{t("settings.security")}</span>
               <strong>
                 {personalDraft.useBiometrics
-                  ? "PIN + biometrie"
+                  ? t("settings.lockPinBiometric")
                   : personalDraft.usePin
-                    ? "PIN activ"
-                    : "Fara blocare"}
+                    ? t("settings.lockPin")
+                    : t("settings.lockNone")}
               </strong>
             </div>
             <div>
-              <span>Blocare la iesire</span>
-              <strong>{personalDraft.lockOnHide ? "Activa" : "Inactiva"}</strong>
+              <span>{t("settings.blockOnExit")}</span>
+              <strong>{personalDraft.lockOnHide ? t("settings.active") : t("settings.inactive")}</strong>
             </div>
             {!isOwner && (
               <div>
-                <span>Notificari</span>
+                <span>{t("settings.notifications")}</span>
                 <strong>
                   {personalDraft.notifyGroupBookings
                     ? `${personalDraft.notifyOffsets.length} active`
-                    : "Inactive"}
+                    : t("settings.inactive")}
                 </strong>
               </div>
             )}
@@ -765,19 +767,19 @@ export function SettingsView({
 
           <div className="settings-card-actions">
             <button className="primary-button compact" onClick={openProfileEditor} type="button">
-              Editeaza setarile
+              {t("settings.editSettings")}
             </button>
             <button className="secondary-button compact" onClick={onOpenPasswordModal} type="button">
-              Schimba parola
+              {t("settings.password")}
             </button>
           </div>
 
           </>
         ) : (
           <div className="empty-state">
-            <p>Intră în cont pentru setări.</p>
+            <p>{t("auth.signIn")}</p>
             <Link className="primary-link" href="/login">
-              Autentificare
+              {t("auth.signIn")}
             </Link>
           </div>
         )}
@@ -789,12 +791,12 @@ export function SettingsView({
           <article className="settings-panel">
             <div className="section-heading">
               <div>
-                <span className="eyebrow">Navigare</span>
-                <h2>Pagini</h2>
+                <span className="eyebrow">{t("settings.navigation")}</span>
+                <h2>{t("settings.pages")}</h2>
               </div>
               {canEditCurrentLocation && !pagesEditing && (
                 <button className="secondary-button compact" onClick={() => setPagesEditing(true)} type="button">
-                  Editeaza
+                  {t("settings.edit")}
                 </button>
               )}
             </div>
@@ -811,7 +813,7 @@ export function SettingsView({
               </label>
 
               <label>
-                Nume programări fixe
+                {t("nav.fixed")}
                 <input
                   value={fixedSectionDraft}
                   disabled={!canEditCurrentLocation || !pagesEditing}
@@ -820,7 +822,7 @@ export function SettingsView({
               </label>
 
               <label>
-                Nume listă programări
+                {t("nav.list")}
                 <input
                   value={listViewDraft}
                   disabled={!canEditCurrentLocation || !pagesEditing}
@@ -829,7 +831,7 @@ export function SettingsView({
               </label>
 
               <label>
-                Nume sectiune spatii
+                {t("settings.organization")}
                 <input
                   value={resourcesSectionDraft}
                   disabled={!canEditCurrentLocation || !pagesEditing}
@@ -839,7 +841,7 @@ export function SettingsView({
               </label>
 
               <label>
-                Nume sali
+                {defaultRoomsLabel}
                 <input
                   value={roomsLabelDraft}
                   disabled={!canEditCurrentLocation || !pagesEditing}
@@ -849,7 +851,7 @@ export function SettingsView({
               </label>
 
               <label>
-                Nume grupuri
+                {defaultGroupsLabel}
                 <input
                   value={groupsLabelDraft}
                   disabled={!canEditCurrentLocation || !pagesEditing}
@@ -861,7 +863,7 @@ export function SettingsView({
               {canEditCurrentLocation && pagesEditing && (
                 <div className="modal-actions inline-actions">
                   <button className="secondary-button" onClick={() => setPagesEditing(false)} type="button">
-                    Renunta
+                    {t("action.cancel")}
                   </button>
                   <button
                     className="primary-button"
@@ -871,7 +873,7 @@ export function SettingsView({
                     }}
                     type="button"
                   >
-                    Salvează paginile
+                    {t("action.save")}
                   </button>
                 </div>
               )}
@@ -883,39 +885,39 @@ export function SettingsView({
           <article className="settings-panel">
             <div className="section-heading">
               <div>
-                <span className="eyebrow">Acces</span>
-                <h2>Coduri</h2>
+                <span className="eyebrow">{t("settings.access")}</span>
+                <h2>{t("settings.codes")}</h2>
               </div>
 
               {canManageAccessCodes && (
                 <button className="secondary-button compact" onClick={onOpenCodesEditor} type="button">
-                  Gestionează
+                  {t("settings.edit")}
                 </button>
               )}
             </div>
 
             <div className="settings-summary-list">
               <div>
-                <span>Plan</span>
+                <span>{t("settings.plan")}</span>
                 <strong>{licenseAccess.planLabel}</strong>
               </div>
               <div>
-                <span>Status licenta</span>
+                <span>{t("settings.licenseStatus")}</span>
                 <strong>{licenseAccess.statusLabel}</strong>
               </div>
 
               <div>
-                <span>Valabilitate</span>
+                <span>{t("settings.validity")}</span>
                 <strong>{licenseRemainingLabel(licenseAccess)}</strong>
               </div>
 
               <div>
-                <span>Locatia curenta</span>
+                <span>{t("settings.currentLocation")}</span>
                 <strong>{currentLocationCodeCount} coduri</strong>
               </div>
 
               <div>
-                <span>Administratori</span>
+                <span>{t("settings.administrators")}</span>
                 <strong>
                   {currentLocationManagerAccountCount}/{currentLocationManagerLimit}
                 </strong>
@@ -928,8 +930,8 @@ export function SettingsView({
             <article className="settings-panel">
               <div className="section-heading">
                 <div>
-                  <span className="eyebrow">Proprietar</span>
-                  <h2>Locații</h2>
+                  <span className="eyebrow">{t("role.owner")}</span>
+                  <h2>{t("settings.locations")}</h2>
                 </div>
               </div>
 
@@ -937,7 +939,7 @@ export function SettingsView({
 
               <div className="mini-list">
                 {locations.length === 0 ? (
-                  <p className="empty-line">Nu există locații adăugate.</p>
+                  <p className="empty-line">{t("settings.noItems")}</p>
                 ) : (
                   locations.map((location) => (
                     <div className="mini-row" key={location.id}>
@@ -1034,7 +1036,7 @@ export function SettingsView({
           <article className="settings-panel">
             <div className="section-heading">
               <div>
-                <span className="eyebrow">Organizare</span>
+                  <span className="eyebrow">{t("settings.organization")}</span>
                 <h2>{resourcesSectionDraft.trim() || defaultResourcesSectionTitle}</h2>
               </div>
             </div>
@@ -1044,7 +1046,7 @@ export function SettingsView({
                 <div>
                   <span className="eyebrow">{roomsLabelDraft.trim() || defaultRoomsLabel}</span>
                   <h3>{rooms.length} {rooms.length === 1 ? "element" : "elemente"}</h3>
-                  <p>{rooms.length > 0 ? rooms.slice(0, 3).map((room) => room.name).join(", ") : "Nu exista elemente adaugate."}</p>
+                  <p>{rooms.length > 0 ? rooms.slice(0, 3).map((room) => room.name).join(", ") : t("settings.noItems")}</p>
                 </div>
               </div>
 
@@ -1052,14 +1054,14 @@ export function SettingsView({
                 <div>
                   <span className="eyebrow">{groupsLabelDraft.trim() || defaultGroupsLabel}</span>
                   <h3>{groups.length} {groups.length === 1 ? "element" : "elemente"}</h3>
-                  <p>{groups.length > 0 ? groups.slice(0, 3).map((group) => group.name).join(", ") : "Nu exista elemente adaugate."}</p>
+                  <p>{groups.length > 0 ? groups.slice(0, 3).map((group) => group.name).join(", ") : t("settings.noItems")}</p>
                 </div>
               </div>
             </div>
 
             <div className="modal-actions inline-actions">
               <button className="primary-button compact" onClick={() => setResourcesManagerOpen(true)} type="button">
-                Deschide organizarea
+                {t("settings.resourcesOpen")}
               </button>
             </div>
           </article>
@@ -1069,14 +1071,14 @@ export function SettingsView({
           <article className="settings-panel wide">
             <div className="section-heading">
               <div>
-                <span className="eyebrow">Utilizatori</span>
+                <span className="eyebrow">{t("settings.users")}</span>
                 <h2>{visibleManagedUsers.length} conturi</h2>
               </div>
             </div>
 
             <div className="owner-tool-card">
               <div>
-                <span className="eyebrow">Acces</span>
+                <span className="eyebrow">{t("settings.access")}</span>
                 <h3>{visibleManagedUsers.length} {visibleManagedUsers.length === 1 ? "utilizator" : "utilizatori"}</h3>
                 <p>
                   {visibleManagedUsers.filter((item) => item.role === "manager").length} administratori ·{" "}
@@ -1085,7 +1087,7 @@ export function SettingsView({
               </div>
               <div className="owner-tool-actions">
                 <button className="primary-button compact" onClick={() => setUsersManagerOpen(true)} type="button">
-                  Deschide utilizatorii
+                  {t("settings.users")}
                 </button>
               </div>
             </div>
@@ -1106,7 +1108,7 @@ export function SettingsView({
         >
           <div className="modal-head">
             <div>
-              <span className="eyebrow">Organizare</span>
+              <span className="eyebrow">{t("settings.organization")}</span>
               <h2 id="resources-manager-title">{resourcesSectionDraft.trim() || defaultResourcesSectionTitle}</h2>
             </div>
           </div>
@@ -1124,18 +1126,18 @@ export function SettingsView({
 
               <div className="mini-list">
                 {rooms.length === 0 ? (
-                  <p className="empty-line">Nu exista elemente adaugate.</p>
+                  <p className="empty-line">{t("settings.noItems")}</p>
                 ) : (
                   rooms.map((room) => (
                     <div className="mini-row" key={room.id}>
                       <span>{room.name}</span>
                       {canEditCurrentLocation && (
                         <div className="row-actions">
-                          <button onClick={() => onOpenSpaceEditor("room", room)} type="button" aria-label="Editează sala">
+                          <button onClick={() => onOpenSpaceEditor("room", room)} type="button" aria-label={t("settings.edit")}>
                             ✎
                           </button>
                           <button className="secondary-button compact danger-button" onClick={() => onRemoveSpaceItem("room", room.id)} type="button">
-                            Sterge
+                            {t("action.delete")}
                           </button>
                         </div>
                       )}
@@ -1157,7 +1159,7 @@ export function SettingsView({
 
               <div className="mini-list">
                 {groups.length === 0 ? (
-                  <p className="empty-line">Nu exista elemente adaugate.</p>
+                  <p className="empty-line">{t("settings.noItems")}</p>
                 ) : (
                   groups.map((group) => (
                     <div className="mini-row" key={group.id}>
@@ -1167,11 +1169,11 @@ export function SettingsView({
                       </span>
                       {canEditCurrentLocation && (
                         <div className="row-actions">
-                          <button onClick={() => onOpenSpaceEditor("group", group)} type="button" aria-label="Editează grupul">
+                          <button onClick={() => onOpenSpaceEditor("group", group)} type="button" aria-label={t("settings.edit")}>
                             ✎
                           </button>
                           <button className="secondary-button compact danger-button" onClick={() => onRemoveSpaceItem("group", group.id)} type="button">
-                            Sterge
+                            {t("action.delete")}
                           </button>
                         </div>
                       )}
@@ -1184,7 +1186,7 @@ export function SettingsView({
 
           <div className="modal-actions">
             <button className="primary-button" onClick={() => setResourcesManagerOpen(false)} type="button">
-              Gata
+              {t("action.done")}
             </button>
           </div>
         </section>
@@ -1202,7 +1204,7 @@ export function SettingsView({
         >
           <div className="modal-head">
             <div>
-              <span className="eyebrow">Utilizatori</span>
+              <span className="eyebrow">{t("settings.users")}</span>
               <h2 id="users-manager-title">{visibleManagedUsers.length} conturi</h2>
             </div>
           </div>
@@ -1234,7 +1236,7 @@ export function SettingsView({
                   <div>
                     <strong>{managedUser.displayName || managedUser.email}</strong>
                     <span>
-                      {managedUser.email} · {managedUser.locationName || "fără locație"} · {managedUser.groupName || "fără grup"}
+                      {managedUser.email} · {managedUser.locationName || t("settings.notSet")} · {managedUser.groupName || t("settings.notChosen")}
                     </span>
                   </div>
 
@@ -1255,9 +1257,9 @@ export function SettingsView({
                       managedUser.locationId !== currentLocationId
                     }
                   >
-                    <option value="guest">Oaspete</option>
-                    <option value="member">Colaborator</option>
-                    <option value="manager">Administrator</option>
+                    <option value="guest">{t("role.guest")}</option>
+                    <option value="member">{t("role.collaborator")}</option>
+                    <option value="manager">{t("role.administrator")}</option>
                   </select>
 
                   <div className="user-room-access">
@@ -1283,14 +1285,14 @@ export function SettingsView({
                       }}
                       disabled={accessDisabled}
                     >
-                      <option value="all">Toate salile</option>
-                      <option value="selected">Sali alese</option>
+                      <option value="all">{t("settings.roomsAll")}</option>
+                      <option value="selected">{t("settings.roomsSelected")}</option>
                     </select>
 
                     {draftRole !== "manager" && draftRoomAccess === "selected" && (
                       <div className="room-check-grid user-room-check-grid">
                         {rooms.length === 0 ? (
-                          <p className="empty-line">Adauga intai sali pentru aceasta locatie.</p>
+                          <p className="empty-line">{t("settings.noItems")}</p>
                         ) : (
                           rooms.map((room) => (
                             <label className="toggle-row compact-toggle" key={room.id}>
@@ -1319,7 +1321,7 @@ export function SettingsView({
                     {isEditingUser ? (
                       <>
                         <button className="secondary-button compact" onClick={() => closeManagedUserEditor(managedUser.id)} type="button">
-                          Renunta
+                          {t("action.cancel")}
                         </button>
                         <button
                           className="primary-button compact"
@@ -1327,13 +1329,13 @@ export function SettingsView({
                           onClick={() => saveManagedUserEditor(managedUser)}
                           type="button"
                         >
-                          Salveaza
+                          {t("action.save")}
                         </button>
                       </>
                     ) : (
                       <>
                         <button className="secondary-button compact" disabled={!canEditManagedUser} onClick={() => openManagedUserEditor(managedUser)} type="button">
-                          Editeaza
+                          {t("settings.edit")}
                         </button>
                         <button
                           className="secondary-button compact danger-button"
@@ -1341,7 +1343,7 @@ export function SettingsView({
                           onClick={() => onRemoveManagedUser(managedUser)}
                           type="button"
                         >
-                          Sterge
+                          {t("action.delete")}
                         </button>
                       </>
                     )}
@@ -1353,7 +1355,7 @@ export function SettingsView({
 
           <div className="modal-actions">
             <button className="primary-button" onClick={() => setUsersManagerOpen(false)} type="button">
-              Gata
+              {t("action.done")}
             </button>
           </div>
         </section>
@@ -1371,8 +1373,8 @@ export function SettingsView({
         >
           <div className="section-heading">
             <div>
-              <span className="eyebrow">Profil</span>
-              <h2 id="profile-settings-title">Setari personale</h2>
+              <span className="eyebrow">{t("settings.profile")}</span>
+              <h2 id="profile-settings-title">{t("settings.personal")}</h2>
             </div>
           </div>
 
@@ -1395,7 +1397,7 @@ export function SettingsView({
             </label>
 
             <label>
-              Nume
+              {t("settings.name")}
               <input
                 value={personalDraft.displayName}
                 onChange={(event) =>
@@ -1419,7 +1421,7 @@ export function SettingsView({
                     })
                   }
                 >
-                  <option value="">Alege {(groupsLabelDraft.trim() || defaultGroupsLabel).toLowerCase()}</option>
+                  <option value="">{t("settings.notChosen")}</option>
                   {groups.map((group) => (
                     <option key={group.id} value={group.name}>
                       {group.name}
@@ -1436,7 +1438,7 @@ export function SettingsView({
                   checked={personalDraft.usePin}
                   onChange={(event) => onHandlePinToggle(event.target.checked)}
                 />
-                Blocare cu PIN
+                {t("settings.lockPin")}
               </label>
 
               <label className="toggle-row">
@@ -1445,7 +1447,7 @@ export function SettingsView({
                   checked={personalDraft.useBiometrics}
                   onChange={(event) => onHandleBiometricsToggle(event.target.checked)}
                 />
-                Biometrie
+                {t("settings.lockPinBiometric")}
               </label>
 
               <label className="toggle-row">
@@ -1459,7 +1461,7 @@ export function SettingsView({
                     })
                   }
                 />
-                Blocheaza cand iesi din aplicatie
+                {t("settings.blockOnExit")}
               </label>
             </div>
 
@@ -1476,7 +1478,7 @@ export function SettingsView({
                       })
                     }
                   />
-                  Notificari pentru programarile grupului meu
+                  {t("settings.notifications")}
                 </label>
 
                 {personalDraft.notifyGroupBookings && (
@@ -1492,7 +1494,7 @@ export function SettingsView({
                           })
                         }
                       />
-                      Include si programarile recurente ale grupului meu
+                      {t("fixed.new")}
                     </label>
                     {personalDraft.notifyOffsets.map((offset, index) => {
                       const unit = offset.endsWith("d") ? "d" : offset.endsWith("h") ? "h" : "m";
@@ -1500,7 +1502,7 @@ export function SettingsView({
 
                       return (
                       <label key={`${offset}-${index}`}>
-                        Cu cat timp inainte
+                        {t("booking.offsetBefore")}
                         <div className="inline-add">
                           <input
                             min={1}
@@ -1511,12 +1513,12 @@ export function SettingsView({
                             onChange={(event) => updateNotificationOffset(index, event.target.value)}
                           />
                           <select value={unit} onChange={(event) => updateNotificationOffsetUnit(index, event.target.value as "m" | "h" | "d")}>
-                            <option value="m">minute</option>
-                            <option value="h">ore</option>
-                            <option value="d">zile</option>
+                            <option value="m">{t("booking.minute")}</option>
+                            <option value="h">{t("booking.hour")}</option>
+                            <option value="d">{t("booking.day")}</option>
                           </select>
                           <button className="secondary-button compact" onClick={() => removeNotificationOffset(index)} type="button">
-                            Sterge
+                            {t("action.delete")}
                           </button>
                         </div>
                       </label>
@@ -1524,7 +1526,7 @@ export function SettingsView({
                     })}
                     {personalDraft.notifyOffsets.length < 5 && (
                       <button className="secondary-button compact" onClick={addNotificationOffset} type="button">
-                        Adauga notificare
+                        {t("booking.notifications")}
                       </button>
                     )}
                   </div>
@@ -1534,10 +1536,10 @@ export function SettingsView({
 
             <div className="modal-actions">
               <button className="secondary-button" onClick={closeProfileEditor} type="button">
-                Renunta
+                {t("action.cancel")}
               </button>
               <button className="primary-button" disabled={!profileDirty} onClick={saveProfileEditor} type="button">
-                Salveaza modificarile
+                {t("settings.saveChanges")}
               </button>
             </div>
           </div>
