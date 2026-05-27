@@ -12,6 +12,7 @@ import {
 } from "firebase/firestore";
 
 import type { UserRole } from "@/context/AuthContext";
+import type { SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 import type { AuditAction, AuditEntityType } from "@/lib/audit";
 import { cloudFunctions } from "@/lib/firebase";
 import {
@@ -70,6 +71,7 @@ type UseAccessCodesParams = {
   rooms: RoomItem[];
   softDeletePayload: () => Record<string, unknown>;
   user: User | null;
+  language?: SupportedLocale;
 };
 
 export function useAccessCodes({
@@ -85,6 +87,7 @@ export function useAccessCodes({
   rooms,
   softDeletePayload,
   user,
+  language = "ro",
 }: UseAccessCodesParams) {
   const [showCodesModal, setShowCodesModal] = useState(false);
   const [codesError, setCodesError] = useState("");
@@ -248,6 +251,7 @@ export function useAccessCodes({
         code: inviteDraft.code,
         toEmail: recipientEmail,
         message: inviteDraft.message,
+        language,
       });
       setInviteDraft(null);
       setCodesMessage(`Invitatia a fost trimisa prin Kelunia catre ${recipientEmail}.`);

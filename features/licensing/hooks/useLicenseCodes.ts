@@ -20,6 +20,7 @@ import {
 } from "firebase/firestore";
 
 import { normalizeLicenseCode } from "@/lib/licensing";
+import type { SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 import type { BillingStatus, LicenseCodeItem, LocationPlan } from "@/lib/types/domain";
 
 export type LicenseCodeDraft = {
@@ -54,6 +55,7 @@ type UseLicenseCodesParams = {
   db: Firestore;
   isOwner: boolean;
   user: User | null;
+  language?: SupportedLocale;
 };
 
 const defaultDraft: LicenseCodeDraft = {
@@ -76,7 +78,7 @@ function billingStatusForPlan(plan: LocationPlan): BillingStatus {
   return plan === "trial" ? "trialing" : "active";
 }
 
-export function useLicenseCodes({ db, isOwner, user }: UseLicenseCodesParams) {
+export function useLicenseCodes({ db, isOwner, user, language = "ro" }: UseLicenseCodesParams) {
   const [licenseCodes, setLicenseCodes] = useState<LicenseCodeItem[]>([]);
   const [licenseEmailRequests, setLicenseEmailRequests] = useState<LicenseEmailRequestItem[]>([]);
   const [showLicenseModal, setShowLicenseModal] = useState(false);
@@ -414,6 +416,7 @@ export function useLicenseCodes({ db, isOwner, user }: UseLicenseCodesParams) {
         code: item.code,
         toEmail: cleanEmail,
         message: cleanMessage,
+        language,
         status: "pending",
         createdAt: serverTimestamp(),
         createdBy: user.email ?? "",

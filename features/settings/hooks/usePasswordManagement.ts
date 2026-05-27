@@ -43,9 +43,9 @@ type UsePasswordManagementParams = {
 
 const emptyPasswordDraft: PasswordDraft = { current: "", next: "", confirm: "" };
 
-async function sendCustomPasswordResetEmail(email: string) {
+async function sendCustomPasswordResetEmail(email: string, language = "ro") {
   const sendPasswordReset = httpsCallable(cloudFunctions, "sendAuthPasswordResetEmail");
-  await sendPasswordReset({ email });
+  await sendPasswordReset({ email, language });
 }
 
 export function usePasswordManagement({
@@ -139,7 +139,7 @@ export function usePasswordManagement({
     }
 
     try {
-      await sendCustomPasswordResetEmail(user.email);
+      await sendCustomPasswordResetEmail(user.email, profile?.language ?? "ro");
       setPasswordMessage("Ți-am trimis emailul pentru resetarea parolei.");
     } catch (error) {
       console.error("Emailul de resetare nu a putut fi trimis:", error);

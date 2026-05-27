@@ -589,6 +589,7 @@ export default function KeluniaPage() {
     rooms,
     softDeletePayload,
     user,
+    language,
   });
 
   const {
@@ -612,6 +613,7 @@ export default function KeluniaPage() {
     db,
     isOwner,
     user,
+    language,
   });
 
   async function enableOwnerNotifications() {

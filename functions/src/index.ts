@@ -56,6 +56,7 @@ type NewsletterRecipient = {
 
 type LicenseEmailRequest = {
   code?: string;
+  language?: string;
   licenseId?: string;
   message?: string;
   status?: string;
@@ -64,6 +65,7 @@ type LicenseEmailRequest = {
 
 type AccessInviteEmailRequest = {
   code?: string;
+  language?: string;
   message?: string;
   toEmail?: string;
 };
@@ -447,6 +449,56 @@ function appUrl(path: string) {
   return `${appBaseUrl.value().replace(/\/$/, "")}${path}`;
 }
 
+type EmailLanguage = "ro" | "en" | "es" | "it" | "fr" | "pt";
+
+function emailLanguage(value: unknown): EmailLanguage {
+  return value === "en" || value === "es" || value === "it" || value === "fr" || value === "pt" ? value : "ro";
+}
+
+function emailSubject(key: "verify" | "reset" | "license" | "invite", languageValue: unknown) {
+  const language = emailLanguage(languageValue);
+  const subjects = {
+    ro: {
+      verify: "Confirmă emailul pentru Kelunia",
+      reset: "Resetează parola Kelunia",
+      license: "Codul tău de licență Kelunia",
+      invite: "Invitație Kelunia",
+    },
+    en: {
+      verify: "Confirm your Kelunia email",
+      reset: "Reset your Kelunia password",
+      license: "Your Kelunia license code",
+      invite: "Kelunia invitation",
+    },
+    es: {
+      verify: "Confirma tu email de Kelunia",
+      reset: "Restablece tu contraseña Kelunia",
+      license: "Tu código de licencia Kelunia",
+      invite: "Invitación Kelunia",
+    },
+    it: {
+      verify: "Conferma la tua email Kelunia",
+      reset: "Reimposta la password Kelunia",
+      license: "Il tuo codice licenza Kelunia",
+      invite: "Invito Kelunia",
+    },
+    fr: {
+      verify: "Confirmez votre email Kelunia",
+      reset: "Réinitialisez votre mot de passe Kelunia",
+      license: "Votre code de licence Kelunia",
+      invite: "Invitation Kelunia",
+    },
+    pt: {
+      verify: "Confirme o seu email Kelunia",
+      reset: "Repor a palavra-passe Kelunia",
+      license: "O seu código de licença Kelunia",
+      invite: "Convite Kelunia",
+    },
+  };
+
+  return subjects[language][key];
+}
+
 function licenseEmailText(request: LicenseEmailRequest) {
   const code = request.code ?? request.licenseId ?? "";
   const link = appUrl(`/login?code=${encodeURIComponent(code)}`);
@@ -657,7 +709,7 @@ export const sendAuthVerificationEmail = onCall(
     const result = await resend.emails.send({
       from: emailFrom.value(),
       to: [user.email],
-      subject: "Confirmă emailul pentru Kelunia",
+      subject: emailSubject("verify", request.data?.language),
       text: verificationEmailText(link),
       html: verificationEmailHtml(link),
     });
@@ -714,7 +766,7 @@ export const sendAuthPasswordResetEmail = onCall(
     const result = await resend.emails.send({
       from: emailFrom.value(),
       to: [email],
-      subject: "Resetează parola Kelunia",
+      subject: emailSubject("reset", request.data?.language),
       text: passwordResetEmailText(link),
       html: passwordResetEmailHtml(link),
     });
@@ -795,7 +847,7 @@ export const sendAccessInviteEmail = onCall(
       from: emailFrom.value(),
       to: [toEmail],
       replyTo: currentUser.email ? [currentUser.email] : undefined,
-      subject: `Invitație Kelunia - ${accessCode.locationName ?? "locația ta"}`,
+      subject: `${emailSubject("invite", payload.language)} - ${accessCode.locationName ?? "Kelunia"}`,
       text: accessInviteText({ ...payload, code, message, toEmail }, { ...accessCode, code }),
       html: accessInviteHtml({ ...payload, code, message, toEmail }, { ...accessCode, code }),
     });
@@ -1328,7 +1380,7 @@ export const sendLicenseEmail = onDocumentCreated(
       const result = await resend.emails.send({
         from: emailFrom.value(),
         to: [request.toEmail],
-        subject: "Codul tău de licență Kelunia",
+        subject: emailSubject("license", request.language),
         text: licenseEmailText(request),
         html: licenseEmailHtml(request),
       });

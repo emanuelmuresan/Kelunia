@@ -148,14 +148,14 @@ async function verifyFirebaseAuthConnection() {
   }
 }
 
-async function sendVerificationAndSignOut() {
-  await sendCustomVerificationEmail();
+async function sendVerificationAndSignOut(language: AppLanguage) {
+  await sendCustomVerificationEmail(language);
   await signOut(auth);
 }
 
-async function resendVerificationBeforeSignOut() {
+async function resendVerificationBeforeSignOut(language: AppLanguage) {
   try {
-    await sendCustomVerificationEmail();
+    await sendCustomVerificationEmail(language);
   } catch (error) {
     console.error("Emailul de verificare nu a putut fi trimis:", error);
     throw new Error(
@@ -168,14 +168,14 @@ async function resendVerificationBeforeSignOut() {
   }
 }
 
-async function sendCustomVerificationEmail() {
+async function sendCustomVerificationEmail(language: AppLanguage) {
   const sendVerification = httpsCallable(cloudFunctions, "sendAuthVerificationEmail");
-  await sendVerification();
+  await sendVerification({ language });
 }
 
-async function sendCustomPasswordResetEmail(email: string) {
+async function sendCustomPasswordResetEmail(email: string, language: AppLanguage) {
   const sendPasswordReset = httpsCallable(cloudFunctions, "sendAuthPasswordResetEmail");
-  await sendPasswordReset({ email });
+  await sendPasswordReset({ email, language });
 }
 
 export default function LoginPage() {
@@ -343,7 +343,7 @@ export default function LoginPage() {
       }
 
       profileCreated = true;
-      await sendVerificationAndSignOut();
+      await sendVerificationAndSignOut(language);
     } catch (profileError) {
       if (profileCreated) {
         await deleteDoc(userRef).catch((deleteProfileError) => {
@@ -385,7 +385,7 @@ export default function LoginPage() {
         language,
         createdAt: Timestamp.now(),
       });
-      await sendVerificationAndSignOut();
+      await sendVerificationAndSignOut(language);
     } catch (trialError) {
       await deleteDoc(userRef).catch((deleteProfileError) => {
         console.warn("Profilul trial creat incomplet nu a putut fi sters automat:", deleteProfileError);
@@ -452,7 +452,7 @@ export default function LoginPage() {
           claimedByUid: result.user.uid,
         });
       });
-      await sendVerificationAndSignOut();
+      await sendVerificationAndSignOut(language);
     } catch (licenseError) {
       await deleteDoc(userRef).catch((deleteProfileError) => {
         console.warn("Profilul creat cu licență invalidă nu a putut fi șters automat:", deleteProfileError);
@@ -483,7 +483,7 @@ export default function LoginPage() {
         );
 
         if (!credential.user.emailVerified) {
-          await resendVerificationBeforeSignOut();
+          await resendVerificationBeforeSignOut(language);
           throw new Error("Emailul nu este verificat.");
         }
 
@@ -492,7 +492,7 @@ export default function LoginPage() {
       }
 
       if (mode === "reset") {
-        await sendCustomPasswordResetEmail(email);
+        await sendCustomPasswordResetEmail(email, language);
         setMessage("Emailul de resetare a fost trimis.");
         return;
       }
