@@ -2,6 +2,7 @@
 
 import { dayLabels } from "@/lib/config/app";
 import { groupColorForName, groupColorStyle } from "@/lib/group-colors";
+import { appText, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 import type { FixedSchedule, GroupItem } from "@/lib/types/domain";
 
 type FixedSchedulesManagerModalProps = {
@@ -11,6 +12,7 @@ type FixedSchedulesManagerModalProps = {
   groups: GroupItem[];
   fixedError: string;
   profileGroupName?: string;
+  language?: SupportedLocale;
 
   onClose: () => void;
   onAdd: () => void;
@@ -24,6 +26,7 @@ export function FixedSchedulesManagerModal({
   fixedSchedules,
   groups,
   fixedError,
+  language = "ro",
   onClose,
   onAdd,
   onEdit,
@@ -39,32 +42,32 @@ export function FixedSchedulesManagerModal({
         className="modal-card manager-card"
         role="dialog"
         aria-modal="true"
-        aria-label="Administrare calendar săptămânal"
+        aria-label={appText(language, "fixed.manage")}
       >
         <div className="modal-head">
           <div>
-            <span className="eyebrow">Calendar</span>
+            <span className="eyebrow">{appText(language, "nav.calendar")}</span>
             <h2>{fixedSectionTitle}</h2>
           </div>
 
           <button
             onClick={onClose}
             type="button"
-            aria-label="Închide"
+            aria-label={appText(language, "booking.close")}
           >
             ×
           </button>
         </div>
 
         <div className="mini-section-head">
-          <h3>Programări</h3>
+          <h3>{appText(language, "fixed.scheduleList")}</h3>
 
           <button
             className="primary-button compact"
             onClick={onAdd}
             type="button"
           >
-            + Adaugă
+            + {appText(language, "booking.add")}
           </button>
         </div>
 
@@ -77,7 +80,7 @@ export function FixedSchedulesManagerModal({
         <div className="mini-list">
           {fixedSchedules.length === 0 ? (
             <p className="empty-line">
-              Nu există elemente adăugate.
+              {appText(language, "fixed.empty")}
             </p>
           ) : (
             fixedSchedules.map((item) => (
@@ -96,7 +99,7 @@ export function FixedSchedulesManagerModal({
                   <button
                     onClick={() => onEdit(item)}
                     type="button"
-                    aria-label="Editează"
+                    aria-label={appText(language, "booking.edit")}
                   >
                     ✎
                   </button>
@@ -104,7 +107,7 @@ export function FixedSchedulesManagerModal({
                   <button
                     onClick={() => onRemove(item.id)}
                     type="button"
-                    aria-label="Șterge"
+                    aria-label={appText(language, "action.delete")}
                   >
                     ×
                   </button>

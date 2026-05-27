@@ -1,5 +1,6 @@
 "use client";
 
+import { appText, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 import type { CalendarMode } from "@/lib/types/domain";
 
 type CalendarToolbarProps = {
@@ -7,6 +8,7 @@ type CalendarToolbarProps = {
   calendarMode: CalendarMode;
   canManageBookings: boolean;
   isOnline: boolean;
+  language?: SupportedLocale;
   onCreateBooking: () => void;
   onMovePeriod: (direction: -1 | 1) => void;
   onToday: () => void;
@@ -18,6 +20,7 @@ export function CalendarToolbar({
   calendarMode,
   canManageBookings,
   isOnline,
+  language = "ro",
   onCreateBooking,
   onMovePeriod,
   onToday,
@@ -27,7 +30,7 @@ export function CalendarToolbar({
     <>
       <div className="calendar-toolbar">
         <div>
-          <span className="eyebrow">Calendar</span>
+          <span className="eyebrow">{appText(language, "nav.calendar")}</span>
           <h2>{periodTitle}</h2>
         </div>
 
@@ -39,7 +42,7 @@ export function CalendarToolbar({
               onClick={onCreateBooking}
               type="button"
             >
-              + Rezervare nouă
+              + {appText(language, "booking.newShort")}
             </button>
           )}
 
@@ -47,7 +50,7 @@ export function CalendarToolbar({
             className="icon-only"
             onClick={() => onMovePeriod(-1)}
             type="button"
-            aria-label="Perioada anterioară"
+            aria-label={appText(language, "calendar.previous")}
           >
             ‹
           </button>
@@ -57,25 +60,25 @@ export function CalendarToolbar({
             onClick={onToday}
             type="button"
           >
-            Azi
+            {appText(language, "calendar.today")}
           </button>
 
           <button
             className="icon-only"
             onClick={() => onMovePeriod(1)}
             type="button"
-            aria-label="Perioada următoare"
+            aria-label={appText(language, "calendar.next")}
           >
             ›
           </button>
         </div>
       </div>
 
-      <div className="segmented-control" role="group" aria-label="Mod calendar">
+      <div className="segmented-control" role="group" aria-label={appText(language, "calendar.mode")}>
         {[
-          ["month", "Lună"],
-          ["week", "Săptămână"],
-          ["day", "Zi"],
+          ["month", appText(language, "calendar.month")],
+          ["week", appText(language, "calendar.week")],
+          ["day", appText(language, "calendar.day")],
         ].map(([value, label]) => (
           <button
             key={value}

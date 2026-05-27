@@ -6,6 +6,7 @@ import type {
   ListFilter,
   SortDirection,
 } from "@/lib/types/domain";
+import { appText, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 import { BookingRow } from "../components/BookingRow";
 
 type ListViewProps = {
@@ -23,6 +24,7 @@ type ListViewProps = {
   isSuperAdmin: boolean;
   currentLocationId: string;
   profileGroupName?: string;
+  language?: SupportedLocale;
   onListFilterChange: (filter: ListFilter) => void;
   onSortDirectionChange: (direction: SortDirection) => void;
   onOpenAuditHistory: () => void;
@@ -48,6 +50,7 @@ export function ListView({
   isSuperAdmin,
   currentLocationId,
   profileGroupName,
+  language = "ro",
   onListFilterChange,
   onSortDirectionChange,
   onOpenAuditHistory,
@@ -62,7 +65,7 @@ export function ListView({
       <div className="section-heading list-heading">
         <div>
           <span className="eyebrow">{listViewTitle}</span>
-          <h2>{listBookings.length} rezultate</h2>
+          <h2>{appText(language, "list.results").replace("{{count}}", String(listBookings.length))}</h2>
         </div>
 
         <div className="toolbar-actions">
@@ -72,9 +75,9 @@ export function ListView({
               onListFilterChange(event.target.value as ListFilter)
             }
           >
-            <option value="future">Viitoare</option>
-            <option value="past">Trecute</option>
-            <option value="all">Toate</option>
+            <option value="future">{appText(language, "list.future")}</option>
+            <option value="past">{appText(language, "list.past")}</option>
+            <option value="all">{appText(language, "list.all")}</option>
           </select>
 
           <select
@@ -83,8 +86,8 @@ export function ListView({
               onSortDirectionChange(event.target.value as SortDirection)
             }
           >
-            <option value="asc">Crescător</option>
-            <option value="desc">Descrescător</option>
+            <option value="asc">{appText(language, "list.ascending")}</option>
+            <option value="desc">{appText(language, "list.descending")}</option>
           </select>
 
           {(isOwner || isSuperAdmin) && currentLocationId && (
@@ -93,7 +96,7 @@ export function ListView({
               onClick={onOpenAuditHistory}
               type="button"
             >
-              Istoric
+              {appText(language, "list.history")}
             </button>
           )}
         </div>
@@ -101,14 +104,13 @@ export function ListView({
 
       {reachedBookingsQueryLimit && (
         <p className="muted-note">
-          Sunt multe programări în intervalul afișat. Pentru rezultate complete,
-          restrânge perioada sau folosește filtre mai specifice.
+          {appText(language, "list.limitWarning")}
         </p>
       )}
 
       <div className="booking-list">
         {listBookings.length === 0 ? (
-          <p className="empty-line">Nu există programări de afișat.</p>
+          <p className="empty-line">{appText(language, "list.emptyBookings")}</p>
         ) : (
           visibleListBookings.map((booking) => (
             <BookingRow
@@ -116,6 +118,7 @@ export function ListView({
               booking={booking}
               groups={groups}
               profileGroupName={profileGroupName}
+              language={language}
               canEdit={canEditBooking(booking)}
               onOpen={() => onSelectBooking(booking)}
               onEdit={() => onEditBooking(booking)}
@@ -126,18 +129,18 @@ export function ListView({
       </div>
 
       {listBookings.length > listPageSize && (
-        <div className="list-pagination" aria-label="Paginare listă programări">
+        <div className="list-pagination" aria-label={appText(language, "list.pagination")}>
           <button
             className="secondary-button compact"
             disabled={listPage === 1}
             onClick={() => onPageChange(Math.max(1, listPage - 1))}
             type="button"
           >
-            Înapoi
+            {appText(language, "list.previous")}
           </button>
 
           <span>
-            Pagina {listPage} din {totalListPages}
+            {appText(language, "list.page").replace("{{page}}", String(listPage)).replace("{{total}}", String(totalListPages))}
           </span>
 
           <button
@@ -146,7 +149,7 @@ export function ListView({
             onClick={() => onPageChange(Math.min(totalListPages, listPage + 1))}
             type="button"
           >
-            Înainte
+            {appText(language, "list.next")}
           </button>
         </div>
       )}

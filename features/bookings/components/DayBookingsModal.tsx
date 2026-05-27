@@ -2,6 +2,7 @@
 
 import { formatDateLabel } from "@/lib/dates";
 import { groupColorForName, groupColorStyle } from "@/lib/group-colors";
+import { appText, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 import type { Booking, GroupItem } from "@/lib/types/domain";
 
 type DayBookingsModalProps = {
@@ -10,6 +11,7 @@ type DayBookingsModalProps = {
   groups: GroupItem[];
   canCreate: boolean;
   profileGroupName?: string;
+  language?: SupportedLocale;
   onAdd: () => void;
   onClose: () => void;
   onSelectBooking: (booking: Booking) => void;
@@ -20,6 +22,7 @@ export function DayBookingsModal({
   bookings,
   groups,
   canCreate,
+  language = "ro",
   onAdd,
   onClose,
   onSelectBooking,
@@ -30,20 +33,20 @@ export function DayBookingsModal({
 
   return (
     <div className="modal-backdrop" role="presentation">
-      <div className="modal-card day-bookings-card" role="dialog" aria-modal="true" aria-label="Programările zilei">
+      <div className="modal-card day-bookings-card" role="dialog" aria-modal="true" aria-label={appText(language, "booking.details")}>
         <div className="modal-head">
           <div>
-            <span className="eyebrow">Calendar</span>
+            <span className="eyebrow">{appText(language, "nav.calendar")}</span>
             <h2>{formatDateLabel(date, { year: "numeric" })}</h2>
           </div>
 
-          <button onClick={onClose} type="button" aria-label="Închide">
+          <button onClick={onClose} type="button" aria-label={appText(language, "booking.close")}>
             ×
           </button>
         </div>
 
         {bookings.length === 0 ? (
-          <p className="empty-line day-bookings-empty">Nicio programare în această zi.</p>
+          <p className="empty-line day-bookings-empty">{appText(language, "booking.noneToday")}</p>
         ) : (
           <div className="day-bookings-list">
             {bookings.map((booking) => (
@@ -65,12 +68,12 @@ export function DayBookingsModal({
         <div className="modal-actions">
           {canCreate && (
             <button className="primary-button" onClick={onAdd} type="button">
-              Adaugă programare
+              {appText(language, "booking.new")}
             </button>
           )}
 
           <button className="secondary-button" onClick={onClose} type="button">
-            Gata
+            {appText(language, "action.done")}
           </button>
         </div>
       </div>

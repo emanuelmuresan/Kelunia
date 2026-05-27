@@ -2035,6 +2035,7 @@ export default function KeluniaPage() {
               calendarMode={calendarMode}
               canManageBookings={canManageBookings}
               isOnline={isOnline}
+              language={language}
               onCreateBooking={() => openCreateForm(dateKey(currentDate))}
               onMovePeriod={movePeriod}
               onToday={() => setCurrentDate(new Date())}
@@ -2100,6 +2101,7 @@ export default function KeluniaPage() {
         isSuperAdmin={isSuperAdmin}
         currentLocationId={currentLocationId}
         profileGroupName={profile?.groupName}
+        language={language}
         onListFilterChange={setListFilter}
         onSortDirectionChange={setSortDirection}
         onOpenAuditHistory={openAuditHistory}
@@ -2277,6 +2279,7 @@ export default function KeluniaPage() {
         groups={groups}
         fixedError={showFixedForm ? "" : fixedError}
         profileGroupName={profile?.groupName}
+        language={language}
         onClose={() => setShowFixedManager(false)}
         onAdd={startFixedAdd}
         onEdit={startFixedEdit}
@@ -2292,6 +2295,7 @@ export default function KeluniaPage() {
         rooms={rooms}
         groupsLabel={groupsLabel}
         roomsLabel={roomsLabel}
+        language={language}
         error={fixedError}
         onChange={setFixedDraft}
         onClose={closeFixedForm}
@@ -2307,6 +2311,7 @@ export default function KeluniaPage() {
         rooms={accessibleRooms}
         groupsLabel={groupsLabel}
         roomsLabel={roomsLabel}
+        language={language}
         error={formError}
         onChange={setFormData}
         onClose={() => setShowBookingModal(false)}
@@ -2319,6 +2324,7 @@ export default function KeluniaPage() {
         groups={groups}
         canCreate={canManageBookings && isOnline}
         profileGroupName={profile?.groupName}
+        language={language}
         onAdd={createBookingFromDayModal}
         onClose={() => setSelectedDay(null)}
         onSelectBooking={selectBookingFromDayModal}
@@ -2328,6 +2334,7 @@ export default function KeluniaPage() {
         booking={selectedBooking}
         groups={groups}
         profileGroupName={profile?.groupName}
+        language={language}
         canEdit={selectedBooking ? canEditBooking(selectedBooking) : false}
         canCreate={canManageBookings && isOnline}
         onAdd={createBookingFromSelectedBooking}

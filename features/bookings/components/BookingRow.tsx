@@ -2,12 +2,14 @@
 
 import { formatDateLabel } from "@/lib/dates";
 import { groupColorForName, groupColorStyle } from "@/lib/group-colors";
+import { appText, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 import type { Booking, GroupItem } from "@/lib/types/domain";
 
 type BookingRowProps = {
   booking: Booking;
   groups: GroupItem[];
   profileGroupName?: string;
+  language?: SupportedLocale;
   canEdit: boolean;
   onOpen: () => void;
   onEdit: () => void;
@@ -17,6 +19,7 @@ type BookingRowProps = {
 export function BookingRow({
   booking,
   groups,
+  language = "ro",
   canEdit,
   onOpen,
   onEdit,
@@ -52,7 +55,7 @@ export function BookingRow({
           <button
             onClick={onEdit}
             type="button"
-            aria-label="Editează"
+            aria-label={appText(language, "booking.edit")}
           >
             ✎
           </button>
@@ -60,7 +63,7 @@ export function BookingRow({
           <button
             onClick={onDelete}
             type="button"
-            aria-label="Șterge"
+            aria-label={appText(language, "action.delete")}
           >
             ×
           </button>

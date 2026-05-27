@@ -1,6 +1,7 @@
 "use client";
 
 import type { FormEvent } from "react";
+import { appText, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 import type { BookingForm, GroupItem, ManagedUser, RoomItem } from "@/lib/types/domain";
 
 export type BookingFormState = BookingForm;
@@ -14,6 +15,7 @@ interface BookingModalProps {
   rooms: RoomItem[];
   groupsLabel?: string;
   roomsLabel?: string;
+  language?: SupportedLocale;
   error: string;
   onChange: (nextForm: BookingForm) => void;
   onClose: () => void;
@@ -29,6 +31,7 @@ export function BookingModal({
   rooms,
   groupsLabel = "Grup",
   roomsLabel = "Sala",
+  language = "ro",
   error,
   onChange,
   onClose,
@@ -100,13 +103,13 @@ export function BookingModal({
 
   return (
     <div className="modal-backdrop" role="presentation">
-      <div className="modal-card" role="dialog" aria-modal="true" aria-label="Programare">
+      <div className="modal-card" role="dialog" aria-modal="true" aria-label={appText(language, "booking.details")}>
         <div className="modal-head">
           <div>
-            <span className="eyebrow">{editingId ? "Editare" : "Programare nouă"}</span>
-            <h2>{editingId ? "Actualizează programarea" : "Adaugă programare"}</h2>
+            <span className="eyebrow">{editingId ? appText(language, "booking.editing") : appText(language, "booking.new")}</span>
+            <h2>{editingId ? appText(language, "booking.update") : appText(language, "booking.new")}</h2>
           </div>
-          <button onClick={onClose} type="button" aria-label="Închide">
+          <button onClick={onClose} type="button" aria-label={appText(language, "booking.close")}>
             ×
           </button>
         </div>
@@ -114,7 +117,7 @@ export function BookingModal({
           <label>
             {groupsLabel}
             <select value={formData.group} onChange={(event) => onChange({ ...formData, group: event.target.value })}>
-              <option value="">Alege {groupsLabel.toLowerCase()}</option>
+              <option value="">{appText(language, "booking.selectGroup")}</option>
               {groups.map((group) => <option key={group.id} value={group.name}>{group.name}</option>)}
             </select>
           </label>
@@ -127,12 +130,12 @@ export function BookingModal({
                 onChange({ ...formData, roomId: selectedRoom?.id ?? "", room: selectedRoom?.name ?? "" });
               }}
             >
-              <option value="">Alege {roomsLabel.toLowerCase()}</option>
+              <option value="">{appText(language, "booking.selectRoom")}</option>
               {rooms.map((room) => <option key={room.id} value={room.id}>{room.name}</option>)}
             </select>
           </label>
           <label>
-            Data început
+            {appText(language, "booking.startDate")}
             <input
               type="date"
               value={formData.startDate}
@@ -141,24 +144,24 @@ export function BookingModal({
             />
           </label>
           <label>
-            Data final
+            {appText(language, "booking.endDate")}
             <input type="date" value={formData.endDate} onChange={(event) => onChange({ ...formData, endDate: event.target.value })} />
-            <small>Alege doar dacă rezervarea este pe mai multe zile.</small>
+            <small>{appText(language, "booking.endDateHint")}</small>
           </label>
           <label>
-            Ora început
+            {appText(language, "booking.startTime")}
             <input type="time" value={formData.startTime} onChange={(event) => onChange({ ...formData, startTime: event.target.value })} required />
           </label>
           <label>
-            Ora final
+            {appText(language, "booking.endTime")}
             <input type="time" value={formData.endTime} onChange={(event) => onChange({ ...formData, endTime: event.target.value })} required />
           </label>
           <label className="full-field">
-            Motiv
+            {appText(language, "booking.reason")}
             <input
               value={formData.reason}
               onChange={(event) => onChange({ ...formData, reason: event.target.value })}
-              placeholder="ex. intalnire, curatenie, repetitie"
+              placeholder={appText(language, "booking.reasonPlaceholder")}
               required
             />
           </label>
@@ -171,9 +174,9 @@ export function BookingModal({
                 type="submit"
                 value="notify-group-now"
               >
-                Notifica-i acum
+                {appText(language, "booking.notifyNow")}
               </button>
-              <span>{formData.group ? "Trimite reminder imediat pentru grupul ales." : "Alege intai grupul."}</span>
+              <span>{formData.group ? appText(language, "booking.groupNowHelp") : appText(language, "booking.groupRequired")}</span>
             </div>
 
             <label className="toggle-row">
@@ -188,7 +191,7 @@ export function BookingModal({
                   })
                 }
               />
-              Notificari pentru aceasta programare
+              {appText(language, "booking.personalNotification")}
             </label>
 
             {formData.notifyOnThisBooking && (
@@ -198,7 +201,7 @@ export function BookingModal({
 
                   return (
                     <label key={`${offset}-${index}`}>
-                      Cu cat timp inainte
+                      {appText(language, "booking.offsetBefore")}
                       <div className="inline-add">
                         <input
                           min={1}
@@ -209,9 +212,9 @@ export function BookingModal({
                           onChange={(event) => updateNotificationOffset(index, event.target.value)}
                         />
                         <select value={unit} onChange={(event) => updateNotificationOffsetUnit(index, event.target.value as "m" | "h" | "d")}>
-                          <option value="m">minute</option>
-                          <option value="h">ore</option>
-                          <option value="d">zile</option>
+                          <option value="m">{appText(language, "booking.minute")}</option>
+                          <option value="h">{appText(language, "booking.hour")}</option>
+                          <option value="d">{appText(language, "booking.day")}</option>
                         </select>
                         <button
                           className="secondary-button compact"
@@ -223,7 +226,7 @@ export function BookingModal({
                           }
                           type="button"
                         >
-                          Sterge
+                          {appText(language, "action.delete")}
                         </button>
                       </div>
                     </label>
@@ -235,7 +238,7 @@ export function BookingModal({
                     onClick={() => onChange({ ...formData, notifyOffsets: [...formData.notifyOffsets, "15m"] })}
                     type="button"
                   >
-                    Adauga notificare
+                    {appText(language, "booking.notifications")}
                   </button>
                 )}
               </>
@@ -253,13 +256,13 @@ export function BookingModal({
                   })
                 }
               />
-              Trimite reminder pentru tot grupul
+              {appText(language, "booking.groupReminder")}
             </label>
 
             {(formData.notifyGroupOnThisBooking || formData.group) && (
               <div className="notification-audience">
                 <label>
-                  Cui trimiti
+                  {appText(language, "booking.audience")}
                   <select
                     value={formData.notifyGroupAudience}
                     onChange={(event) =>
@@ -270,15 +273,15 @@ export function BookingModal({
                       })
                     }
                   >
-                    <option value="all">Toti din grup</option>
-                    <option value="selected">Aleg persoane</option>
+                    <option value="all">{appText(language, "booking.audienceAll")}</option>
+                    <option value="selected">{appText(language, "booking.audienceSelected")}</option>
                   </select>
                 </label>
 
                 {formData.notifyGroupAudience === "selected" && (
                   <div className="recipient-check-grid">
                     {selectedGroupMembers.length === 0 ? (
-                      <p className="empty-line">Nu exista utilizatori activi in grupul ales.</p>
+                      <p className="empty-line">{appText(language, "booking.noActiveUsers")}</p>
                     ) : (
                       selectedGroupMembers.map((managedUser) => (
                         <label className="toggle-row compact-toggle" key={managedUser.id}>
@@ -310,7 +313,7 @@ export function BookingModal({
 
                   return (
                     <label key={`group-${offset}-${index}`}>
-                      Reminder grup cu cat timp inainte
+                      {appText(language, "booking.groupReminderDelay")}
                       <div className="inline-add">
                         <input
                           min={1}
@@ -321,9 +324,9 @@ export function BookingModal({
                           onChange={(event) => updateGroupNotificationOffset(index, event.target.value)}
                         />
                         <select value={unit} onChange={(event) => updateGroupNotificationOffsetUnit(index, event.target.value as "m" | "h" | "d")}>
-                          <option value="m">minute</option>
-                          <option value="h">ore</option>
-                          <option value="d">zile</option>
+                          <option value="m">{appText(language, "booking.minute")}</option>
+                          <option value="h">{appText(language, "booking.hour")}</option>
+                          <option value="d">{appText(language, "booking.day")}</option>
                         </select>
                         <button
                           className="secondary-button compact"
@@ -335,7 +338,7 @@ export function BookingModal({
                           }
                           type="button"
                         >
-                          Sterge
+                          {appText(language, "action.delete")}
                         </button>
                       </div>
                     </label>
@@ -347,7 +350,7 @@ export function BookingModal({
                     onClick={() => onChange({ ...formData, notifyGroupOffsets: [...formData.notifyGroupOffsets, "15m"] })}
                     type="button"
                   >
-                    Adauga reminder grup
+                    {appText(language, "booking.groupReminder")}
                   </button>
                 )}
               </>
@@ -355,8 +358,8 @@ export function BookingModal({
           </div>
           {error && <p className="error-line full-field">{error}</p>}
           <div className="modal-actions full-field">
-            <button className="secondary-button" type="button" onClick={onClose}>Anulează</button>
-            <button className="primary-button" type="submit">{editingId ? "Salvează" : "Confirmă"}</button>
+            <button className="secondary-button" type="button" onClick={onClose}>{appText(language, "action.cancel")}</button>
+            <button className="primary-button" type="submit">{editingId ? appText(language, "action.save") : appText(language, "booking.confirm")}</button>
           </div>
         </form>
       </div>

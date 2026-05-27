@@ -2,6 +2,7 @@
 
 import { formatDateLabel } from "@/lib/dates";
 import { groupColorForName, groupColorStyle } from "@/lib/group-colors";
+import { appText, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 import type { Booking, GroupItem } from "@/lib/types/domain";
 
 type BookingDetailsModalProps = {
@@ -17,6 +18,7 @@ type BookingDetailsModalProps = {
   onNotify?: () => void;
   notificationBusy?: boolean;
   notificationMessage?: string;
+  language?: SupportedLocale;
 };
 
 export function BookingDetailsModal({
@@ -31,6 +33,7 @@ export function BookingDetailsModal({
   onNotify,
   notificationBusy = false,
   notificationMessage = "",
+  language = "ro",
 }: BookingDetailsModalProps) {
   if (!booking) {
     return null;
@@ -45,7 +48,7 @@ export function BookingDetailsModal({
         style={groupColorStyle(groupColorForName(groups, booking.group))}
         role="dialog"
         aria-modal="true"
-        aria-label="Detalii programare"
+        aria-label={appText(language, "booking.details")}
       >
         <div className="modal-head">
           <div>
@@ -56,7 +59,7 @@ export function BookingDetailsModal({
           <button
             onClick={onClose}
             type="button"
-            aria-label="Închide"
+            aria-label={appText(language, "booking.close")}
           >
             ×
           </button>
@@ -64,7 +67,7 @@ export function BookingDetailsModal({
 
         <dl className="details-list">
           <div>
-            <dt>Data</dt>
+            <dt>{appText(language, "booking.date")}</dt>
             <dd>
               {formatDateLabel(booking.startDate, {
                 year: "numeric",
@@ -73,19 +76,19 @@ export function BookingDetailsModal({
           </div>
 
           <div>
-            <dt>Orar</dt>
+            <dt>{appText(language, "booking.time")}</dt>
             <dd>
               {booking.startTime} - {booking.endTime}
             </dd>
           </div>
 
           <div>
-            <dt>Motiv</dt>
+            <dt>{appText(language, "booking.reason")}</dt>
             <dd>{booking.reason}</dd>
           </div>
 
           <div>
-            <dt>Introdus de</dt>
+            <dt>{appText(language, "booking.createdBy")}</dt>
             <dd>
               {booking.authorName || booking.authorEmail}
             </dd>
@@ -93,7 +96,7 @@ export function BookingDetailsModal({
 
           {booking.updatedBy && (
             <div>
-              <dt>Ultima editare</dt>
+              <dt>{appText(language, "booking.updatedBy")}</dt>
               <dd>{booking.updatedBy}</dd>
             </div>
           )}
@@ -109,7 +112,7 @@ export function BookingDetailsModal({
                   disabled={notificationBusy}
                   type="button"
                 >
-                  {notificationBusy ? "Se trimite..." : "Notificări"}
+                  {notificationBusy ? appText(language, "booking.sending") : appText(language, "booking.notifications")}
                 </button>
               )}
 
@@ -118,7 +121,7 @@ export function BookingDetailsModal({
                 onClick={onEdit}
                 type="button"
               >
-                Editează
+                {appText(language, "booking.edit")}
               </button>
 
               <button
@@ -126,7 +129,7 @@ export function BookingDetailsModal({
                 onClick={onDelete}
                 type="button"
               >
-                Șterge
+                {appText(language, "action.delete")}
               </button>
             </>
           )}
@@ -137,7 +140,7 @@ export function BookingDetailsModal({
               onClick={onAdd}
               type="button"
             >
-              Adaugă
+              {appText(language, "booking.add")}
             </button>
           )}
 
@@ -146,7 +149,7 @@ export function BookingDetailsModal({
             onClick={onClose}
             type="button"
           >
-            Gata
+            {appText(language, "action.done")}
           </button>
         </div>
 
