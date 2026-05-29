@@ -58,6 +58,15 @@ service cloud.firestore {
       return role == "guest" || role == "viewer" || role == "user";
     }
 
+    function validLanguage(value) {
+      return value == "ro"
+        || value == "en"
+        || value == "es"
+        || value == "it"
+        || value == "fr"
+        || value == "pt";
+    }
+
     function isLocationSuperAdmin() {
       return signedInVerified()
         && hasUserDoc()
@@ -100,93 +109,6 @@ service cloud.firestore {
               )
             )
           )
-        );
-    }
-
-    function locationPlanAllowsFloorplans(locationId) {
-      return exists(locationPath(locationId))
-        && (
-          get(locationPath(locationId)).data.plan == "trial"
-          || get(locationPath(locationId)).data.plan == "pro"
-          || get(locationPath(locationId)).data.plan == "Pro"
-          || get(locationPath(locationId)).data.plan == "PRO"
-          || get(locationPath(locationId)).data.plan == "business"
-          || get(locationPath(locationId)).data.plan == "Business"
-          || get(locationPath(locationId)).data.plan == "BUSINESS"
-          || get(locationPath(locationId)).data.plan == "plus"
-          || get(locationPath(locationId)).data.plan == "enterprise"
-        );
-    }
-
-    function floorplanWriteEnabled(locationId) {
-      return locationWriteEnabled(locationId)
-        && (
-          isOwner()
-          || locationPlanAllowsFloorplans(locationId)
-        );
-    }
-
-    function canWriteFloorplanLocation(locationId) {
-      return signedInVerified()
-        && locationId is string
-        && locationId.size() > 0
-        && floorplanWriteEnabled(locationId)
-        && (
-          isOwner()
-          || canManageLocation(locationId)
-          || (
-            hasUserDoc()
-            && isManagerRole(userData().role)
-            && userLocationId() == locationId
-          )
-          || (
-            exists(locationPath(locationId))
-            && get(locationPath(locationId)).data.ownerEmail == request.auth.token.email
-          )
-        );
-    }
-
-    function canEditFloorplanLocation(locationId) {
-      return signedInVerified()
-        && locationId is string
-        && locationId.size() > 0
-        && exists(locationPath(locationId))
-        && floorplanWriteEnabled(locationId)
-        && (
-          isOwner()
-          || (
-            hasUserDoc()
-            && userData().isOwner != true
-            && isManagerRole(userData().role)
-            && userData().locationId == locationId
-          )
-          || get(locationPath(locationId)).data.ownerEmail == request.auth.token.email
-        );
-    }
-
-    function canEditExistingFloorplanItem(data) {
-      return (
-          hasKey(data, "locationId")
-          && canEditFloorplanLocation(data.locationId)
-        )
-        || (
-          hasKey(data, "floorplanId")
-          && data.floorplanId is string
-          && exists(floorplanPath(data.floorplanId))
-          && canEditFloorplanLocation(get(floorplanPath(data.floorplanId)).data.locationId)
-        );
-    }
-
-    function canEditFloorplanItemData(data) {
-      return (
-          hasKey(data, "locationId")
-          && canEditFloorplanLocation(data.locationId)
-        )
-        || (
-          hasKey(data, "floorplanId")
-          && data.floorplanId is string
-          && exists(floorplanPath(data.floorplanId))
-          && canEditFloorplanLocation(get(floorplanPath(data.floorplanId)).data.locationId)
         );
     }
 
@@ -279,31 +201,6 @@ service cloud.firestore {
     function validCounterValue(value) {
       return value is int
         && value >= 0;
-    }
-
-    function validNumber(value) {
-      return (value is int || value is float);
-    }
-
-    function validPositiveNumber(value) {
-      return validNumber(value)
-        && value > 0;
-    }
-
-    function validOptionalPositiveNumber(data, key) {
-      return !hasKey(data, key)
-        || validPositiveNumber(data[key]);
-    }
-
-    function validNonNegativeNumber(value) {
-      return validNumber(value)
-        && value >= 0;
-    }
-
-    function validCoordinate(value) {
-      return validNumber(value)
-        && value >= -10000
-        && value <= 100000;
     }
 
     function validNullableLimit(value) {
@@ -689,7 +586,7 @@ service cloud.firestore {
         && validOptionalBool(data, "pinSet")
         && validOptionalBool(data, "lockOnHide")
         && validOptionalBool(data, "useBiometrics")
-        && (!hasKey(data, "language") || data.language == "ro")
+        && (!hasKey(data, "language") || validLanguage(data.language))
         && validOptionalBool(data, "notifyGroupBookings")
         && validOptionalBool(data, "notifyFixedGroupSchedules")
         && validOptionalBool(data, "notifyWeekBefore")
@@ -751,7 +648,7 @@ service cloud.firestore {
         && validOptionalBool(data, "pinSet")
         && validOptionalBool(data, "lockOnHide")
         && validOptionalBool(data, "useBiometrics")
-        && (!hasKey(data, "language") || data.language == "ro")
+        && (!hasKey(data, "language") || validLanguage(data.language))
         && validOptionalBool(data, "notifyGroupBookings")
         && validOptionalBool(data, "notifyFixedGroupSchedules")
         && validOptionalBool(data, "notifyWeekBefore")
@@ -971,400 +868,12 @@ service cloud.firestore {
         && validSoftDeleteFields(data);
     }
 
-    function validFloorplanItemType(value) {
-      return value == "room"
-        || value == "circle"
-        || value == "asset"
-        || value == "wall"
-        || value == "door"
-        || value == "window"
-        || value == "text";
-    }
-
-    function validFloorplanAssetType(value) {
-      return value == "table"
-        || value == "chair"
-        || value == "desk"
-        || value == "sofa"
-        || value == "bed"
-        || value == "tv"
-        || value == "sink"
-        || value == "toilet"
-        || value == "cabinet"
-        || value == "appliance"
-        || value == "equipment"
-        || value == "storage"
-        || value == "custom";
-    }
-
-    function validFloorplanItemStatus(value) {
-      return value == "available"
-        || value == "occupied"
-        || value == "maintenance"
-        || value == "broken";
-    }
-
-    function floorplanPath(floorplanId) {
-      return /databases/$(database)/documents/floorplans/$(floorplanId);
-    }
-
-    function floorplanBelongsToLocation(floorplanId, locationId) {
-      return floorplanId is string
-        && floorplanId.size() > 0
-        && exists(floorplanPath(floorplanId))
-        && get(floorplanPath(floorplanId)).data.locationId == locationId;
-    }
-
-    function validFloorplanReference(data) {
-      return validText(data.floorplanId, 160)
-        && (
-          !exists(floorplanPath(data.floorplanId))
-          || floorplanBelongsToLocation(data.floorplanId, data.locationId)
-          || canWriteFloorplanLocation(data.locationId)
-        );
-    }
-
-    function validOptionalNumber(data, key) {
-      return !hasKey(data, key)
-        || validNumber(data[key]);
-    }
-
-    function validOptionalCoordinate(data, key) {
-      return !hasKey(data, key)
-        || validCoordinate(data[key]);
-    }
-
-    function validOptionalNumberList(data, key, maxSize) {
-      return !hasKey(data, key)
-        || (
-          data[key] is list
-          && data[key].size() <= maxSize
-        );
-    }
-
     function validOptionalStringList(data, key, maxSize) {
       return !hasKey(data, key)
         || (
           data[key] is list
           && data[key].size() <= maxSize
         );
-    }
-
-    function validOptionalItemMetadata(data) {
-      return !hasKey(data, "metadata")
-        || data.metadata is map;
-    }
-
-    function validFloorplanItemCreateOrUpdate(data) {
-      return validFloorplanItemData(data)
-        || (
-          data.keys().hasOnly([
-            "locationId",
-            "locationName",
-            "floorplanId",
-            "type",
-            "name",
-            "label",
-            "x",
-            "y",
-            "startX",
-            "startY",
-            "endX",
-            "endY",
-            "width",
-            "height",
-            "radius",
-            "rotation",
-            "color",
-            "icon",
-            "category",
-            "linkedRoomId",
-            "linkedAssetId",
-            "roomId",
-            "groupId",
-            "wallId",
-            "attachedWallId",
-            "assetType",
-            "status",
-            "notes",
-            "photoUrl",
-            "photoPath",
-            "documentUrl",
-            "documentPath",
-            "documentName",
-            "points",
-            "tags",
-            "zIndex",
-            "locked",
-            "visible",
-            "metadata",
-            "createdBy",
-            "createdByUid",
-            "createdAt",
-            "updatedBy",
-            "updatedByUid",
-            "updatedAt",
-            "deleted",
-            "deletedAt",
-            "deletedBy",
-            "deletedByUid"
-          ])
-          && validText(data.locationId, 160)
-          && validOptionalText(data, "locationName", 300)
-          && validFloorplanReference(data)
-          && validFloorplanItemType(data.type)
-          && validOptionalText(data, "name", 160)
-          && validOptionalText(data, "label", 160)
-          && validCoordinate(data.x)
-          && validCoordinate(data.y)
-          && validOptionalCoordinate(data, "startX")
-          && validOptionalCoordinate(data, "startY")
-          && validOptionalCoordinate(data, "endX")
-          && validOptionalCoordinate(data, "endY")
-          && validPositiveNumber(data.width)
-          && validPositiveNumber(data.height)
-          && validOptionalPositiveNumber(data, "radius")
-          && validOptionalNumber(data, "rotation")
-          && validOptionalText(data, "color", 32)
-          && validOptionalText(data, "icon", 80)
-          && validOptionalText(data, "category", 80)
-          && validOptionalText(data, "linkedRoomId", 160)
-          && validOptionalText(data, "linkedAssetId", 160)
-          && validOptionalText(data, "roomId", 160)
-          && validOptionalText(data, "groupId", 160)
-          && validOptionalText(data, "wallId", 160)
-          && validOptionalText(data, "attachedWallId", 160)
-          && (!hasKey(data, "assetType") || validFloorplanAssetType(data.assetType))
-          && (!hasKey(data, "status") || validFloorplanItemStatus(data.status))
-          && validOptionalText(data, "notes", 1000)
-          && validOptionalText(data, "photoUrl", 2000)
-          && validOptionalText(data, "photoPath", 600)
-          && validOptionalText(data, "documentUrl", 2000)
-          && validOptionalText(data, "documentPath", 600)
-          && validOptionalText(data, "documentName", 240)
-          && validOptionalNumberList(data, "points", 300)
-          && validOptionalStringList(data, "tags", 50)
-          && validOptionalNumber(data, "zIndex")
-          && validOptionalBool(data, "locked")
-          && validOptionalBool(data, "visible")
-          && validOptionalItemMetadata(data)
-          && validOptionalText(data, "createdBy", 180)
-          && validOptionalText(data, "createdByUid", 160)
-          && validOptionalTimestamp(data, "createdAt")
-          && validOptionalText(data, "updatedBy", 180)
-          && validOptionalText(data, "updatedByUid", 160)
-          && validOptionalTimestamp(data, "updatedAt")
-          && validSoftDeleteFields(data)
-        );
-    }
-
-    function validFloorplanData(data) {
-      return data.keys().hasOnly([
-          "name",
-          "floorLabel",
-          "locationId",
-          "locationName",
-          "backgroundUrl",
-          "backgroundPath",
-          "width",
-          "height",
-          "widthMeters",
-          "heightMeters",
-          "pixelsPerMeter",
-          "showMeasurements",
-          "createdBy",
-          "createdAt",
-          "updatedBy",
-          "updatedAt",
-          "deleted",
-          "deletedAt",
-          "deletedBy",
-          "deletedByUid"
-        ])
-        && validText(data.name, 120)
-        && validOptionalText(data, "floorLabel", 80)
-        && validText(data.locationId, 160)
-        && validOptionalText(data, "locationName", 180)
-        && validOptionalText(data, "backgroundUrl", 2000)
-        && validOptionalText(data, "backgroundPath", 600)
-        && validPositiveNumber(data.width)
-        && validPositiveNumber(data.height)
-        && validOptionalPositiveNumber(data, "widthMeters")
-        && validOptionalPositiveNumber(data, "heightMeters")
-        && validOptionalPositiveNumber(data, "pixelsPerMeter")
-        && validOptionalBool(data, "showMeasurements")
-        && validOptionalText(data, "createdBy", 180)
-        && validOptionalTimestamp(data, "createdAt")
-        && validOptionalText(data, "updatedBy", 180)
-        && data.updatedAt is timestamp
-        && validSoftDeleteFields(data);
-    }
-
-    function validFloorplanMinimum(data) {
-      return validText(data.locationId, 160)
-        && validText(data.name, 180)
-        && validOptionalText(data, "locationName", 300)
-        && validOptionalText(data, "floorLabel", 80)
-        && validOptionalText(data, "backgroundUrl", 2000)
-        && validOptionalText(data, "backgroundPath", 600)
-        && validPositiveNumber(data.width)
-        && validPositiveNumber(data.height)
-        && validOptionalPositiveNumber(data, "widthMeters")
-        && validOptionalPositiveNumber(data, "heightMeters")
-        && validOptionalPositiveNumber(data, "pixelsPerMeter")
-        && validOptionalBool(data, "showMeasurements")
-        && validOptionalText(data, "createdBy", 180)
-        && validOptionalTimestamp(data, "createdAt")
-        && validOptionalText(data, "updatedBy", 180)
-        && validOptionalTimestamp(data, "updatedAt")
-        && validSoftDeleteFields(data);
-    }
-
-    function validFloorplanItemData(data) {
-      return data.keys().hasOnly([
-          "locationId",
-          "locationName",
-          "floorplanId",
-          "type",
-          "name",
-          "x",
-          "y",
-          "startX",
-          "startY",
-          "endX",
-          "endY",
-          "width",
-          "height",
-          "radius",
-          "rotation",
-          "color",
-          "icon",
-          "category",
-          "linkedRoomId",
-          "linkedAssetId",
-          "roomId",
-          "groupId",
-          "wallId",
-          "attachedWallId",
-          "assetType",
-          "status",
-          "notes",
-          "photoUrl",
-          "photoPath",
-          "documentUrl",
-          "documentPath",
-          "documentName",
-          "points",
-          "tags",
-          "zIndex",
-          "locked",
-          "visible",
-          "metadata",
-          "createdBy",
-          "createdByUid",
-          "createdAt",
-          "updatedBy",
-          "updatedByUid",
-          "updatedAt",
-          "deleted",
-          "deletedAt",
-          "deletedBy",
-          "deletedByUid"
-        ])
-        && validText(data.locationId, 160)
-        && validOptionalText(data, "locationName", 300)
-        && validFloorplanReference(data)
-        && validFloorplanItemType(data.type)
-        && validOptionalText(data, "name", 160)
-        && validCoordinate(data.x)
-        && validCoordinate(data.y)
-        && validOptionalCoordinate(data, "startX")
-        && validOptionalCoordinate(data, "startY")
-        && validOptionalCoordinate(data, "endX")
-        && validOptionalCoordinate(data, "endY")
-        && validPositiveNumber(data.width)
-        && validPositiveNumber(data.height)
-        && validOptionalPositiveNumber(data, "radius")
-        && validOptionalNumber(data, "rotation")
-        && validOptionalText(data, "color", 32)
-        && validOptionalText(data, "icon", 80)
-        && validOptionalText(data, "category", 80)
-        && validOptionalText(data, "linkedRoomId", 160)
-        && validOptionalText(data, "linkedAssetId", 160)
-        && validOptionalText(data, "roomId", 160)
-        && validOptionalText(data, "groupId", 160)
-        && validOptionalText(data, "wallId", 160)
-        && validOptionalText(data, "attachedWallId", 160)
-        && (!hasKey(data, "assetType") || validFloorplanAssetType(data.assetType))
-        && (!hasKey(data, "status") || validFloorplanItemStatus(data.status))
-        && validOptionalText(data, "notes", 1000)
-        && validOptionalText(data, "photoUrl", 2000)
-        && validOptionalText(data, "photoPath", 600)
-        && validOptionalText(data, "documentUrl", 2000)
-        && validOptionalText(data, "documentPath", 600)
-        && validOptionalText(data, "documentName", 240)
-        && validOptionalNumberList(data, "points", 300)
-        && validOptionalStringList(data, "tags", 50)
-        && validOptionalNumber(data, "zIndex")
-        && validOptionalBool(data, "locked")
-        && validOptionalBool(data, "visible")
-        && validOptionalItemMetadata(data)
-        && validOptionalText(data, "createdBy", 180)
-        && validOptionalText(data, "createdByUid", 160)
-        && validOptionalTimestamp(data, "createdAt")
-        && validOptionalText(data, "updatedBy", 180)
-        && validOptionalText(data, "updatedByUid", 160)
-        && validOptionalTimestamp(data, "updatedAt")
-        && validSoftDeleteFields(data);
-    }
-
-    function validFloorplanItemMinimum(data) {
-      return validText(data.locationId, 160)
-        && validText(data.floorplanId, 160)
-        && validFloorplanItemType(data.type)
-        && validCoordinate(data.x)
-        && validCoordinate(data.y)
-        && validPositiveNumber(data.width)
-        && validPositiveNumber(data.height)
-        && validOptionalText(data, "locationName", 300)
-        && validOptionalText(data, "name", 160)
-        && validOptionalText(data, "label", 160)
-        && validOptionalCoordinate(data, "startX")
-        && validOptionalCoordinate(data, "startY")
-        && validOptionalCoordinate(data, "endX")
-        && validOptionalCoordinate(data, "endY")
-        && validOptionalPositiveNumber(data, "radius")
-        && validOptionalNumber(data, "rotation")
-        && validOptionalText(data, "color", 32)
-        && validOptionalText(data, "icon", 80)
-        && validOptionalText(data, "category", 80)
-        && validOptionalText(data, "linkedRoomId", 160)
-        && validOptionalText(data, "linkedAssetId", 160)
-        && validOptionalText(data, "roomId", 160)
-        && validOptionalText(data, "groupId", 160)
-        && validOptionalText(data, "wallId", 160)
-        && validOptionalText(data, "attachedWallId", 160)
-        && (!hasKey(data, "assetType") || validFloorplanAssetType(data.assetType))
-        && (!hasKey(data, "status") || validFloorplanItemStatus(data.status))
-        && validOptionalText(data, "notes", 1000)
-        && validOptionalText(data, "photoUrl", 2000)
-        && validOptionalText(data, "photoPath", 600)
-        && validOptionalText(data, "documentUrl", 2000)
-        && validOptionalText(data, "documentPath", 600)
-        && validOptionalText(data, "documentName", 240)
-        && validOptionalNumberList(data, "points", 300)
-        && validOptionalStringList(data, "tags", 50)
-        && validOptionalNumber(data, "zIndex")
-        && validOptionalBool(data, "locked")
-        && validOptionalBool(data, "visible")
-        && validOptionalItemMetadata(data)
-        && validOptionalText(data, "createdBy", 180)
-        && validOptionalText(data, "createdByUid", 160)
-        && validOptionalTimestamp(data, "createdAt")
-        && validOptionalText(data, "updatedBy", 180)
-        && validOptionalText(data, "updatedByUid", 160)
-        && validOptionalTimestamp(data, "updatedAt")
-        && validSoftDeleteFields(data);
     }
 
     function validSettingsData(data) {
@@ -1588,9 +1097,7 @@ service cloud.firestore {
         || entityType == "user"
         || entityType == "location"
         || entityType == "license"
-        || entityType == "settings"
-        || entityType == "floorplan"
-        || entityType == "floorplanItem";
+        || entityType == "settings";
     }
 
     function validAuditAction(action) {
@@ -2222,14 +1729,6 @@ service cloud.firestore {
         && validFixedScheduleData(request.resource.data);
       allow delete: if canManageLocation(resource.data.locationId)
         && locationWriteEnabled(resource.data.locationId);
-    }
-
-    match /floorplans/{floorplanId} {
-      allow read, write: if false;
-    }
-
-    match /floorplanItems/{itemId} {
-      allow read, write: if false;
     }
 
     match /auditLogs/{logId} {

@@ -19,8 +19,6 @@ export const auditEntityLabels: Record<AuditEntityType, string> = {
   location: "Locație",
   license: "Licență",
   settings: "Setări",
-  floorplan: "Plan",
-  floorplanItem: "Element plan",
 };
 
 export const dayLabels = ["Luni", "Marți", "Miercuri", "Joi", "Vineri", "Sâmbătă", "Duminică"];

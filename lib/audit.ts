@@ -9,9 +9,7 @@ export type AuditEntityType =
   | "user"
   | "location"
   | "license"
-  | "settings"
-  | "floorplan"
-  | "floorplanItem";
+  | "settings";
 
 export type AuditAction = "create" | "update" | "delete";
 

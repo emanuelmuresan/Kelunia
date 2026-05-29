@@ -162,6 +162,67 @@ function validEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
+async function deleteQueryResults(query: FirebaseFirestore.Query) {
+  const snapshot = await query.get();
+
+  if (snapshot.empty) {
+    return 0;
+  }
+
+  let deleted = 0;
+
+  for (let index = 0; index < snapshot.docs.length; index += 450) {
+    const batch = db.batch();
+    const docs = snapshot.docs.slice(index, index + 450);
+
+    docs.forEach((documentSnapshot) => {
+      batch.delete(documentSnapshot.ref);
+    });
+
+    await batch.commit();
+    deleted += docs.length;
+  }
+
+  return deleted;
+}
+
+async function anonymizeAccountBookings(uid: string, email: string) {
+  const queries = [
+    db.collection("events").where("authorEmail", "==", email).limit(450),
+    db.collection("events").where("notifyForUid", "==", uid).limit(450),
+  ];
+  let updated = 0;
+
+  for (const query of queries) {
+    const snapshot = await query.get();
+
+    if (snapshot.empty) {
+      continue;
+    }
+
+    const batch = db.batch();
+
+    snapshot.docs.forEach((documentSnapshot) => {
+      batch.set(
+        documentSnapshot.ref,
+        {
+          authorEmail: "",
+          authorName: "Cont șters",
+          notifyForUid: "",
+          updatedBy: "Cont șters",
+          accountDeletedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
+    });
+
+    await batch.commit();
+    updated += snapshot.docs.length;
+  }
+
+  return updated;
+}
+
 function cleanText(value: unknown, maxLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
 }
@@ -917,6 +978,60 @@ export const registerNotificationToken = onCall(
     );
 
     return { registered: true };
+  }
+);
+
+export const deleteMyAccount = onCall(
+  {
+    region: "europe-west1",
+  },
+  async (request) => {
+    if (!request.auth?.uid || request.auth.token.email_verified !== true) {
+      throw new HttpsError("unauthenticated", "Trebuie să fii autentificat cu email verificat.");
+    }
+
+    const confirmationEmail = cleanEmail((request.data as { confirmationEmail?: string } | undefined)?.confirmationEmail);
+    const accountEmail = cleanEmail(request.auth.token.email);
+
+    if (!accountEmail || confirmationEmail !== accountEmail) {
+      throw new HttpsError("invalid-argument", "Emailul de confirmare nu se potrivește cu emailul contului.");
+    }
+
+    const uid = request.auth.uid;
+    const newsletterId = encodeURIComponent(accountEmail);
+    const [tokensByUid, tokensByEmail, anonymizedBookings] = await Promise.all([
+      deleteQueryResults(db.collection("notificationTokens").where("uid", "==", uid).limit(450)),
+      deleteQueryResults(db.collection("notificationTokens").where("email", "==", accountEmail).limit(450)),
+      anonymizeAccountBookings(uid, accountEmail),
+    ]);
+
+    await Promise.allSettled([
+      db.doc(`newsletterSubscribers/${newsletterId}`).delete(),
+      db.doc(`users/${uid}`).delete(),
+      db.collection("accountDeletionRequests").add({
+        uid,
+        email: accountEmail,
+        status: "completed",
+        tokensDeleted: tokensByUid + tokensByEmail,
+        bookingsAnonymized: anonymizedBookings,
+        createdAt: FieldValue.serverTimestamp(),
+      }),
+    ]);
+
+    await getAuth().deleteUser(uid);
+
+    logger.info("Deleted Kelunia account", {
+      uid,
+      email: accountEmail,
+      tokensDeleted: tokensByUid + tokensByEmail,
+      bookingsAnonymized: anonymizedBookings,
+    });
+
+    return {
+      deleted: true,
+      tokensDeleted: tokensByUid + tokensByEmail,
+      bookingsAnonymized: anonymizedBookings,
+    };
   }
 );
 

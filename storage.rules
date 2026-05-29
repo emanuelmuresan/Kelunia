@@ -65,19 +65,6 @@ service firebase.storage {
         );
     }
 
-    function validFloorplanFile() {
-      return request.resource != null
-        && request.resource.size <= 15 * 1024 * 1024
-        && (
-          request.resource.contentType.matches("image/.*")
-          || request.resource.contentType == "application/pdf"
-        );
-    }
-
-    match /locations/{locationId}/floorplans/{allPaths=**} {
-      allow read, write: if false;
-    }
-
     match /{allPaths=**} {
       allow read, write: if false;
     }

@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { AppEntryRedirect } from "@/components/AppEntryRedirect";
 import { LegalLinks } from "@/components/legal/LegalDocument";
 import { CommunityApplicationSection } from "@/features/landing/components/CommunityApplicationSection";
 import { LandingFinalCta, LandingNewsletterSection } from "@/features/landing/components/LandingContactSections";
-import { supportedLocales, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
+import { normalizeSupportedLocale, supportedLocales, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 
 type LandingCopy = {
   nav: string;
@@ -349,6 +349,24 @@ export default function LandingPage() {
   const [language, setLanguage] = useState<SupportedLocale>("ro");
   const text = copy[language] || copy.ro;
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const storedLanguage = window.localStorage.getItem("kelunia-language");
+    const initialLanguage = params.has("lang")
+      ? normalizeSupportedLocale(params.get("lang"))
+      : normalizeSupportedLocale(storedLanguage);
+    setLanguage(initialLanguage);
+    window.localStorage.setItem("kelunia-language", initialLanguage);
+  }, []);
+
+  function changeLanguage(nextLanguage: SupportedLocale) {
+    setLanguage(nextLanguage);
+    window.localStorage.setItem("kelunia-language", nextLanguage);
+    const url = new URL(window.location.href);
+    url.searchParams.set("lang", nextLanguage);
+    window.history.replaceState(null, "", url.toString());
+  }
+
   return (
     <main className="landing-shell">
       <AppEntryRedirect />
@@ -362,7 +380,7 @@ export default function LandingPage() {
 
           <div className="landing-nav-actions">
             <label className="language-selector">
-              <select value={language} onChange={(event) => setLanguage(event.target.value as SupportedLocale)}>
+              <select value={language} onChange={(event) => changeLanguage(event.target.value as SupportedLocale)}>
                 {supportedLocales.map((locale) => (
                   <option key={locale.code} value={locale.code}>{locale.label}</option>
                 ))}
@@ -482,7 +500,7 @@ export default function LandingPage() {
         <LandingNewsletterSection />
         <LandingFinalCta />
         <footer className="landing-legal-footer">
-          <LegalLinks />
+          <LegalLinks language={language} />
         </footer>
       </div>
     </main>

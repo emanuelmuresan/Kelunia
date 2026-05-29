@@ -16,7 +16,7 @@ import { isInstalledAppShell } from "@/lib/app-shell";
 import { useAuth, type AppLanguage, type UserRole } from "@/context/AuthContext";
 import { maxUsesForAccessRole, normalizeRole, readOptionalNumber } from "@/lib/access-codes";
 import { defaultLocationName } from "@/lib/config/app";
-import { appText, supportedLocales } from "@/lib/i18n/app-copy-catalog";
+import { appText, normalizeSupportedLocale, supportedLocales } from "@/lib/i18n/app-copy-catalog";
 import { normalizeAllowedRoomIds, normalizeRoomAccessMode } from "@/lib/room-access";
 import { passwordSecurityError } from "@/lib/security/password";
 import type { RoomAccessMode } from "@/lib/types/domain";
@@ -209,6 +209,12 @@ export default function LoginPage() {
     const invitationCode = params.get("invite") || params.get("code") || params.get("cod") || "";
     const invitedEmail = params.get("email") || "";
     const requestedMode = params.get("mode") || "";
+    const requestedLanguage = params.has("lang")
+      ? normalizeSupportedLocale(params.get("lang"))
+      : normalizeSupportedLocale(window.localStorage.getItem("kelunia-language"));
+
+    setLanguage(requestedLanguage);
+    window.localStorage.setItem("kelunia-language", requestedLanguage);
 
     if (requestedMode === "trial") {
       setMode("trial");
@@ -223,6 +229,14 @@ export default function LoginPage() {
       setEmail(invitedEmail);
     }
   }, []);
+
+  function changeLanguage(nextLanguage: AppLanguage) {
+    setLanguage(nextLanguage);
+    window.localStorage.setItem("kelunia-language", nextLanguage);
+    const url = new URL(window.location.href);
+    url.searchParams.set("lang", nextLanguage);
+    window.history.replaceState(null, "", url.toString());
+  }
 
   useEffect(() => {
     if (!authLoading && user?.emailVerified) {
@@ -614,7 +628,7 @@ export default function LoginPage() {
           {!installedAppShell && <Link href="/" className="back-link">← {appText(language, "action.backHome")}</Link>}
           <label className="language-selector auth-language-selector">
             {appText(language, "common.language")}
-            <select value={language} onChange={(event) => setLanguage(event.target.value as AppLanguage)}>
+            <select value={language} onChange={(event) => changeLanguage(event.target.value as AppLanguage)}>
               {supportedLocales.map((locale) => (
                 <option key={locale.code} value={locale.code}>{locale.label}</option>
               ))}
