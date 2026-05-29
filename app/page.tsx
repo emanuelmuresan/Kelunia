@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { AppEntryRedirect } from "@/components/AppEntryRedirect";
+import { LegalLinks } from "@/components/legal/LegalDocument";
 import { CommunityApplicationSection } from "@/features/landing/components/CommunityApplicationSection";
 import { LandingFinalCta, LandingNewsletterSection } from "@/features/landing/components/LandingContactSections";
 import { supportedLocales, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
@@ -480,6 +481,9 @@ export default function LandingPage() {
 
         <LandingNewsletterSection />
         <LandingFinalCta />
+        <footer className="landing-legal-footer">
+          <LegalLinks />
+        </footer>
       </div>
     </main>
   );
