@@ -74,7 +74,7 @@ const copy: Record<SupportedLocale, LandingCopy> = {
     plans: [
       ["Trial", "Gratuit", "14 zile", "", "Testare completă fără card de credit.", ["Toate funcțiile incluse", "Setup rapid", "Calendar, săli și echipe", "Programări recurente"], "Începe acum", "/login?mode=trial"],
       ["Standard", "€14.99", "pe locație / lună", "sau €149 / an", "Pentru o locație activă care are nevoie de programări clare.", ["1 locație activă", "Calendar zi / săptămână / lună", "Săli și resurse", "Membri nelimitați", "Roluri basic", "Notificări email", "Export basic"], "Alege Standard", "/login?mode=trial"],
-      ["Pro", "€49", "pe workspace / lună", "sau €490 / an", "Pentru echipe care administrează mai multe locații împreună.", ["Tot din Standard", "Administrare multi-location", "Licențiere pe locație activă", "Permisiuni avansate", "Aprobări pentru rezervări", "Analytics basic", "Audit log"], "Alege Pro", "/login?mode=trial"],
+      ["Pro", "€49", "pe workspace / lună", "sau €490 / an", "Pentru echipe care administrează mai multe locații împreună.", ["Tot din Standard", "Administrare multi-location", "Licențiere pe locație activă", "Permisiuni pe roluri", "Notificări pentru grupuri", "Audit log"], "Alege Pro", "/login?mode=trial"],
       ["Business", "Contact", "pentru organizații", "", "Pentru fluxuri speciale, onboarding și integrare personalizată.", ["Tot din Pro", "Onboarding personalizat", "Import date", "Integrări custom", "Suport prioritar", "Limite personalizate"], "Contactează-ne", "mailto:contact@kelunia.com"],
     ],
     faqs: [
@@ -123,7 +123,7 @@ const copy: Record<SupportedLocale, LandingCopy> = {
     plans: [
       ["Trial", "Free", "14 days", "", "Full testing without a credit card.", ["All features included", "Quick setup", "Calendar, rooms and teams", "Recurring bookings"], "Start now", "/login?mode=trial"],
       ["Standard", "€14.99", "per location / month", "or €149 / year", "For an active location that needs clear bookings.", ["1 active location", "Day / week / month calendar", "Rooms and resources", "Unlimited members", "Basic roles", "Email notifications", "Basic export"], "Choose Standard", "/login?mode=trial"],
-      ["Pro", "€49", "per workspace / month", "or €490 / year", "For teams that manage multiple locations together.", ["Everything in Standard", "Multi-location management", "Licensing per active location", "Advanced permissions", "Booking approvals", "Basic analytics", "Audit log"], "Choose Pro", "/login?mode=trial"],
+      ["Pro", "€49", "per workspace / month", "or €490 / year", "For teams that manage multiple locations together.", ["Everything in Standard", "Multi-location management", "Licensing per active location", "Role permissions", "Group notifications", "Audit log"], "Choose Pro", "/login?mode=trial"],
       ["Business", "Contact", "for organizations", "", "For special workflows, onboarding and custom integration.", ["Everything in Pro", "Custom onboarding", "Data import", "Custom integrations", "Priority support", "Custom limits"], "Contact us", "mailto:contact@kelunia.com"],
     ],
     faqs: [
@@ -172,7 +172,7 @@ const copy: Record<SupportedLocale, LandingCopy> = {
     plans: [
       ["Trial", "Gratis", "14 días", "", "Prueba completa sin tarjeta de crédito.", ["Todas las funciones incluidas", "Setup rápido", "Calendario, salas y equipos", "Reservas recurrentes"], "Empieza ahora", "/login?mode=trial"],
       ["Standard", "€14.99", "por ubicación / mes", "o €149 / año", "Para una ubicación activa que necesita reservas claras.", ["1 ubicación activa", "Calendario día / semana / mes", "Salas y recursos", "Miembros ilimitados", "Roles básicos", "Notificaciones email", "Export básico"], "Elegir Standard", "/login?mode=trial"],
-      ["Pro", "€49", "por workspace / mes", "o €490 / año", "Para equipos que administran varias ubicaciones juntos.", ["Todo de Standard", "Gestión multi-location", "Licencia por ubicación activa", "Permisos avanzados", "Aprobaciones de reservas", "Analytics básico", "Audit log"], "Elegir Pro", "/login?mode=trial"],
+      ["Pro", "€49", "por workspace / mes", "o €490 / año", "Para equipos que administran varias ubicaciones juntos.", ["Todo de Standard", "Gestión multi-location", "Licencia por ubicación activa", "Permisos por rol", "Notificaciones de grupo", "Audit log"], "Elegir Pro", "/login?mode=trial"],
       ["Business", "Contacto", "para organizaciones", "", "Para flujos especiales, onboarding e integración personalizada.", ["Todo de Pro", "Onboarding personalizado", "Importación de datos", "Integraciones custom", "Soporte prioritario", "Límites personalizados"], "Contáctanos", "mailto:contact@kelunia.com"],
     ],
     faqs: [
@@ -226,7 +226,7 @@ copy.it = {
   plans: [
     ["Trial", "Gratis", "14 giorni", "", "Test completo senza carta di credito.", ["Tutte le funzioni incluse", "Setup rapido", "Calendario, sale e team", "Prenotazioni ricorrenti"], "Inizia ora", "/login?mode=trial"],
     ["Standard", "€14.99", "per sede / mese", "o €149 / anno", "Per una sede attiva che ha bisogno di prenotazioni chiare.", ["1 sede attiva", "Calendario giorno / settimana / mese", "Sale e risorse", "Membri illimitati", "Ruoli base", "Notifiche email", "Export base"], "Scegli Standard", "/login?mode=trial"],
-    ["Pro", "€49", "per workspace / mese", "o €490 / anno", "Per team che gestiscono più sedi insieme.", ["Tutto in Standard", "Gestione multi-location", "Licenza per sede attiva", "Permessi avanzati", "Approvazioni prenotazioni", "Analytics base", "Audit log"], "Scegli Pro", "/login?mode=trial"],
+    ["Pro", "€49", "per workspace / mese", "o €490 / anno", "Per team che gestiscono più sedi insieme.", ["Tutto in Standard", "Gestione multi-location", "Licenza per sede attiva", "Permessi per ruolo", "Notifiche di gruppo", "Audit log"], "Scegli Pro", "/login?mode=trial"],
     ["Business", "Contatto", "per organizzazioni", "", "Per flussi speciali, onboarding e integrazione personalizzata.", ["Tutto in Pro", "Onboarding personalizzato", "Import dati", "Integrazioni custom", "Supporto prioritario", "Limiti personalizzati"], "Contattaci", "mailto:contact@kelunia.com"],
   ],
   faqs: [
@@ -276,7 +276,7 @@ copy.fr = {
   plans: [
     ["Trial", "Gratuit", "14 jours", "", "Test complet sans carte bancaire.", ["Toutes les fonctions incluses", "Configuration rapide", "Calendrier, salles et équipes", "Réservations récurrentes"], "Commencer", "/login?mode=trial"],
     ["Standard", "€14.99", "par lieu / mois", "ou €149 / an", "Pour un lieu actif qui a besoin de réservations claires.", ["1 lieu actif", "Calendrier jour / semaine / mois", "Salles et ressources", "Membres illimités", "Rôles basiques", "Notifications email", "Export basique"], "Choisir Standard", "/login?mode=trial"],
-    ["Pro", "€49", "par workspace / mois", "ou €490 / an", "Pour les équipes qui gèrent plusieurs lieux ensemble.", ["Tout Standard", "Gestion multi-location", "Licence par lieu actif", "Permissions avancées", "Approbations de réservations", "Analytics basique", "Audit log"], "Choisir Pro", "/login?mode=trial"],
+    ["Pro", "€49", "par workspace / mois", "ou €490 / an", "Pour les équipes qui gèrent plusieurs lieux ensemble.", ["Tout Standard", "Gestion multi-location", "Licence par lieu actif", "Permissions par rôle", "Notifications de groupe", "Audit log"], "Choisir Pro", "/login?mode=trial"],
     ["Business", "Contact", "pour organisations", "", "Pour flux spéciaux, onboarding et intégration personnalisée.", ["Tout Pro", "Onboarding personnalisé", "Import de données", "Intégrations custom", "Support prioritaire", "Limites personnalisées"], "Contactez-nous", "mailto:contact@kelunia.com"],
   ],
   faqs: [
@@ -326,7 +326,7 @@ copy.pt = {
   plans: [
     ["Trial", "Grátis", "14 dias", "", "Teste completo sem cartão de crédito.", ["Todas as funcionalidades incluídas", "Setup rápido", "Calendário, salas e equipas", "Reservas recorrentes"], "Começar agora", "/login?mode=trial"],
     ["Standard", "€14.99", "por localização / mês", "ou €149 / ano", "Para uma localização ativa que precisa de reservas claras.", ["1 localização ativa", "Calendário dia / semana / mês", "Salas e recursos", "Membros ilimitados", "Funções básicas", "Notificações email", "Export básico"], "Escolher Standard", "/login?mode=trial"],
-    ["Pro", "€49", "por workspace / mês", "ou €490 / ano", "Para equipas que gerem várias localizações em conjunto.", ["Tudo do Standard", "Gestão multi-location", "Licença por localização ativa", "Permissões avançadas", "Aprovações de reservas", "Analytics básico", "Audit log"], "Escolher Pro", "/login?mode=trial"],
+    ["Pro", "€49", "por workspace / mês", "ou €490 / ano", "Para equipas que gerem várias localizações em conjunto.", ["Tudo do Standard", "Gestão multi-location", "Licença por localização ativa", "Permissões por função", "Notificações de grupo", "Audit log"], "Escolher Pro", "/login?mode=trial"],
     ["Business", "Contacto", "para organizações", "", "Para fluxos especiais, onboarding e integração personalizada.", ["Tudo do Pro", "Onboarding personalizado", "Importação de dados", "Integrações custom", "Suporte prioritário", "Limites personalizados"], "Contacte-nos", "mailto:contact@kelunia.com"],
   ],
   faqs: [

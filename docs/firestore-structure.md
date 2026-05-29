@@ -18,8 +18,6 @@ locations/{locationId}
   rooms/{roomId}
   groups/{groupId}
   fixedSchedules/{scheduleId}
-  floorplans/{floorplanId}
-    items/{itemId}
   accessCodes/{codeId}
   auditLogs/{logId}
 ```
@@ -54,13 +52,3 @@ Do not move everything in one unsafe step. Use a controlled migration:
 Important
 
 Firestore can handle large top-level collections if queries are indexed, filtered and limited. The reason to move to subcollections is not only speed; it is cleaner ownership, easier rules, safer maintenance and better long-term organization.
-
-Floorplans
-
-The current Pro floorplan module still uses top-level `floorplans` and `floorplanItems` collections for compatibility, with every query filtered by `locationId` and `floorplanId`. Storage files are already location-scoped:
-
-```text
-locations/{locationId}/floorplans/{floorplanId}/...
-```
-
-When the location-scoped Firestore migration starts, move floorplan documents together with the rest of the operational data so plans, items, documents and audit logs all stay under the same location boundary.

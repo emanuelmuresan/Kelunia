@@ -22,7 +22,6 @@ Kelunia is organized so each upgrade can attach to a clear module instead of for
 - `lib/notifications.ts` keeps notification labels and local notification keys.
 - `lib/audit.ts` keeps audit logging.
 - `lib/security.ts` keeps local security helpers.
-- `features/floorplans/` keeps the Pro floorplan module: canvas UI, drawing tools, positioned items, image/PDF attachments, Firestore queries, Storage uploads, and floorplan-specific types.
 - `features/*/hooks/` owns the live client reads for each app area, so `app/page.tsx` stays focused on page composition and user actions.
   - `features/locations/hooks/useLocations.ts` reads the visible locations.
   - `features/bookings/hooks/useBookings.ts` reads only the visible booking window.
@@ -38,9 +37,6 @@ When these features are added, they should get their own module before UI grows:
 
 - `lib/permissions/` for role and capability checks.
 - `lib/recurring/` for recurring booking expansion and exceptions.
-- `lib/analytics/` for usage summaries and reports.
-- `lib/invoicing/` for payment and invoice adapters.
-- `lib/ai-scheduling/` for suggestion logic and conflict-aware scheduling.
 
 Rule of thumb: UI components should call small domain functions or query functions; they should not contain Firestore rules, scheduling rules, licensing limits, or conflict logic directly.
 
@@ -55,24 +51,22 @@ Rule of thumb: UI components should call small domain functions or query functio
 
 ### v2.0 Pro
 
-- Assets and equipment inventory.
-- Floorplans with positioned equipment, simple rooms/zones/walls/doors/windows, and item attachments.
-- Basic analytics.
-- Document metadata and Storage rules for invoices, warranties, photos, and files.
+- Multi-location management improvements.
+- More granular role and room access controls.
+- Stronger audit and export tools.
 
 ### v3.0 Business
 
 - Multi-location dashboard.
-- Advanced permissions and memberships.
-- Invoicing/billing automation.
-- Advanced audit, API/integrations, and AI scheduling.
+- Organization-level administration.
+- Billing automation.
+- API/integrations.
 
 ## Data Safety
 
 - Important deletes should be soft deletes first: `deleted`, `deletedAt`, `deletedBy`, and `deletedByUid`.
 - Audit logs keep the before/after record of important changes.
-- Firestore data should stay structural. Invoices, warranties, contracts, and photos belong in Storage with metadata in Firestore.
-- Before Pro document storage, add a real backup/restore process and a retention policy.
+- Firestore data should stay structural. File/document storage should only be added with dedicated Storage rules, backup/restore, and retention policy.
 
 ## Cost Rules
 

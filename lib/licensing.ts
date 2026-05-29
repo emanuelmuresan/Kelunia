@@ -30,12 +30,7 @@ export const featureMinimumPlan: Record<PlanFeature, FeaturePlanGate> = {
   notifications: "standard",
   recurring: "standard",
   auditLogs: "standard",
-  assets: "pro",
-  analyticsBasic: "pro",
   multiLocationDashboard: "business",
-  advancedPermissions: "business",
-  invoicing: "business",
-  aiScheduling: "business",
 };
 
 export const standardFeatures: PlanFeature[] = [
@@ -50,16 +45,11 @@ export const standardFeatures: PlanFeature[] = [
 
 export const proFeatures: PlanFeature[] = [
   ...standardFeatures,
-  "assets",
-  "analyticsBasic",
 ];
 
 export const businessFeatures: PlanFeature[] = [
   ...proFeatures,
   "multiLocationDashboard",
-  "advancedPermissions",
-  "invoicing",
-  "aiScheduling",
 ];
 
 export const defaultPlanLimits: PlanLimits = {

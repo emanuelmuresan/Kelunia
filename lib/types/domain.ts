@@ -17,13 +17,8 @@ export type PlanFeature =
   | "groups"
   | "notifications"
   | "recurring"
-  | "assets"
-  | "analyticsBasic"
   | "multiLocationDashboard"
-  | "advancedPermissions"
-  | "invoicing"
-  | "auditLogs"
-  | "aiScheduling";
+  | "auditLogs";
 
 export interface GooglePlace {
   formatted_address?: string;

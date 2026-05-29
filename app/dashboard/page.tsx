@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { TouchEvent } from "react";
 import { useRouter } from "next/navigation";
 import { registerPlugin } from "@capacitor/core";
@@ -474,7 +474,7 @@ export default function KeluniaPage() {
     }
 
     setLocationSetupName((current) => current || profile.locationName || "");
-  }, [needsLocationSetup, profile]);
+  }, [needsLocationSetup, profile, setLocationSetupName]);
 
   useEffect(() => {
     if (!isOwner || !activeLocationId || locations.some((location) => location.id === activeLocationId)) {
@@ -846,7 +846,7 @@ export default function KeluniaPage() {
   const lockSessionKey = user ? `kelunia-unlocked:${user.uid}` : "";
   const pinLockEnabled = Boolean(user && profile?.usePin && profile.hasPin);
 
-  function markAppUnlocked() {
+  const markAppUnlocked = useCallback(() => {
     if (lockSessionKey && typeof window !== "undefined") {
       window.sessionStorage.setItem(lockSessionKey, "1");
     }
@@ -855,9 +855,9 @@ export default function KeluniaPage() {
     setUnlockPin("");
     setUnlockError("");
     biometricPromptedRef.current = "";
-  }
+  }, [lockSessionKey]);
 
-  function markAppLocked() {
+  const markAppLocked = useCallback(() => {
     if (!pinLockEnabled || !lockSessionKey || typeof window === "undefined") {
       return;
     }
@@ -866,7 +866,7 @@ export default function KeluniaPage() {
     setAppLocked(true);
     setUnlockPin("");
     biometricPromptedRef.current = "";
-  }
+  }, [lockSessionKey, pinLockEnabled]);
 
   async function confirmSignOut() {
     if (typeof window !== "undefined" && !window.confirm("Vrei sa iesi din cont?")) {
@@ -910,7 +910,7 @@ export default function KeluniaPage() {
     }
   }
 
-  async function unlockWithBiometrics() {
+  const unlockWithBiometrics = useCallback(async () => {
     if (!user || biometricWorking) {
       return;
     }
@@ -930,7 +930,7 @@ export default function KeluniaPage() {
     } finally {
       setBiometricWorking(false);
     }
-  }
+  }, [biometricWorking, markAppUnlocked, user]);
 
   useEffect(() => {
     if (!pinLockEnabled || !lockSessionKey || typeof window === "undefined") {
@@ -974,7 +974,7 @@ export default function KeluniaPage() {
       window.removeEventListener("pagehide", markAppLocked);
       void nativeListener?.remove();
     };
-  }, [lockSessionKey, pinLockEnabled, profile?.lockOnHide]);
+  }, [lockSessionKey, markAppLocked, pinLockEnabled, profile?.lockOnHide]);
 
   useEffect(() => {
     let nativeListener: { remove: () => Promise<void> } | null = null;
@@ -1094,7 +1094,7 @@ export default function KeluniaPage() {
     }, 350);
 
     return () => window.clearTimeout(timer);
-  }, [appLocked, lockSessionKey, profile?.useBiometrics, user]);
+  }, [appLocked, lockSessionKey, profile?.useBiometrics, unlockWithBiometrics, user]);
 
   function openPinSetup(intent: PinIntent) {
     setPinIntent(intent);

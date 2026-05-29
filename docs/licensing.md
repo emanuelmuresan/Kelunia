@@ -8,8 +8,8 @@ Planuri
 
 - Trial: aceleasi functii ca Standard, pentru perioada de proba.
 - Standard: calendar, programari, sali, grupuri, notificari, programari recurente, istoric.
-- Pro: tot din Standard plus assets, planuri/floorplans si analytics basic.
-- Business: tot din Pro plus dashboard multi-locatie, permisiuni avansate, invoicing si AI scheduling.
+- Pro: tot din Standard plus administrare multi-locatie si control mai bun pe acces.
+- Business: tot din Pro plus administrare organizationala si suport pentru fluxuri personalizate.
 
 Regula de implementare
 ----------------------

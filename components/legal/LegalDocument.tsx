@@ -62,6 +62,8 @@ export function LegalLinks({ language = "ro" }: { language?: SupportedLocale }) 
     <nav className="legal-links" aria-label="Legal">
       <Link href={`/privacy-policy${suffix}`}>{labels.privacy}</Link>
       <Link href={`/terms-and-conditions${suffix}`}>{labels.terms}</Link>
+      <Link href={`/refund-policy${suffix}`}>Refund Policy</Link>
+      <Link href={`/contact${suffix}`}>Contact</Link>
       <Link href={`/cookie-policy${suffix}`}>{labels.cookies}</Link>
       <Link href={`/delete-account${suffix}`}>{labels.deleteAccount}</Link>
     </nav>

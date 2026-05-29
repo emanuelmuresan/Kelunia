@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import type { AppLanguage, UserRole } from "@/context/AuthContext";
+import { signOut } from "firebase/auth";
+import { httpsCallable } from "firebase/functions";
+import { useAuth, type AppLanguage, type UserRole } from "@/context/AuthContext";
 import { useCommunityApplicationMessages } from "@/features/landing/hooks/useCommunityApplications";
-import { db } from "@/lib/firebase";
+import { auth, cloudFunctions, db } from "@/lib/firebase";
 import { appText, localeLabel, supportedLocales, type UiCopyKey } from "@/lib/i18n/app-copy-catalog";
 import { billingStatusLabel, dateFromFirestoreValue, planLabel } from "@/lib/licensing";
 import { roomAccessLabel } from "@/lib/room-access";
@@ -201,6 +203,7 @@ export function SettingsView({
   onSendNewsletterCampaign,
   onEnableOwnerNotifications,
 }: SettingsViewProps) {
+  const { user, profile } = useAuth();
   const language = personalDraft.language;
   const t = (key: UiCopyKey) => appText(language, key);
   const showLocationSettings = !isOwner || Boolean(currentLocationId);
@@ -224,9 +227,14 @@ export function SettingsView({
   const [inboxOpen, setInboxOpen] = useState(false);
   const [profileEditorOpen, setProfileEditorOpen] = useState(false);
   const [profileBaseline, setProfileBaseline] = useState<PersonalDraft | null>(null);
+  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
+  const [deleteAccountEmail, setDeleteAccountEmail] = useState("");
+  const [deleteAccountWorking, setDeleteAccountWorking] = useState(false);
+  const [deleteAccountError, setDeleteAccountError] = useState("");
   const [ownerNotificationPermission, setOwnerNotificationPermission] = useState<
     NotificationPermission | "unsupported"
   >("unsupported");
+  const accountEmail = user?.email ?? profile?.email ?? "";
   const activeCommunityApplication = selectedCommunityApplication
     ? communityApplications.find((application) => application.id === selectedCommunityApplication.id) ?? selectedCommunityApplication
     : null;
@@ -451,6 +459,46 @@ export function SettingsView({
 
     setProfileEditorOpen(false);
     setProfileBaseline(null);
+  }
+
+  function openDeleteAccountModal() {
+    setDeleteAccountOpen(true);
+    setDeleteAccountEmail("");
+    setDeleteAccountError("");
+  }
+
+  function closeDeleteAccountModal() {
+    if (deleteAccountWorking) {
+      return;
+    }
+
+    setDeleteAccountOpen(false);
+    setDeleteAccountEmail("");
+    setDeleteAccountError("");
+  }
+
+  async function deleteCurrentAccount() {
+    const cleanEmail = deleteAccountEmail.trim().toLowerCase();
+
+    if (!accountEmail || cleanEmail !== accountEmail.toLowerCase()) {
+      setDeleteAccountError("Scrie exact emailul contului pentru confirmare.");
+      return;
+    }
+
+    setDeleteAccountWorking(true);
+    setDeleteAccountError("");
+
+    try {
+      const deleteMyAccount = httpsCallable(cloudFunctions, "deleteMyAccount");
+      await deleteMyAccount({ confirmationEmail: cleanEmail, language });
+      await signOut(auth).catch(() => undefined);
+      window.location.href = `/login?lang=${language}`;
+    } catch (error) {
+      console.warn("Contul nu a putut fi sters:", error);
+      setDeleteAccountError("Contul nu a putut fi șters. Intră din nou în cont și încearcă încă o dată.");
+    } finally {
+      setDeleteAccountWorking(false);
+    }
   }
 
   async function saveProfileEditor() {
@@ -771,6 +819,9 @@ export function SettingsView({
             </button>
             <button className="secondary-button compact" onClick={onOpenPasswordModal} type="button">
               {t("settings.password")}
+            </button>
+            <button className="danger-button compact" onClick={openDeleteAccountModal} type="button">
+              Șterge contul
             </button>
           </div>
 
@@ -1540,6 +1591,60 @@ export function SettingsView({
               </button>
               <button className="primary-button" disabled={!profileDirty} onClick={saveProfileEditor} type="button">
                 {t("settings.saveChanges")}
+              </button>
+            </div>
+          </div>
+        </section>
+      </div>
+    )}
+
+    {deleteAccountOpen && (
+      <div className="modal-backdrop" role="presentation" onMouseDown={closeDeleteAccountModal}>
+        <section
+          className="modal-card small-card"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-account-title"
+          onMouseDown={(event) => event.stopPropagation()}
+        >
+          <div className="section-heading">
+            <div>
+              <span className="eyebrow">Account & Privacy</span>
+              <h2 id="delete-account-title">Șterge contul</h2>
+            </div>
+          </div>
+
+          <div className="settings-form">
+            <p className="muted-note">
+              Se șterge contul tău Kelunia, profilul personal, setările PIN/biometrie, tokenurile de notificări și datele personale controlate de Kelunia.
+              Programările și istoricul locației pot rămâne anonimizate unde sunt necesare pentru continuitate, audit sau obligații legale. Facturile și plățile pot fi păstrate conform obligațiilor fiscale.
+            </p>
+
+            <label>
+              Scrie emailul contului pentru confirmare
+              <input
+                autoComplete="email"
+                disabled={deleteAccountWorking}
+                inputMode="email"
+                placeholder={accountEmail}
+                value={deleteAccountEmail}
+                onChange={(event) => setDeleteAccountEmail(event.target.value)}
+              />
+            </label>
+
+            {deleteAccountError && <p className="error-line">{deleteAccountError}</p>}
+
+            <div className="modal-actions split-actions">
+              <button className="secondary-button" disabled={deleteAccountWorking} onClick={closeDeleteAccountModal} type="button">
+                {t("action.cancel")}
+              </button>
+              <button
+                className="danger-button"
+                disabled={deleteAccountWorking || deleteAccountEmail.trim().toLowerCase() !== accountEmail.toLowerCase()}
+                onClick={deleteCurrentAccount}
+                type="button"
+              >
+                {deleteAccountWorking ? "Se șterge..." : "Șterge definitiv contul"}
               </button>
             </div>
           </div>

@@ -1,6 +1,6 @@
 import type { SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 
-export type LegalPageKey = "privacy" | "terms" | "cookies" | "deleteAccount";
+export type LegalPageKey = "privacy" | "terms" | "cookies" | "deleteAccount" | "refund" | "contact";
 
 export type LegalPageCopy = {
   eyebrow: string;
@@ -404,5 +404,89 @@ export const deleteAccountCopy: Record<SupportedLocale, LegalPageCopy> = {
     { title: "3. Confirmação", body: "Tem de estar autenticado e escrever o email da conta. Esta ação é irreversível." },
     { title: "4. Subscrições", body: "Eliminar a conta não cancela automaticamente subscrições geridas por app store, fornecedor de pagamento ou administrador." },
     { title: "5. Ajuda", body: "Se não conseguir aceder, escreva para support@kelunia.com a partir do email da conta." },
+  ] },
+};
+
+export const refundCopy: Record<SupportedLocale, LegalPageCopy> = {
+  ro: { ...shared.ro, updatedAt: updatedAt.ro, title: "Politica de rambursare", description: "Această politică explică modul în care sunt tratate trialurile, abonamentele și cererile de rambursare pentru Kelunia.", sections: [
+    { title: "1. Trial gratuit", body: "Kelunia poate oferi o perioadă de test gratuit. Dacă alegi să nu continui, nu există cost pentru perioada gratuită." },
+    { title: "2. Abonamente", body: "Abonamentele plătite oferă acces la funcțiile incluse în planul ales pentru perioada activă de facturare." },
+    { title: "3. Rambursări", body: "Dacă plata a fost făcută printr-un app store, rambursarea se solicită direct prin Apple App Store sau Google Play, conform regulilor platformei. Pentru plăți directe, scrie la support@kelunia.com și analizăm cererea în funcție de situație." },
+    { title: "4. Excepții", body: "Nu putem garanta rambursări pentru perioade deja folosite, încălcarea termenilor sau probleme cauzate de configurări interne ale organizației." },
+    { title: "5. Date fiscale", body: "Facturile, chitanțele și informațiile de plată pot fi păstrate conform obligațiilor legale și fiscale." },
+    { title: "6. Contact", body: shared.ro.contact },
+  ] },
+  en: { ...shared.en, updatedAt: updatedAt.en, title: "Refund Policy", description: "This policy explains how trials, subscriptions and refund requests are handled for Kelunia.", sections: [
+    { title: "1. Free trial", body: "Kelunia may offer a free trial period. If you choose not to continue, there is no charge for the free period." },
+    { title: "2. Subscriptions", body: "Paid subscriptions provide access to the features included in the selected plan for the active billing period." },
+    { title: "3. Refunds", body: "If payment was made through an app store, refunds must be requested through Apple App Store or Google Play under that platform's rules. For direct payments, email support@kelunia.com and we will review the request." },
+    { title: "4. Exceptions", body: "Refunds are not guaranteed for periods already used, violations of the terms or issues caused by internal organization configuration." },
+    { title: "5. Fiscal data", body: "Invoices, receipts and payment information may be retained according to legal and tax obligations." },
+    { title: "6. Contact", body: shared.en.contact },
+  ] },
+  es: { ...shared.es, updatedAt: updatedAt.es, title: "Política de reembolso", description: "Esta política explica cómo se gestionan pruebas, suscripciones y solicitudes de reembolso.", sections: [
+    { title: "1. Prueba gratuita", body: "Kelunia puede ofrecer un periodo de prueba gratuito. Si decides no continuar, no hay coste por ese periodo." },
+    { title: "2. Suscripciones", body: "Las suscripciones de pago dan acceso a las funciones del plan elegido durante el periodo activo." },
+    { title: "3. Reembolsos", body: "Si el pago se realizó mediante app store, el reembolso debe solicitarse en Apple App Store o Google Play. Para pagos directos, escribe a support@kelunia.com." },
+    { title: "4. Excepciones", body: "No garantizamos reembolsos por periodos ya usados, violaciones de términos o problemas de configuración interna." },
+    { title: "5. Datos fiscales", body: "Facturas, recibos e información de pago pueden conservarse por obligaciones legales y fiscales." },
+    { title: "6. Contacto", body: shared.es.contact },
+  ] },
+  it: { ...shared.it, updatedAt: updatedAt.it, title: "Politica di rimborso", description: "Questa politica spiega come Kelunia gestisce prove, abbonamenti e richieste di rimborso.", sections: [
+    { title: "1. Prova gratuita", body: "Kelunia può offrire un periodo di prova gratuito. Se non continui, non ci sono costi per quel periodo." },
+    { title: "2. Abbonamenti", body: "Gli abbonamenti a pagamento danno accesso alle funzioni del piano scelto per il periodo attivo." },
+    { title: "3. Rimborsi", body: "Se il pagamento è stato fatto tramite app store, il rimborso va richiesto ad Apple App Store o Google Play. Per pagamenti diretti, scrivi a support@kelunia.com." },
+    { title: "4. Eccezioni", body: "I rimborsi non sono garantiti per periodi già usati, violazioni dei termini o problemi di configurazione interna." },
+    { title: "5. Dati fiscali", body: "Fatture, ricevute e informazioni di pagamento possono essere conservate per obblighi legali e fiscali." },
+    { title: "6. Contatto", body: shared.it.contact },
+  ] },
+  fr: { ...shared.fr, updatedAt: updatedAt.fr, title: "Politique de remboursement", description: "Cette politique explique le traitement des essais, abonnements et demandes de remboursement.", sections: [
+    { title: "1. Essai gratuit", body: "Kelunia peut proposer une période d'essai gratuite. Si vous ne continuez pas, aucun frais n'est dû pour cette période." },
+    { title: "2. Abonnements", body: "Les abonnements payants donnent accès aux fonctions du plan choisi pendant la période active." },
+    { title: "3. Remboursements", body: "Si le paiement a été effectué via un app store, le remboursement doit être demandé auprès d'Apple App Store ou Google Play. Pour les paiements directs, écrivez à support@kelunia.com." },
+    { title: "4. Exceptions", body: "Les remboursements ne sont pas garantis pour les périodes déjà utilisées, violations des conditions ou problèmes de configuration interne." },
+    { title: "5. Données fiscales", body: "Factures, reçus et informations de paiement peuvent être conservés selon les obligations légales et fiscales." },
+    { title: "6. Contact", body: shared.fr.contact },
+  ] },
+  pt: { ...shared.pt, updatedAt: updatedAt.pt, title: "Política de reembolso", description: "Esta política explica como são tratados testes, subscrições e pedidos de reembolso.", sections: [
+    { title: "1. Teste gratuito", body: "A Kelunia pode oferecer um período de teste gratuito. Se decidir não continuar, não há cobrança por esse período." },
+    { title: "2. Subscrições", body: "Subscrições pagas dão acesso às funções do plano escolhido durante o período ativo." },
+    { title: "3. Reembolsos", body: "Se o pagamento foi feito por app store, o reembolso deve ser pedido na Apple App Store ou Google Play. Para pagamentos diretos, escreva para support@kelunia.com." },
+    { title: "4. Exceções", body: "Reembolsos não são garantidos para períodos já usados, violações dos termos ou problemas de configuração interna." },
+    { title: "5. Dados fiscais", body: "Faturas, recibos e informação de pagamento podem ser conservados por obrigações legais e fiscais." },
+    { title: "6. Contacto", body: shared.pt.contact },
+  ] },
+};
+
+export const contactCopy: Record<SupportedLocale, LegalPageCopy> = {
+  ro: { ...shared.ro, updatedAt: updatedAt.ro, title: "Contact", description: "Ai nevoie de ajutor cu Kelunia, contul tău, o plată sau ștergerea datelor? Ne poți contacta prin email.", sections: [
+    { title: "Email suport", body: "support@kelunia.com" },
+    { title: "Pentru ce ne poți scrie", items: ["Întrebări despre cont sau autentificare.", "Ajutor pentru locații, programări, grupuri și notificări.", "Cereri despre confidențialitate, ștergere cont sau date personale.", "Întrebări despre trial, abonamente, rambursări sau licențe."] },
+    { title: "Timp de răspuns", body: "Încercăm să răspundem cât mai repede, de obicei în câteva zile lucrătoare." },
+  ] },
+  en: { ...shared.en, updatedAt: updatedAt.en, title: "Contact", description: "Need help with Kelunia, your account, a payment or data deletion? You can contact us by email.", sections: [
+    { title: "Support email", body: "support@kelunia.com" },
+    { title: "What you can contact us about", items: ["Account or sign-in questions.", "Help with locations, bookings, groups and notifications.", "Privacy, account deletion or personal data requests.", "Trial, subscription, refund or license questions."] },
+    { title: "Response time", body: "We try to respond as soon as possible, usually within a few business days." },
+  ] },
+  es: { ...shared.es, updatedAt: updatedAt.es, title: "Contacto", description: "¿Necesitas ayuda con Kelunia, tu cuenta, un pago o eliminación de datos? Puedes contactarnos por email.", sections: [
+    { title: "Email de soporte", body: "support@kelunia.com" },
+    { title: "Motivos de contacto", items: ["Preguntas de cuenta o acceso.", "Ayuda con ubicaciones, reservas, grupos y notificaciones.", "Privacidad, eliminación de cuenta o datos personales.", "Trial, suscripción, reembolso o licencias."] },
+    { title: "Tiempo de respuesta", body: "Intentamos responder lo antes posible, normalmente en unos días laborables." },
+  ] },
+  it: { ...shared.it, updatedAt: updatedAt.it, title: "Contatto", description: "Hai bisogno di aiuto con Kelunia, account, pagamento o cancellazione dati? Puoi contattarci via email.", sections: [
+    { title: "Email supporto", body: "support@kelunia.com" },
+    { title: "Per cosa puoi scriverci", items: ["Domande su account o accesso.", "Aiuto con sedi, prenotazioni, gruppi e notifiche.", "Privacy, eliminazione account o dati personali.", "Trial, abbonamenti, rimborsi o licenze."] },
+    { title: "Tempo di risposta", body: "Cerchiamo di rispondere il prima possibile, di solito entro pochi giorni lavorativi." },
+  ] },
+  fr: { ...shared.fr, updatedAt: updatedAt.fr, title: "Contact", description: "Besoin d'aide avec Kelunia, votre compte, un paiement ou la suppression de données ? Contactez-nous par email.", sections: [
+    { title: "Email support", body: "support@kelunia.com" },
+    { title: "Motifs de contact", items: ["Questions de compte ou connexion.", "Aide avec lieux, réservations, groupes et notifications.", "Confidentialité, suppression de compte ou données personnelles.", "Essai, abonnement, remboursement ou licences."] },
+    { title: "Délai de réponse", body: "Nous essayons de répondre rapidement, généralement sous quelques jours ouvrés." },
+  ] },
+  pt: { ...shared.pt, updatedAt: updatedAt.pt, title: "Contacto", description: "Precisa de ajuda com a Kelunia, conta, pagamento ou eliminação de dados? Pode contactar-nos por email.", sections: [
+    { title: "Email de suporte", body: "support@kelunia.com" },
+    { title: "Sobre o que pode contactar", items: ["Questões de conta ou login.", "Ajuda com localizações, reservas, grupos e notificações.", "Privacidade, eliminação de conta ou dados pessoais.", "Teste, subscrição, reembolso ou licenças."] },
+    { title: "Tempo de resposta", body: "Tentamos responder o mais rápido possível, normalmente em alguns dias úteis." },
   ] },
 };
