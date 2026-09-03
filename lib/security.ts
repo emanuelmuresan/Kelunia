@@ -13,14 +13,6 @@ type NativeBiometricPlugin = {
 const NativeBiometric = registerPlugin<NativeBiometricPlugin>("NativeBiometric");
 const nativeBiometricMarker = "native";
 
-export async function hashPin(uid: string, pin: string) {
-  const bytes = new TextEncoder().encode(`${uid}:${pin}`);
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
-  return Array.from(new Uint8Array(digest))
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
-}
-
 const biometricKeyPrefix = "kelunia-biometric-credential:";
 
 function biometricStorageKey(uid: string) {

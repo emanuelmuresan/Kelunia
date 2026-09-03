@@ -571,6 +571,7 @@ service cloud.firestore {
           "usePin",
           "pinHash",
           "pinSet",
+          "pinResetRequired",
           "lockOnHide",
           "useBiometrics",
           "language",
@@ -602,6 +603,7 @@ service cloud.firestore {
         && (!("usePin" in data) || data.usePin is bool)
         && (!("pinHash" in data) || (data.pinHash is string && data.pinHash.size() <= 180))
         && (!("pinSet" in data) || data.pinSet is bool)
+        && (!("pinResetRequired" in data) || data.pinResetRequired is bool)
         && (!("lockOnHide" in data) || data.lockOnHide is bool)
         && (!("useBiometrics" in data) || data.useBiometrics is bool)
         && (!("language" in data) || validLanguage(data.language))
@@ -621,6 +623,8 @@ service cloud.firestore {
         && validUserDataShape(request.resource.data)
         && request.resource.data.uid == userId
         && request.resource.data.email == request.auth.token.email
+        && request.resource.data.get("pinSet", false) == false
+        && request.resource.data.get("pinResetRequired", false) == false
         && (
           (
             isOwnerEmail()
@@ -683,8 +687,6 @@ service cloud.firestore {
           "groupName",
           "group",
           "usePin",
-          "pinHash",
-          "pinSet",
           "lockOnHide",
           "useBiometrics",
           "language",
@@ -710,6 +712,8 @@ service cloud.firestore {
         && request.resource.data.role == resource.data.role
         && request.resource.data.isOwner == resource.data.isOwner
         && request.resource.data.locationId == resource.data.locationId
+        && request.resource.data.get("pinSet", false) == resource.data.get("pinSet", false)
+        && request.resource.data.get("pinResetRequired", false) == resource.data.get("pinResetRequired", false)
         && (
           (
             !hasKey(resource.data, "roomAccess")
@@ -759,7 +763,9 @@ service cloud.firestore {
         )
         && resource.data.isOwner != true
         && request.resource.data.locationId == resource.data.locationId
-        && request.resource.data.isOwner == resource.data.isOwner;
+        && request.resource.data.isOwner == resource.data.isOwner
+        && request.resource.data.get("pinSet", false) == resource.data.get("pinSet", false)
+        && request.resource.data.get("pinResetRequired", false) == resource.data.get("pinResetRequired", false);
     }
 
     function validEventData(data) {
@@ -1400,6 +1406,12 @@ service cloud.firestore {
             && resource.data.locationId == userLocationId()
           )
         );
+
+      // PIN scrypt hash + lockout state. Written/read only by the Admin SDK in the
+      // setPin / verifyPin / disablePin Cloud Functions.
+      match /private/{document=**} {
+        allow read, write: if false;
+      }
     }
 
     match /settings/auth_codes {

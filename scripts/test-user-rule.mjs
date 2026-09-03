@@ -10,7 +10,7 @@
  */
 import { readFileSync } from "node:fs";
 import { initializeTestEnvironment } from "@firebase/rules-unit-testing";
-import { doc, setDoc, Timestamp } from "firebase/firestore";
+import { doc, getDoc, setDoc, Timestamp } from "firebase/firestore";
 
 const EMU_PORT = Number(process.env.RULES_EMU_PORT || 8080);
 const MANAGER = "ulvfji9FmdVD3Kun7MEfDb3vrLb2";
@@ -38,7 +38,6 @@ const managerDoc = {
   notifyDayBefore: true,
   notifyGroupBookings: true,
   notifyWeekBefore: true,
-  pinSet: true,
   role: "manager",
   roomAccess: "all",
   uid: MANAGER,
@@ -56,6 +55,8 @@ async function seed() {
       ...managerDoc, uid: OWNER, email: "emanuelmuresan@gmail.com", displayName: "Owner",
       isOwner: true, locationId: "", locationName: "Kelunia",
     });
+    await setDoc(doc(db, "users", "userWithPin"), { ...managerDoc, uid: "userWithPin", email: "pin@example.com", pinSet: true });
+    await setDoc(doc(db, "users", "userWithPin", "private", "security"), { algo: "scrypt", salt: "x", hash: "y" });
   });
 }
 
@@ -124,6 +125,33 @@ await check("manager sets own isOwner true", "DENIED", mdb, MANAGER, { ...TRIMME
 await check("manager changes own locationId", "DENIED", mdb, MANAGER, { ...TRIMMED, locationId: "elsewhere" });
 await check("manager promotes another user to isOwner", "DENIED", m2db, MANAGER, { isOwner: true });
 await check("stranger (no doc) writes someone's user doc", "DENIED", strangerDb, MANAGER, { displayName: "hax" });
+
+// PIN: pinSet / pinResetRequired are Admin-only; users/{uid}/private is sealed
+await check("manager spoofs pinSet: true", "DENIED", mdb, MANAGER, { ...TRIMMED, pinSet: true });
+await check("manager writes pinResetRequired", "DENIED", mdb, MANAGER, { ...TRIMMED, pinResetRequired: true });
+await check("other manager flips this user's pinSet", "DENIED", m2db, MANAGER, { pinSet: true });
+
+// A settings save on a doc that already has pinSet:true (written by setPin) must still pass
+await seed();
+{
+  const pinCtx = testEnv.authenticatedContext("userWithPin", { email: "pin@example.com", email_verified: true, firebase: { sign_in_provider: "password" } });
+  let got;
+  try { await setDoc(doc(pinCtx.firestore(), "users", "userWithPin"), TRIMMED, { merge: true }); got = "ALLOWED"; }
+  catch { got = "DENIED"; }
+  const ok = got === "ALLOWED"; ok ? pass++ : fail++;
+  console.log(`  ${ok ? "ok  " : "FAIL"} settings save when pinSet already true -> ${got}${ok ? "" : " (wanted ALLOWED)"}`);
+}
+
+// The private PIN subcollection must be unreadable by the account itself
+await seed();
+{
+  const ownerReadCtx = testEnv.authenticatedContext("userWithPin", { email: "pin@example.com", email_verified: true, firebase: { sign_in_provider: "password" } });
+  let got;
+  try { await getDoc(doc(ownerReadCtx.firestore(), "users", "userWithPin", "private", "security")); got = "ALLOWED"; }
+  catch { got = "DENIED"; }
+  const ok = got === "DENIED"; ok ? pass++ : fail++;
+  console.log(`  ${ok ? "ok  " : "FAIL"} account reads its own users/{uid}/private/security -> ${got}${ok ? "" : " (wanted DENIED)"}`);
+}
 
 await testEnv.cleanup();
 console.log(`\n${pass} passed, ${fail} failed`);

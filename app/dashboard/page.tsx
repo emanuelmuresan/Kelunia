@@ -11,7 +11,6 @@ import {
   collection,
   deleteDoc,
   doc,
-  getDoc,
   setDoc,
   Timestamp,
   updateDoc,
@@ -59,7 +58,7 @@ import {
   bookingsForDay,
   timeToMinutes,
 } from "@/lib/scheduling";
-import { clearBiometricCredential, hashPin, registerBiometricCredential, verifyBiometricCredential } from "@/lib/security";
+import { clearBiometricCredential, registerBiometricCredential, verifyBiometricCredential } from "@/lib/security";
 import { updateLocationCounterSafely } from "@/lib/usage-counters";
 import type {
   AppView,
@@ -190,7 +189,9 @@ export default function KeluniaPage() {
   const [pinIntent, setPinIntent] = useState<PinIntent | null>(null);
   const [pinDraft, setPinDraft] = useState({ pin: "", confirm: "" });
   const [pinError, setPinError] = useState("");
-  const [pendingPinHash, setPendingPinHash] = useState<string | null>(null);
+  // Set right after the setPin Cloud Function succeeds, so the settings-save guard
+  // doesn't re-open the PIN modal before the refreshed profile lands.
+  const [pinConfiguredLocally, setPinConfiguredLocally] = useState(false);
   const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
   const biometricPromptedRef = useRef("");
   const [appLocked, setAppLocked] = useState(false);
@@ -881,6 +882,25 @@ export default function KeluniaPage() {
     await signOut(auth);
   }
 
+  // Recovery: the profile says the app is PIN-locked but the server has no PIN on
+  // file (legacy pre-migration PIN, or migration hasn't run). Let the user in and
+  // turn the lock flag off instead of trapping them out.
+  async function clearStaleLock() {
+    if (user) {
+      try {
+        await setDoc(doc(db, "users", user.uid), { usePin: false, useBiometrics: false }, { merge: true });
+      } catch (error) {
+        console.warn("Starea de blocare invechita nu a putut fi curatata:", error);
+      }
+    }
+
+    setPersonalDraft((current) => ({ ...current, usePin: false, useBiometrics: false, lockOnHide: false }));
+    markAppUnlocked();
+    setSettingsError(
+      "PIN-ul a fost resetat din motive de securitate. Activeaza din nou „Blocare cu PIN” din Setari si alege un cod nou."
+    );
+  }
+
   async function unlockWithPin() {
     if (!user) {
       return;
@@ -894,19 +914,40 @@ export default function KeluniaPage() {
     }
 
     try {
-      const userSnap = await getDoc(doc(db, "users", user.uid));
-      const pinHash = String(userSnap.data()?.pinHash ?? "");
-      const enteredHash = await hashPin(user.uid, unlockPin);
+      const verifyPin = httpsCallable<{ pin: string }, {
+        ok: boolean;
+        locked?: boolean;
+        retryAfterSeconds?: number;
+        remainingAttempts?: number;
+      }>(cloudFunctions, "verifyPin");
+      const result = (await verifyPin({ pin: unlockPin })).data;
 
-      if (!pinHash || enteredHash !== pinHash) {
-        setUnlockError("PIN incorect.");
+      if (result.ok) {
+        markAppUnlocked();
         return;
       }
 
-      markAppUnlocked();
+      if (result.locked) {
+        const wait = result.retryAfterSeconds ?? 0;
+        const label = wait >= 60 ? `${Math.round(wait / 60)} minute` : `${wait} secunde`;
+        setUnlockError(`Prea multe incercari gresite. Reincearca peste ${label}.`);
+        return;
+      }
+
+      const remaining = result.remainingAttempts ?? 0;
+      setUnlockError(remaining > 0 ? `PIN incorect. ${remaining} incercari ramase.` : "PIN incorect.");
     } catch (error) {
+      const code = (error as { code?: string })?.code;
+
+      if (code === "functions/failed-precondition") {
+        await clearStaleLock();
+        return;
+      }
+
       console.error("PIN-ul nu a putut fi verificat:", error);
-      setUnlockError("PIN-ul nu a putut fi verificat. Incearca din nou.");
+      setUnlockError(
+        (error as { message?: string })?.message || "PIN-ul nu a putut fi verificat. Incearca din nou."
+      );
     }
   }
 
@@ -1123,9 +1164,10 @@ export default function KeluniaPage() {
 
     if (user) {
       clearBiometricCredential(user.uid);
+      void httpsCallable(cloudFunctions, "disablePin")({}).catch((error) => {
+        console.warn("PIN-ul nu a putut fi dezactivat pe server:", error);
+      });
     }
-
-    setPendingPinHash(null);
   }
 
   function handleBiometricsToggle(checked: boolean) {
@@ -1158,31 +1200,38 @@ export default function KeluniaPage() {
     }
 
     const wantsBiometrics = pinIntent === "biometrics";
-    const biometricReady = wantsBiometrics
-      ? await registerBiometricCredential(user.uid, user.email ?? profile?.displayName ?? "Kelunia")
-      : false;
-    const pinHash = await hashPin(user.uid, pinDraft.pin);
 
-    setPendingPinHash(pinHash);
-    setPersonalDraft((current) => ({
-      ...current,
-      usePin: true,
-      useBiometrics: wantsBiometrics ? biometricReady : current.useBiometrics,
-    }));
-    closePinSetup();
+    try {
+      const biometricReady = wantsBiometrics
+        ? await registerBiometricCredential(user.uid, user.email ?? profile?.displayName ?? "Kelunia")
+        : false;
 
-    if (wantsBiometrics && !biometricReady) {
-      setSettingsError("Biometria nu este disponibila pe acest dispozitiv. PIN-ul ramane activ ca metoda de blocare.");
+      // scrypt + salt, stored Admin-only under users/{uid}/private/security.
+      await httpsCallable<{ pin: string }, { ok: boolean }>(cloudFunctions, "setPin")({ pin: pinDraft.pin });
+      setPinConfiguredLocally(true);
+
+      setPersonalDraft((current) => ({
+        ...current,
+        usePin: true,
+        useBiometrics: wantsBiometrics ? biometricReady : current.useBiometrics,
+      }));
+      closePinSetup();
+
+      if (wantsBiometrics && !biometricReady) {
+        setSettingsError("Biometria nu este disponibila pe acest dispozitiv. PIN-ul ramane activ ca metoda de blocare.");
+      }
+
+      await savePersonalSettings({
+        usePin: true,
+        useBiometrics: wantsBiometrics ? biometricReady : personalDraft.useBiometrics,
+      });
+    } catch (error) {
+      console.error("PIN-ul nu a putut fi salvat:", error);
+      setPinError((error as { message?: string })?.message || "PIN-ul nu a putut fi salvat. Incearca din nou.");
     }
-
-    await savePersonalSettings({
-      pinHash,
-      usePin: true,
-      useBiometrics: wantsBiometrics ? biometricReady : personalDraft.useBiometrics,
-    });
   }
 
-  async function savePersonalSettings(options?: { pinHash?: string; usePin?: boolean; useBiometrics?: boolean; language?: AppLanguage }) {
+  async function savePersonalSettings(options?: { usePin?: boolean; useBiometrics?: boolean; language?: AppLanguage }) {
     if (!user) {
       return;
     }
@@ -1205,13 +1254,16 @@ export default function KeluniaPage() {
       useBiometrics: options?.useBiometrics ?? personalDraft.useBiometrics,
       language: options?.language ?? personalDraft.language,
     };
-    const effectivePinHash = options?.pinHash ?? pendingPinHash;
     const notificationOffsets = normalizeNotificationOffsetRules(effectiveDraft.notifyOffsets);
     const notificationOffsetDays = notificationOffsets
       .filter((offset) => offset.unit === "days")
       .map((offset) => offset.value);
 
-    if ((effectiveDraft.usePin || effectiveDraft.useBiometrics) && !profile?.hasPin && !effectivePinHash) {
+    if (
+      (effectiveDraft.usePin || effectiveDraft.useBiometrics) &&
+      !profile?.hasPin &&
+      !pinConfiguredLocally
+    ) {
       openPinSetup(effectiveDraft.useBiometrics ? "biometrics" : "pin");
       return;
     }
@@ -1256,11 +1308,6 @@ export default function KeluniaPage() {
       language: effectiveDraft.language,
     };
 
-    if (effectivePinHash) {
-      payload.pinHash = effectivePinHash;
-      payload.pinSet = true;
-    }
-
     try {
       await setDoc(doc(db, "users", user.uid), payload, { merge: true });
     } catch (error) {
@@ -1286,7 +1333,6 @@ export default function KeluniaPage() {
       if (usePin) {
         markAppUnlocked();
       }
-      setPendingPinHash(null);
     } catch (error) {
       console.warn("Setările au fost salvate, dar starea locală nu a putut fi actualizată:", error);
     }
@@ -2120,6 +2166,7 @@ export default function KeluniaPage() {
       <SettingsView
         settingsError={settingsError}
         settingsMessage={settingsMessage}
+        pinResetRequired={Boolean(profile?.pinResetRequired) && !pinConfiguredLocally}
         userExists={Boolean(user)}
         isOwner={isOwner}
         isSuperAdmin={isSuperAdmin}

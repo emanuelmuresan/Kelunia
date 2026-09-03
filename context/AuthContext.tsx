@@ -23,6 +23,7 @@ export interface UserProfile {
   isOwner: boolean;
   usePin: boolean;
   hasPin: boolean;
+  pinResetRequired: boolean;
   lockOnHide: boolean;
   useBiometrics: boolean;
   pendingLicenseId: string;
@@ -111,6 +112,7 @@ function buildFallbackProfile(userData: User): UserProfile {
     isOwner: false,
     usePin: false,
     hasPin: false,
+    pinResetRequired: false,
     lockOnHide: false,
     useBiometrics: false,
     pendingLicenseId: "",
@@ -288,7 +290,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           locationName: String(data.locationName ?? defaultLocationName),
           isOwner: ownerProfile,
           usePin: Boolean(data.usePin),
-          hasPin: Boolean(data.pinHash || data.pinSet),
+          hasPin: Boolean(data.pinSet),
+          pinResetRequired: Boolean(data.pinResetRequired),
           lockOnHide: Boolean(data.lockOnHide),
           useBiometrics: Boolean(data.useBiometrics),
           pendingLicenseId: String(data.pendingLicenseId ?? ""),

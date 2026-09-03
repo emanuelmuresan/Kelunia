@@ -1524,3 +1524,5 @@ export const sendLicenseEmail = onDocumentCreated(
     }
   }
 );
+
+export { setPin, verifyPin, disablePin } from "./pin";

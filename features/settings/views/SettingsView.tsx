@@ -76,6 +76,7 @@ function licenseRemainingLabel(licenseAccess: LicenseAccess) {
 type SettingsViewProps = {
   settingsError: string;
   settingsMessage: string;
+  pinResetRequired: boolean;
   userExists: boolean;
   isOwner: boolean;
   isSuperAdmin: boolean;
@@ -144,6 +145,7 @@ type SettingsViewProps = {
 export function SettingsView({
   settingsError,
   settingsMessage,
+  pinResetRequired,
   userExists,
   isOwner,
   isSuperAdmin,
@@ -755,6 +757,12 @@ export function SettingsView({
   return (
     <>
     <section className="settings-grid">
+      {pinResetRequired && (
+        <p className="error-line settings-alert">
+          Din motive de securitate, PIN-ul de blocare a fost resetat. Activează din nou „Blocare cu PIN”
+          și alege un cod nou.
+        </p>
+      )}
       {settingsError && <p className="error-line settings-alert">{settingsError}</p>}
       {settingsMessage && <p className="success-line settings-alert">{settingsMessage}</p>}
 
