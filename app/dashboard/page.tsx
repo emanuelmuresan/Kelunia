@@ -1229,28 +1229,21 @@ export default function KeluniaPage() {
         return;
       }
 
-      await registerKeluniaPushToken(user, profile);
+      // Best-effort: never block saving the settings on push token registration.
+      void registerKeluniaPushToken(user, profile).catch((error) => {
+        console.warn("Tokenul pentru notificări push nu a putut fi înregistrat:", error);
+      });
     }
 
     const usePin = effectiveDraft.usePin || effectiveDraft.useBiometrics;
-    const savedRoomAccess = isOwner || role === "manager" ? "all" : normalizeRoomAccessMode(profile?.roomAccess);
-    const savedAllowedRoomIds = savedRoomAccess === "selected" ? normalizeAllowedRoomIds(profile?.allowedRoomIds) : [];
+    // Only the personal-settings fields. Sending identity/location fields (uid, role,
+    // isOwner, locationId, accessCodeId, ...) pushed this write out of the cheap
+    // `validOwnUserUpdate` rule path into a branch that re-evaluates validUserDataShape
+    // several times and blew past Firestore's 1000-expression limit (permission-denied).
     const payload: Record<string, unknown> = {
-      uid: user.uid,
-      email: user.email,
       displayName: effectiveDraft.displayName,
       groupName: isOwner ? "" : effectiveDraft.groupName,
       group: isOwner ? "" : effectiveDraft.groupName,
-      role,
-      isOwner,
-      locationId: isOwner ? "" : profile?.locationId ?? "main-location",
-      locationName: isOwner ? defaultLocationName : profile?.locationName ?? locationName,
-      accessCodeId: profile?.accessCodeId ?? "",
-      roomAccess: savedRoomAccess,
-      allowedRoomIds: savedAllowedRoomIds,
-      pendingLicenseId: profile?.pendingLicenseId ?? "",
-      pendingLicenseCode: "",
-      locationSetupRequired: false,
       usePin,
       lockOnHide: usePin ? effectiveDraft.lockOnHide : false,
       useBiometrics: usePin ? effectiveDraft.useBiometrics : false,
@@ -1279,7 +1272,15 @@ export default function KeluniaPage() {
 
     setSettingsError("");
     setSettingsMessage("Setările au fost salvate.");
-    void recordAuditLog("user", "update", user.uid, profile, payload, payload.locationId as string, payload.locationName as string);
+    void recordAuditLog(
+      "user",
+      "update",
+      user.uid,
+      profile,
+      payload,
+      isOwner ? "" : profile?.locationId ?? "main-location",
+      isOwner ? defaultLocationName : profile?.locationName ?? locationName
+    );
 
     try {
       if (usePin) {
