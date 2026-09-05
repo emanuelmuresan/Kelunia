@@ -12,6 +12,7 @@
     "cap:open:android": "npx cap open android"
   },
   "dependencies": {
+    "@capacitor-firebase/app-check": "^8.5.1",
     "@capacitor/android": "^8.0.0",
     "@capacitor/app": "^8.0.0",
     "@capacitor/core": "^8.0.0",

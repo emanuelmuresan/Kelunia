@@ -75,7 +75,7 @@ function readPin(data: unknown) {
  * Store the user's unlock PIN as a scrypt hash + salt in an Admin-only
  * subcollection. Also flips users/{uid}.pinSet and clears any legacy pinHash.
  */
-export const setPin = onCall({ region: REGION }, async (request) => {
+export const setPin = onCall({ region: REGION, enforceAppCheck: true }, async (request) => {
   const uid = requireVerifiedUser(request.auth);
   const pin = readPin(request.data);
 
@@ -121,7 +121,7 @@ export const setPin = onCall({ region: REGION }, async (request) => {
  * Check an entered PIN. Returns { ok } rather than throwing on a wrong PIN so the
  * client can show remaining attempts / lockout. 3 misses -> progressive lockout.
  */
-export const verifyPin = onCall({ region: REGION }, async (request) => {
+export const verifyPin = onCall({ region: REGION, enforceAppCheck: true }, async (request) => {
   const uid = requireVerifiedUser(request.auth);
   const pin = readPin(request.data);
 
@@ -199,7 +199,7 @@ export const verifyPin = onCall({ region: REGION }, async (request) => {
 });
 
 /** Remove the PIN: delete the private credential and flip users/{uid}.pinSet. */
-export const disablePin = onCall({ region: REGION }, async (request) => {
+export const disablePin = onCall({ region: REGION, enforceAppCheck: true }, async (request) => {
   const uid = requireVerifiedUser(request.auth);
   const db = getFirestore();
 

@@ -745,6 +745,7 @@ export const sendAuthVerificationEmail = onCall(
   {
     region: "europe-west1",
     secrets: [resendApiKey],
+    enforceAppCheck: true,
   },
   async (request) => {
     if (!request.auth?.uid) {
@@ -799,6 +800,7 @@ export const sendAuthPasswordResetEmail = onCall(
   {
     region: "europe-west1",
     secrets: [resendApiKey],
+    enforceAppCheck: true,
   },
   async (request) => {
     const email = cleanEmail(request.data?.email);
@@ -848,6 +850,7 @@ export const sendAccessInviteEmail = onCall(
   {
     region: "europe-west1",
     secrets: [resendApiKey],
+    enforceAppCheck: true,
   },
   async (request) => {
     if (!request.auth?.uid) {
@@ -939,6 +942,7 @@ export const sendAccessInviteEmail = onCall(
 export const registerNotificationToken = onCall(
   {
     region: "europe-west1",
+    enforceAppCheck: true,
   },
   async (request) => {
     if (!request.auth?.uid || request.auth.token.email_verified !== true) {
@@ -984,6 +988,7 @@ export const registerNotificationToken = onCall(
 export const deleteMyAccount = onCall(
   {
     region: "europe-west1",
+    enforceAppCheck: true,
   },
   async (request) => {
     if (!request.auth?.uid || request.auth.token.email_verified !== true) {
@@ -1038,6 +1043,7 @@ export const deleteMyAccount = onCall(
 export const saveBooking = onCall(
   {
     region: "europe-west1",
+    enforceAppCheck: true,
   },
   async (request) => {
     if (!request.auth?.uid || request.auth.token.email_verified !== true) {
