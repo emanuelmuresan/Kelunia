@@ -180,28 +180,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       setUser(userData);
 
-      // TEMP diagnostic: what the ID token actually claims (email_verified there can
-      // lag user.emailVerified). Remove once the delete bug is understood.
-      void userData
-        .getIdTokenResult()
-        .then((r) => {
-          console.log(
-            "KELUNIA_TOKEN_CLAIMS",
-            JSON.stringify({
-              email: r.claims.email,
-              email_verified: r.claims.email_verified,
-              user_emailVerified: userData.emailVerified,
-              role: r.claims.role,
-              isOwner: r.claims.isOwner,
-              locationId: r.claims.locationId,
-              sign_in_provider: r.signInProvider,
-              authTime: r.authTime,
-              issuedAt: r.issuedAtTime,
-            })
-          );
-        })
-        .catch((error) => console.warn("Token claims debug failed:", error));
-
       try {
         // On native (Android/iOS), App Check needs a couple of seconds to attest the
         // device via Play Integrity/App Attest before Firestore will accept requests
