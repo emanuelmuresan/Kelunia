@@ -1685,13 +1685,16 @@ service cloud.firestore {
         && roomAccessAllows(request.resource.data.roomId)
         && locationWriteEnabled(request.resource.data.locationId);
       // Cheap path: soft-delete marker only. The client deletes a booking with a
-      // partial updateDoc({deleted:true, deletedAt, deletedBy, deletedByUid}); running
-      // the full validEventData() + all the get()s on that path blows Firestore's
-      // 1000-expression budget, so authorize it directly instead.
+      // partial updateDoc({deleted:true, deletedAt, deletedBy, deletedByUid,
+      // updatedBy, updatedAt}); running the full validEventData() + all the get()s
+      // on that path blows Firestore's 1000-expression budget, so authorize it
+      // directly instead.
       allow update: if (
           request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(["deleted", "deletedAt", "deletedBy", "deletedByUid"])
+            .hasOnly(["deleted", "deletedAt", "deletedBy", "deletedByUid", "updatedBy", "updatedAt"])
           && request.resource.data.deleted == true
+          && request.resource.data.updatedAt is timestamp
+          && request.resource.data.updatedBy is string
           && (
             (isOwner() || canManageLocation(resource.data.locationId))
             || (
@@ -1819,8 +1822,26 @@ service cloud.firestore {
         && validLocationCreate();
       allow update: if validOwnerLocationLicenseUpdate()
         || (
-          (isOwner() || (canManageLocation(locationId) && locationWriteEnabled(locationId)))
+          isOwner()
           && validLocationData(request.resource.data)
+        )
+        || (
+          // A location manager may edit descriptive fields and bump usage
+          // counters, but NOT plan / billingStatus / subscription* / trialEndsAt /
+          // ownerEmail / planLimits — those are owner-only (privilege boundary).
+          canManageLocation(locationId)
+          && locationWriteEnabled(locationId)
+          && validLocationData(request.resource.data)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            "name",
+            "locationName",
+            "address",
+            "officialAddress",
+            "placeId",
+            "updatedBy",
+            "updatedAt",
+            "usage"
+          ])
         );
       allow delete: if isOwner() || (canManageLocation(locationId) && locationWriteEnabled(locationId));
     }
