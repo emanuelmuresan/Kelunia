@@ -1,22 +1,20 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { TouchEvent } from "react";
 import { useRouter } from "next/navigation";
 import { registerPlugin } from "@capacitor/core";
 import { signOut } from "firebase/auth";
 import { httpsCallable } from "firebase/functions";
 import {
   addDoc,
-  collection,
-  deleteDoc,
+  collection,
   doc,
   setDoc,
   Timestamp,
   updateDoc,
 } from "firebase/firestore";
 import { auth, cloudFunctions, db } from "@/lib/firebase";
-import { useAuth, type AppLanguage, type UserRole } from "@/context/AuthContext";
+import { useAuth, type AppLanguage } from "@/context/AuthContext";
 import { AccessCodesModal } from "@/features/access-codes/components/AccessCodesModal";
 import { useAccessCodeGroupSync } from "@/features/access-codes/hooks/useAccessCodeGroupSync";
 import { useAccessCodes } from "@/features/access-codes/hooks/useAccessCodes";
@@ -36,7 +34,6 @@ import {
   defaultLocationName,
   defaultResourcesSectionTitle,
   defaultRoomsLabel,
-  emptyFixedDraft,
   offlineReadOnlyMessage,
   shortDayLabels,
 } from "@/lib/config/app";
@@ -53,25 +50,17 @@ import {
 import { can } from "@/lib/permissions/capabilities";
 import { bookingQueryWindow } from "@/lib/queries/bookings";
 import { bookingMatchesRoomAccess, filterRoomsByAccess, normalizeAllowedRoomIds, normalizeRoomAccessMode } from "@/lib/room-access";
-import {
-  bookingsForDay,
-  timeToMinutes,
-} from "@/lib/scheduling";
-import { clearBiometricCredential, registerBiometricCredential, verifyBiometricCredential } from "@/lib/security";
-import { updateLocationCounterSafely } from "@/lib/usage-counters";
+import { bookingsForDay } from "@/lib/scheduling";
+import { clearBiometricCredential, registerBiometricCredential, verifyBiometricCredential } from "@/lib/security";
 import type {
   AppView,
   Booking,
-  CalendarMode,
-  FixedSchedule,
-  FixedScheduleDraft,
+  CalendarMode,
   ListFilter,
   LocationEditor,
   LocationItem,
-  LocationPlan,
-  ManagedUser,
-  PinIntent,
-  RoomAccessMode,
+  LocationPlan,
+  PinIntent,
   SortDirection,
   WriteTarget,
 } from "@/lib/types/domain";
@@ -107,6 +96,9 @@ import { useGroupBookingNotifications } from "@/features/notifications/hooks/use
 import { hasKeluniaPushConfig, listenKeluniaForegroundPush, registerKeluniaPushToken } from "@/lib/push-notifications";
 import { useLocationResources } from "@/features/resources/hooks/useLocationResources";
 import { useSpaceEditor } from "@/features/resources/hooks/useSpaceEditor";
+import { useFixedScheduleEditor } from "@/features/fixed-schedules/hooks/useFixedScheduleEditor";
+import { useCalendarSwipe } from "@/features/calendar/hooks/useCalendarSwipe";
+import { useManagedUserActions } from "@/features/users/hooks/useManagedUserActions";
 import { appText } from "@/lib/i18n/app-copy-catalog";
 import { AppLockModal } from "@/features/security/components/AppLockModal";
 import { useCalendarSettings } from "@/features/settings/hooks/useCalendarSettings";
@@ -123,18 +115,6 @@ type CapacitorAppPlugin = {
 };
 
 const CapacitorApp = registerPlugin<CapacitorAppPlugin>("App");
-
-function isInteractiveSwipeTarget(target: EventTarget | null) {
-  if (!(target instanceof HTMLElement)) {
-    return false;
-  }
-
-  return Boolean(
-    target.closest(
-      "input, textarea, select, option, label, [contenteditable='true'], .modal-card, .app-tabs, .segmented-control"
-    )
-  );
-}
 
 export default function KeluniaPage() {
   const { user, profile, role, isSuperAdmin, isOwner, loading: authLoading } = useAuth();
@@ -175,18 +155,12 @@ export default function KeluniaPage() {
   const [groupSetupDraft, setGroupSetupDraft] = useState("");
   const [groupSetupError, setGroupSetupError] = useState("");
   const [groupSetupCompleted, setGroupSetupCompleted] = useState(false);
-  const [showFixedManager, setShowFixedManager] = useState(false);
-  const [showFixedForm, setShowFixedForm] = useState(false);
-  const [fixedEditingId, setFixedEditingId] = useState<string | null>(null);
-  const [fixedDraft, setFixedDraft] = useState<FixedScheduleDraft>(emptyFixedDraft);
-  const [fixedError, setFixedError] = useState("");
   const [pinIntent, setPinIntent] = useState<PinIntent | null>(null);
   const [pinDraft, setPinDraft] = useState({ pin: "", confirm: "" });
   const [pinError, setPinError] = useState("");
   // Set right after the setPin Cloud Function succeeds, so the settings-save guard
   // doesn't re-open the PIN modal before the refreshed profile lands.
   const [pinConfiguredLocally, setPinConfiguredLocally] = useState(false);
-  const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
   const biometricPromptedRef = useRef("");
   const [appLocked, setAppLocked] = useState(false);
   const [unlockPin, setUnlockPin] = useState("");
@@ -475,6 +449,49 @@ export default function KeluniaPage() {
     setSettingsMessage,
   });
 
+  const {
+    showFixedManager,
+    showFixedForm,
+    fixedEditingId,
+    fixedDraft,
+    fixedError,
+    setShowFixedManager,
+    setFixedDraft,
+    setFixedError,
+    openFixedManager,
+    startFixedAdd,
+    startFixedEdit,
+    closeFixedForm,
+    saveFixedSchedule,
+    removeFixedSchedule,
+  } = useFixedScheduleEditor({
+    db,
+    user,
+    fixedSchedules,
+    currentLocationId,
+    locationName,
+    canEditCurrentLocation,
+    requireOnline,
+    softDeletePayload,
+    recordAuditLog,
+    setSettingsMessage,
+  });
+
+  const navigationItems: Array<[AppView, string]> = [
+    ...(currentLocationId && fixedPageEnabled ? [["fixed", fixedSectionTitle] as [AppView, string]] : []),
+    ...(currentLocationId ? [
+      ["calendar", appText(language, "nav.calendar")] as [AppView, string],
+      ["list", listViewTitle] as [AppView, string],
+    ] : []),
+    ["settings", appText(language, "nav.settings")],
+  ];
+  const swipeViews = navigationItems.map(([view]) => view);
+  const { handleSwipeStart, handleSwipeEnd, clearSwipe } = useCalendarSwipe({
+    swipeViews,
+    displayedView,
+    setActiveView,
+  });
+
   useEffect(() => {
     if (!profile) {
       return;
@@ -558,6 +575,21 @@ export default function KeluniaPage() {
     [visibleManagedUsers]
   );
   const currentLocationManagerLimit = currentLocation?.planLimits?.maxManagers ?? 2;
+
+  const { updateManagedUserRole, updateManagedUserRoomAccess, removeManagedUser } = useManagedUserActions({
+    db,
+    managedUsers,
+    rooms,
+    currentLocationId,
+    locationName,
+    canManageMembers,
+    currentLocationManagerLimit,
+    requireOnline,
+    recordAuditLog,
+    setSettingsError,
+    setSettingsMessage,
+  });
+
   const currentLocationPendingManagerInviteCount = useMemo(
     () =>
       accessCodes.filter(
@@ -1417,54 +1449,6 @@ export default function KeluniaPage() {
     }
   }
 
-  function openFixedManager() {
-    if (!canEditCurrentLocation) {
-      return;
-    }
-
-    setFixedDraft(emptyFixedDraft);
-    setFixedEditingId(null);
-    setShowFixedForm(false);
-    setFixedError("");
-    setShowFixedManager(true);
-  }
-
-  function startFixedAdd() {
-    if (!canEditCurrentLocation) {
-      return;
-    }
-
-    setFixedDraft(emptyFixedDraft);
-    setFixedEditingId(null);
-    setFixedError("");
-    setShowFixedForm(true);
-  }
-
-  function startFixedEdit(item: FixedSchedule) {
-    if (!canEditCurrentLocation) {
-      return;
-    }
-
-    setFixedDraft({
-      dayIndex: item.dayIndex,
-      group: item.group,
-      room: item.room,
-      startTime: item.startTime,
-      endTime: item.endTime,
-      title: item.title,
-    });
-    setFixedEditingId(item.id);
-    setFixedError("");
-    setShowFixedForm(true);
-  }
-
-  function closeFixedForm() {
-    setShowFixedForm(false);
-    setFixedEditingId(null);
-    setFixedDraft(emptyFixedDraft);
-    setFixedError("");
-  }
-
   async function saveNavigationSettings() {
     if (!canEditCurrentLocation) {
       return;
@@ -1527,205 +1511,6 @@ export default function KeluniaPage() {
     } catch (error) {
       console.error("Paginile nu au putut fi salvate:", error);
       setSettingsError("Paginile nu au putut fi salvate. Verifică regulile Firebase.");
-    }
-  }
-
-  async function saveFixedSchedule() {
-    if (!canEditCurrentLocation) {
-      return;
-    }
-
-    setFixedError("");
-
-    if (!requireOnline("fixed")) {
-      return;
-    }
-
-    if (
-      fixedDraft.dayIndex === "" ||
-      !fixedDraft.group ||
-      !fixedDraft.room ||
-      !fixedDraft.startTime ||
-      !fixedDraft.endTime ||
-      !fixedDraft.title.trim()
-    ) {
-      setFixedError("Completează ziua, grupul, sala, orele și numele.");
-      return;
-    }
-
-    if (timeToMinutes(fixedDraft.endTime) <= timeToMinutes(fixedDraft.startTime)) {
-      setFixedError("Ora de final trebuie să fie după ora de început.");
-      return;
-    }
-
-    try {
-      const previousSchedule = fixedEditingId ? fixedSchedules.find((item) => item.id === fixedEditingId) ?? null : null;
-      const payload = {
-        dayIndex: fixedDraft.dayIndex,
-        group: fixedDraft.group,
-        room: fixedDraft.room,
-        startTime: fixedDraft.startTime,
-        endTime: fixedDraft.endTime,
-        title: fixedDraft.title.trim(),
-        locationId: currentLocationId,
-        locationName,
-        updatedBy: user?.email ?? "",
-        updatedAt: Timestamp.now(),
-      };
-
-      if (fixedEditingId) {
-        await updateDoc(doc(db, "fixedSchedules", fixedEditingId), payload);
-        await recordAuditLog("fixedSchedule", "update", fixedEditingId, previousSchedule, payload);
-      } else {
-        const createdPayload = { ...payload, createdAt: Timestamp.now(), deleted: false };
-        const created = await addDoc(collection(db, "fixedSchedules"), createdPayload);
-        await updateLocationCounterSafely(db, currentLocationId, "fixedScheduleCount", 1);
-        await recordAuditLog("fixedSchedule", "create", created.id, null, createdPayload);
-      }
-
-      setFixedDraft(emptyFixedDraft);
-      setFixedEditingId(null);
-      setShowFixedForm(false);
-      setFixedError("");
-      setSettingsMessage(fixedEditingId ? "Programul a fost actualizat." : "Programul a fost adăugat.");
-    } catch (error) {
-      console.error("Programul nu a putut fi salvat:", error);
-      setFixedError("Firebase nu permite încă salvarea programului. Actualizează regulile Firestore pentru administrator.");
-    }
-  }
-
-  async function removeFixedSchedule(itemId: string) {
-    if (!canEditCurrentLocation || !requireOnline("fixed") || !confirm("Ștergi acest program?")) {
-      return;
-    }
-
-    setFixedError("");
-
-    try {
-      const previousSchedule = fixedSchedules.find((item) => item.id === itemId) ?? null;
-      const deletedPayload = softDeletePayload();
-      await updateDoc(doc(db, "fixedSchedules", itemId), deletedPayload);
-      await updateLocationCounterSafely(db, currentLocationId, "fixedScheduleCount", -1);
-      await recordAuditLog("fixedSchedule", "delete", itemId, previousSchedule, previousSchedule ? { ...previousSchedule, ...deletedPayload } : deletedPayload);
-      setSettingsMessage("Programul a fost șters.");
-    } catch (error) {
-      console.error("Programul nu a putut fi șters:", error);
-      setFixedError("Firebase nu permite încă ștergerea programului.");
-    }
-  }
-
-  async function updateManagedUserRole(managedUser: ManagedUser, nextRole: UserRole) {
-    if (!canManageMembers || managedUser.isOwner || managedUser.locationId !== currentLocationId) {
-      return;
-    }
-
-    setSettingsError("");
-    setSettingsMessage("");
-
-    if (!requireOnline("settings")) {
-      return;
-    }
-
-    const otherSuperAdmins = managedUsers.filter(
-      (item) =>
-        item.locationId === currentLocationId &&
-        item.role === "manager" &&
-        !item.isOwner &&
-        item.id !== managedUser.id
-    ).length;
-
-    if (nextRole === "manager" && otherSuperAdmins >= currentLocationManagerLimit) {
-      setSettingsError(`Aceasta locatie poate avea maximum ${currentLocationManagerLimit} administratori.`);
-      return;
-    }
-
-    try {
-      const roomAccess = nextRole === "manager" ? "all" : managedUser.roomAccess;
-      const allowedRoomIds = nextRole === "manager" || roomAccess === "all" ? [] : managedUser.allowedRoomIds;
-      const updatedUser = {
-        ...managedUser,
-        role: nextRole,
-        groupName: managedUser.groupName,
-        roomAccess,
-        allowedRoomIds,
-      };
-      await updateDoc(doc(db, "users", managedUser.id), {
-        role: nextRole,
-        groupName: managedUser.groupName,
-        roomAccess,
-        allowedRoomIds,
-      });
-      await recordAuditLog("user", "update", managedUser.id, managedUser, updatedUser, managedUser.locationId, managedUser.locationName || locationName);
-      setSettingsMessage("Rolul a fost actualizat.");
-    } catch (error) {
-      console.error("Rolul nu a putut fi actualizat:", error);
-      setSettingsError("Rolul nu a putut fi actualizat. Verifica regulile Firebase.");
-    }
-  }
-
-  async function updateManagedUserRoomAccess(managedUser: ManagedUser, nextRoomAccess: RoomAccessMode, nextAllowedRoomIds: string[]) {
-    if (!canManageMembers || managedUser.isOwner || managedUser.locationId !== currentLocationId) {
-      return;
-    }
-
-    setSettingsError("");
-    setSettingsMessage("");
-
-    if (!requireOnline("settings")) {
-      return;
-    }
-
-    const roomAccess = managedUser.role === "manager" ? "all" : normalizeRoomAccessMode(nextRoomAccess);
-    const allowedRoomIds = roomAccess === "selected" ? normalizeAllowedRoomIds(nextAllowedRoomIds) : [];
-
-    if (roomAccess === "selected" && allowedRoomIds.length === 0) {
-      setSettingsError("Alege cel putin o sala sau lasa acces la toate salile.");
-      return;
-    }
-
-    const validRoomIds = new Set(rooms.map((room) => room.id));
-
-    if (allowedRoomIds.some((roomId) => !validRoomIds.has(roomId))) {
-      setSettingsError("Una dintre salile alese nu mai exista.");
-      return;
-    }
-
-    try {
-      const updatedUser = {
-        ...managedUser,
-        roomAccess,
-        allowedRoomIds,
-      };
-      await updateDoc(doc(db, "users", managedUser.id), {
-        roomAccess,
-        allowedRoomIds,
-      });
-      await recordAuditLog("user", "update", managedUser.id, managedUser, updatedUser, managedUser.locationId, managedUser.locationName || locationName);
-      setSettingsMessage("Accesul la sali a fost actualizat.");
-    } catch (error) {
-      console.error("Accesul la sali nu a putut fi actualizat:", error);
-      setSettingsError("Accesul la sali nu a putut fi actualizat. Verifica regulile Firebase.");
-    }
-  }
-
-  async function removeManagedUser(managedUser: ManagedUser) {
-    if (
-      !canManageMembers ||
-      managedUser.isOwner ||
-      managedUser.locationId !== currentLocationId ||
-      !requireOnline("settings") ||
-      !confirm(`Stergi contul ${managedUser.email}?`)
-    ) {
-      return;
-    }
-
-    try {
-      await deleteDoc(doc(db, "users", managedUser.id));
-      await recordAuditLog("user", "delete", managedUser.id, managedUser, null, managedUser.locationId, managedUser.locationName || locationName);
-      setSettingsMessage("Contul a fost sters.");
-    } catch (error) {
-      console.error("Contul nu a putut fi sters:", error);
-      setSettingsError("Contul nu a putut fi sters. Verifica regulile Firebase.");
     }
   }
 
@@ -1885,63 +1670,6 @@ export default function KeluniaPage() {
     );
   }
 
-  const navigationItems: Array<[AppView, string]> = [
-    ...(currentLocationId && fixedPageEnabled ? [["fixed", fixedSectionTitle] as [AppView, string]] : []),
-    ...(currentLocationId ? [
-      ["calendar", appText(language, "nav.calendar")] as [AppView, string],
-      ["list", listViewTitle] as [AppView, string],
-    ] : []),
-    ["settings", appText(language, "nav.settings")],
-  ];
-
-  const swipeViews = navigationItems.map(([view]) => view);
-
-  function navigateBySwipe(delta: -1 | 1) {
-    const currentIndex = swipeViews.indexOf(displayedView);
-
-    if (currentIndex === -1) {
-      return;
-    }
-
-    const nextView = swipeViews[currentIndex + delta];
-
-    if (nextView) {
-      setActiveView(nextView);
-    }
-  }
-
-  function handleSwipeStart(event: TouchEvent<HTMLDivElement>) {
-    if (event.touches.length !== 1 || isInteractiveSwipeTarget(event.target)) {
-      swipeStartRef.current = null;
-      return;
-    }
-
-    const touch = event.touches[0];
-    swipeStartRef.current = { x: touch.clientX, y: touch.clientY };
-  }
-
-  function handleSwipeEnd(event: TouchEvent<HTMLDivElement>) {
-    const start = swipeStartRef.current;
-    swipeStartRef.current = null;
-
-    if (!start || event.changedTouches.length !== 1) {
-      return;
-    }
-
-    const touch = event.changedTouches[0];
-    const deltaX = touch.clientX - start.x;
-    const deltaY = touch.clientY - start.y;
-    const absX = Math.abs(deltaX);
-    const absY = Math.abs(deltaY);
-
-    if (absX < 64 || absX < absY * 1.35) {
-      return;
-    }
-
-    event.preventDefault();
-    navigateBySwipe(deltaX < 0 ? 1 : -1);
-  }
-
   if (authLoading) {
     return (
       <div className="loading-screen">
@@ -1979,9 +1707,7 @@ export default function KeluniaPage() {
         className="swipe-page-region"
         onTouchStart={handleSwipeStart}
         onTouchEnd={handleSwipeEnd}
-        onTouchCancel={() => {
-          swipeStartRef.current = null;
-        }}
+        onTouchCancel={clearSwipe}
       >
       {displayedView === "fixed" && (
         <FixedSchedulesView
