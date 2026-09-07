@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useRef, useState } from "react";
-import { auth, db } from "@/lib/firebase";
+import { appCheckReadyPromise, auth, db } from "@/lib/firebase";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { doc, getDoc, setDoc, type DocumentData, type DocumentReference } from "firebase/firestore";
 import { normalizeSupportedLocale, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
@@ -180,7 +180,35 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       setUser(userData);
 
+      // TEMP diagnostic: what the ID token actually claims (email_verified there can
+      // lag user.emailVerified). Remove once the delete bug is understood.
+      void userData
+        .getIdTokenResult()
+        .then((r) => {
+          console.log(
+            "KELUNIA_TOKEN_CLAIMS",
+            JSON.stringify({
+              email: r.claims.email,
+              email_verified: r.claims.email_verified,
+              user_emailVerified: userData.emailVerified,
+              role: r.claims.role,
+              isOwner: r.claims.isOwner,
+              locationId: r.claims.locationId,
+              sign_in_provider: r.signInProvider,
+              authTime: r.authTime,
+              issuedAt: r.issuedAtTime,
+            })
+          );
+        })
+        .catch((error) => console.warn("Token claims debug failed:", error));
+
       try {
+        // On native (Android/iOS), App Check needs a couple of seconds to attest the
+        // device via Play Integrity/App Attest before Firestore will accept requests
+        // (it's enforced). Reading the profile before that resolves used to race
+        // ahead and get hard permission-denied. See lib/firebase.js for details.
+        await appCheckReadyPromise;
+
         const userDocRef = doc(db, "users", userData.uid);
         let userSnap = await getDoc(userDocRef);
         const fallback = buildFallbackProfile(userData);

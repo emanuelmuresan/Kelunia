@@ -1684,22 +1684,44 @@ service cloud.firestore {
         && bookingGroupAllowed(request.resource.data)
         && roomAccessAllows(request.resource.data.roomId)
         && locationWriteEnabled(request.resource.data.locationId);
-      allow update: if validEventData(request.resource.data)
-        && locationWriteEnabled(resource.data.locationId)
-        && roomAccessAllows(request.resource.data.roomId)
-        && bookingGroupAllowed(request.resource.data)
-        && (
-          (
+      // Cheap path: soft-delete marker only. The client deletes a booking with a
+      // partial updateDoc({deleted:true, deletedAt, deletedBy, deletedByUid}); running
+      // the full validEventData() + all the get()s on that path blows Firestore's
+      // 1000-expression budget, so authorize it directly instead.
+      allow update: if (
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(["deleted", "deletedAt", "deletedBy", "deletedByUid"])
+          && request.resource.data.deleted == true
+          && (
             (isOwner() || canManageLocation(resource.data.locationId))
-            && request.resource.data.locationId == resource.data.locationId
+            || (
+              isLocationAdmin()
+              && resource.data.locationId == userLocationId()
+              && (
+                resource.data.authorEmail == request.auth.token.email
+                || resource.data.author == request.auth.token.email
+              )
+            )
           )
-          || (
-            isLocationAdmin()
-            && resource.data.locationId == userLocationId()
-            && request.resource.data.locationId == resource.data.locationId
-            && (
-              resource.data.authorEmail == request.auth.token.email
-              || resource.data.author == request.auth.token.email
+        )
+        || (
+          validEventData(request.resource.data)
+          && locationWriteEnabled(resource.data.locationId)
+          && roomAccessAllows(request.resource.data.roomId)
+          && bookingGroupAllowed(request.resource.data)
+          && (
+            (
+              (isOwner() || canManageLocation(resource.data.locationId))
+              && request.resource.data.locationId == resource.data.locationId
+            )
+            || (
+              isLocationAdmin()
+              && resource.data.locationId == userLocationId()
+              && request.resource.data.locationId == resource.data.locationId
+              && (
+                resource.data.authorEmail == request.auth.token.email
+                || resource.data.author == request.auth.token.email
+              )
             )
           )
         );

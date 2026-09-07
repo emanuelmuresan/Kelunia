@@ -19,3 +19,22 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# --- Kelunia: minifyEnabled/shrinkResources safety net ---
+# Keep stack traces readable in Play Console crash reports.
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
+
+# Capacitor bridges plugin methods via reflection based on the
+# @CapacitorPlugin/@PluginMethod annotations and the WebView JS bridge —
+# keep those intact even though most Capacitor/Firebase libraries already
+# ship their own consumer-rules.pro (this is a belt-and-suspenders keep).
+-keep class com.getcapacitor.** { *; }
+-keep @com.getcapacitor.annotation.CapacitorPlugin class * { *; }
+-keepclassmembers class * extends com.getcapacitor.Plugin {
+    @com.getcapacitor.annotation.PluginMethod <methods>;
+}
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
+
