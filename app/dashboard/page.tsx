@@ -41,7 +41,6 @@ import {
   shortDayLabels,
 } from "@/lib/config/app";
 import { dateKey, parseDateKey } from "@/lib/dates";
-import { normalizeGroupColor } from "@/lib/group-colors";
 import { initialLocationBillingFields } from "@/lib/licensing";
 import {
   canUseNativeNotifications,
@@ -66,18 +65,14 @@ import type {
   CalendarMode,
   FixedSchedule,
   FixedScheduleDraft,
-  GroupItem,
   ListFilter,
   LocationEditor,
   LocationItem,
   LocationPlan,
   ManagedUser,
   PinIntent,
-  RoomItem,
   RoomAccessMode,
   SortDirection,
-  SpaceEditor,
-  SpaceKind,
   WriteTarget,
 } from "@/lib/types/domain";
 import { MonthView } from "@/features/calendar/views/MonthView";
@@ -111,6 +106,7 @@ import { useOnlineStatus } from "@/features/network/hooks/useOnlineStatus";
 import { useGroupBookingNotifications } from "@/features/notifications/hooks/useGroupBookingNotifications";
 import { hasKeluniaPushConfig, listenKeluniaForegroundPush, registerKeluniaPushToken } from "@/lib/push-notifications";
 import { useLocationResources } from "@/features/resources/hooks/useLocationResources";
+import { useSpaceEditor } from "@/features/resources/hooks/useSpaceEditor";
 import { appText } from "@/lib/i18n/app-copy-catalog";
 import { AppLockModal } from "@/features/security/components/AppLockModal";
 import { useCalendarSettings } from "@/features/settings/hooks/useCalendarSettings";
@@ -179,8 +175,6 @@ export default function KeluniaPage() {
   const [groupSetupDraft, setGroupSetupDraft] = useState("");
   const [groupSetupError, setGroupSetupError] = useState("");
   const [groupSetupCompleted, setGroupSetupCompleted] = useState(false);
-  const [spaceEditor, setSpaceEditor] = useState<SpaceEditor | null>(null);
-  const [spaceError, setSpaceError] = useState("");
   const [showFixedManager, setShowFixedManager] = useState(false);
   const [showFixedForm, setShowFixedForm] = useState(false);
   const [fixedEditingId, setFixedEditingId] = useState<string | null>(null);
@@ -457,6 +451,30 @@ export default function KeluniaPage() {
     setIsOnline,
     user,
   });
+
+  const {
+    spaceEditor,
+    spaceError,
+    setSpaceEditor,
+    setSpaceError,
+    openSpaceEditor,
+    saveSpaceItem,
+    removeSpaceItem,
+  } = useSpaceEditor({
+    db,
+    user,
+    rooms,
+    groups,
+    currentLocationId,
+    locationName,
+    canEditCurrentLocation,
+    requireOnline,
+    softDeletePayload,
+    recordAuditLog,
+    setSettingsError,
+    setSettingsMessage,
+  });
+
   useEffect(() => {
     if (!profile) {
       return;
@@ -1396,106 +1414,6 @@ export default function KeluniaPage() {
     } catch (error) {
       console.error("Grupul nu a putut fi salvat:", error);
       setGroupSetupError("Grupul nu a putut fi salvat. Verifică regulile Firebase.");
-    }
-  }
-
-  function openSpaceEditor(kind: SpaceKind, item?: RoomItem | GroupItem) {
-    if (!canEditCurrentLocation) {
-      return;
-    }
-
-    setSpaceEditor({
-      kind,
-      id: item?.id ?? null,
-      name: item?.name ?? "",
-      color: kind === "group" ? normalizeGroupColor((item as GroupItem | undefined)?.color) : "",
-    });
-    setSpaceError("");
-    setSettingsError("");
-    setSettingsMessage("");
-  }
-
-  async function saveSpaceItem() {
-    if (!canEditCurrentLocation || !spaceEditor) {
-      return;
-    }
-
-    if (!requireOnline("space")) {
-      return;
-    }
-
-    const name = spaceEditor.name.trim();
-    const collectionName = spaceEditor.kind === "room" ? "rooms" : "groups";
-    const label = spaceEditor.kind === "room" ? "Sala" : "Grupul";
-
-    if (!name) {
-      setSpaceError(spaceEditor.kind === "room" ? "Scrie numele sălii." : "Scrie numele grupului.");
-      return;
-    }
-
-    setSettingsError("");
-    setSpaceError("");
-
-    try {
-      const previousItem = spaceEditor.id
-        ? (spaceEditor.kind === "room" ? rooms : groups).find((item) => item.id === spaceEditor.id) ?? null
-        : null;
-      const payload = {
-        name,
-        locationId: currentLocationId,
-        locationName,
-        updatedBy: user?.email ?? "",
-        updatedAt: Timestamp.now(),
-        ...(spaceEditor.kind === "group" ? { color: normalizeGroupColor(spaceEditor.color) } : {}),
-      };
-
-      if (spaceEditor.id) {
-        await updateDoc(doc(db, collectionName, spaceEditor.id), payload);
-        await recordAuditLog(spaceEditor.kind, "update", spaceEditor.id, previousItem, payload);
-      } else {
-        const createdPayload = {
-          ...payload,
-          createdBy: user?.email ?? "",
-          createdAt: Timestamp.now(),
-          deleted: false,
-        };
-        const created = await addDoc(collection(db, collectionName), createdPayload);
-        await updateLocationCounterSafely(db, currentLocationId, spaceEditor.kind === "room" ? "roomCount" : "groupCount", 1);
-        await recordAuditLog(spaceEditor.kind, "create", created.id, null, createdPayload);
-      }
-
-      setSpaceEditor(null);
-      setSettingsMessage(
-        spaceEditor.kind === "room"
-          ? `Sala a fost ${spaceEditor.id ? "actualizată" : "adăugată"}.`
-          : `Grupul a fost ${spaceEditor.id ? "actualizat" : "adăugat"}.`
-      );
-    } catch (error) {
-      console.error(`${label} nu a putut fi salvată:`, error);
-      setSpaceError("Firebase nu permite încă această modificare. Actualizează regulile Firestore pentru administrator.");
-    }
-  }
-
-  async function removeSpaceItem(kind: SpaceKind, itemId: string) {
-    const collectionName = kind === "room" ? "rooms" : "groups";
-    const label = kind === "room" ? "această sală" : "acest grup";
-
-    if (!canEditCurrentLocation || !requireOnline("settings") || !confirm(`Ștergi ${label}?`)) {
-      return;
-    }
-
-    setSettingsError("");
-
-    try {
-      const previousItem = (kind === "room" ? rooms : groups).find((item) => item.id === itemId) ?? null;
-      const deletedPayload = softDeletePayload();
-      await updateDoc(doc(db, collectionName, itemId), deletedPayload);
-      await updateLocationCounterSafely(db, currentLocationId, kind === "room" ? "roomCount" : "groupCount", -1);
-      await recordAuditLog(kind, "delete", itemId, previousItem, previousItem ? { ...previousItem, ...deletedPayload } : deletedPayload);
-      setSettingsMessage(kind === "room" ? "Sala a fost ștearsă." : "Grupul a fost șters.");
-    } catch (error) {
-      console.error("Elementul nu a putut fi șters:", error);
-      setSettingsError("Firebase nu permite încă ștergerea. Actualizează regulile Firestore pentru administrator.");
     }
   }
 

@@ -13,6 +13,18 @@ export type AuditEntityType =
 
 export type AuditAction = "create" | "update" | "delete";
 
+/** Shape of the `recordAuditLog` callback exposed by useAuditLogs, passed to the
+ *  editor hooks that need to log a mutation. */
+export type RecordAuditLog = (
+  entityType: AuditEntityType,
+  action: AuditAction,
+  entityId: string,
+  before: unknown,
+  after: unknown,
+  auditLocationId?: string,
+  auditLocationName?: string
+) => Promise<void>;
+
 interface AuditActor {
   uid: string;
   email: string;
