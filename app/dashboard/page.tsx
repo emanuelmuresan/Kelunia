@@ -1,8 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { registerPlugin } from "@capacitor/core";
 import { signOut } from "firebase/auth";
 import { httpsCallable } from "firebase/functions";
 import { doc, setDoc, Timestamp } from "firebase/firestore";
@@ -43,13 +42,12 @@ import { can } from "@/lib/permissions/capabilities";
 import { bookingQueryWindow } from "@/lib/queries/bookings";
 import { bookingMatchesRoomAccess, filterRoomsByAccess, normalizeAllowedRoomIds, normalizeRoomAccessMode } from "@/lib/room-access";
 import { bookingsForDay } from "@/lib/scheduling";
-import { clearBiometricCredential, registerBiometricCredential, verifyBiometricCredential } from "@/lib/security";
+import { registerBiometricCredential } from "@/lib/security";
 import type {
   AppView,
   Booking,
   CalendarMode,
   ListFilter,
-  PinIntent,
   SortDirection,
   WriteTarget,
 } from "@/lib/types/domain";
@@ -89,6 +87,7 @@ import { useFixedScheduleEditor } from "@/features/fixed-schedules/hooks/useFixe
 import { useCalendarSwipe } from "@/features/calendar/hooks/useCalendarSwipe";
 import { useManagedUserActions } from "@/features/users/hooks/useManagedUserActions";
 import { useLocationEditor } from "@/features/locations/hooks/useLocationEditor";
+import { useAppLock } from "@/features/security/hooks/useAppLock";
 import { appText } from "@/lib/i18n/app-copy-catalog";
 import { AppLockModal } from "@/features/security/components/AppLockModal";
 import { useCalendarSettings } from "@/features/settings/hooks/useCalendarSettings";
@@ -96,15 +95,6 @@ import { usePasswordManagement } from "@/features/settings/hooks/usePasswordMana
 import { useManagedLocationUsers } from "@/features/users/hooks/useManagedLocationUsers";
 
 const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
-
-type CapacitorAppPlugin = {
-  addListener: (
-    eventName: "appStateChange",
-    listener: (state: { isActive: boolean }) => void
-  ) => Promise<{ remove: () => Promise<void> }>;
-};
-
-const CapacitorApp = registerPlugin<CapacitorAppPlugin>("App");
 
 export default function KeluniaPage() {
   const { user, profile, role, isSuperAdmin, isOwner, loading: authLoading } = useAuth();
@@ -143,17 +133,6 @@ export default function KeluniaPage() {
   const [groupSetupDraft, setGroupSetupDraft] = useState("");
   const [groupSetupError, setGroupSetupError] = useState("");
   const [groupSetupCompleted, setGroupSetupCompleted] = useState(false);
-  const [pinIntent, setPinIntent] = useState<PinIntent | null>(null);
-  const [pinDraft, setPinDraft] = useState({ pin: "", confirm: "" });
-  const [pinError, setPinError] = useState("");
-  // Set right after the setPin Cloud Function succeeds, so the settings-save guard
-  // doesn't re-open the PIN modal before the refreshed profile lands.
-  const [pinConfiguredLocally, setPinConfiguredLocally] = useState(false);
-  const biometricPromptedRef = useRef("");
-  const [appLocked, setAppLocked] = useState(false);
-  const [unlockPin, setUnlockPin] = useState("");
-  const [unlockError, setUnlockError] = useState("");
-  const [biometricWorking, setBiometricWorking] = useState(false);
   const { isOnline, setIsOnline } = useOnlineStatus();
 
   useEffect(() => {
@@ -909,178 +888,28 @@ export default function KeluniaPage() {
     setIsOnline,
     user,
   });
-  const lockSessionKey = user ? `kelunia-unlocked:${user.uid}` : "";
-  const pinLockEnabled = Boolean(user && profile?.usePin && profile.hasPin);
-
-  const markAppUnlocked = useCallback(() => {
-    if (lockSessionKey && typeof window !== "undefined") {
-      window.sessionStorage.setItem(lockSessionKey, "1");
-    }
-
-    setAppLocked(false);
-    setUnlockPin("");
-    setUnlockError("");
-    biometricPromptedRef.current = "";
-  }, [lockSessionKey]);
-
-  const markAppLocked = useCallback(() => {
-    if (!pinLockEnabled || !lockSessionKey || typeof window === "undefined") {
-      return;
-    }
-
-    window.sessionStorage.removeItem(lockSessionKey);
-    setAppLocked(true);
-    setUnlockPin("");
-    biometricPromptedRef.current = "";
-  }, [lockSessionKey, pinLockEnabled]);
-
-  async function confirmSignOut() {
-    if (typeof window !== "undefined" && !window.confirm("Vrei sa iesi din cont?")) {
-      return;
-    }
-
-    if (lockSessionKey && typeof window !== "undefined") {
-      window.sessionStorage.removeItem(lockSessionKey);
-    }
-
-    setAppLocked(false);
-    await signOut(auth);
-  }
-
-  // Recovery: the profile says the app is PIN-locked but the server has no PIN on
-  // file (legacy pre-migration PIN, or migration hasn't run). Let the user in and
-  // turn the lock flag off instead of trapping them out.
-  async function clearStaleLock() {
-    if (user) {
-      try {
-        await setDoc(doc(db, "users", user.uid), { usePin: false, useBiometrics: false }, { merge: true });
-      } catch (error) {
-        console.warn("Starea de blocare invechita nu a putut fi curatata:", error);
-      }
-    }
-
-    setPersonalDraft((current) => ({ ...current, usePin: false, useBiometrics: false, lockOnHide: false }));
-    markAppUnlocked();
-    setSettingsError(
-      "PIN-ul a fost resetat din motive de securitate. Activeaza din nou „Blocare cu PIN” din Setari si alege un cod nou."
-    );
-  }
-
-  async function unlockWithPin() {
-    if (!user) {
-      return;
-    }
-
-    setUnlockError("");
-
-    if (!/^\d{4,8}$/.test(unlockPin)) {
-      setUnlockError("PIN-ul trebuie sa aiba intre 4 si 8 cifre.");
-      return;
-    }
-
-    try {
-      const verifyPin = httpsCallable<{ pin: string }, {
-        ok: boolean;
-        locked?: boolean;
-        retryAfterSeconds?: number;
-        remainingAttempts?: number;
-      }>(cloudFunctions, "verifyPin");
-      const result = (await verifyPin({ pin: unlockPin })).data;
-
-      if (result.ok) {
-        markAppUnlocked();
-        return;
-      }
-
-      if (result.locked) {
-        const wait = result.retryAfterSeconds ?? 0;
-        const label = wait >= 60 ? `${Math.round(wait / 60)} minute` : `${wait} secunde`;
-        setUnlockError(`Prea multe incercari gresite. Reincearca peste ${label}.`);
-        return;
-      }
-
-      const remaining = result.remainingAttempts ?? 0;
-      setUnlockError(remaining > 0 ? `PIN incorect. ${remaining} incercari ramase.` : "PIN incorect.");
-    } catch (error) {
-      const code = (error as { code?: string })?.code;
-
-      if (code === "functions/failed-precondition") {
-        await clearStaleLock();
-        return;
-      }
-
-      console.error("PIN-ul nu a putut fi verificat:", error);
-      setUnlockError(
-        (error as { message?: string })?.message || "PIN-ul nu a putut fi verificat. Incearca din nou."
-      );
-    }
-  }
-
-  const unlockWithBiometrics = useCallback(async () => {
-    if (!user || biometricWorking) {
-      return;
-    }
-
-    setBiometricWorking(true);
-    setUnlockError("");
-
-    try {
-      const unlocked = await verifyBiometricCredential(user.uid);
-
-      if (unlocked) {
-        markAppUnlocked();
-        return;
-      }
-
-      setUnlockError("Deblocarea biometrica nu a mers. Foloseste PIN-ul.");
-    } finally {
-      setBiometricWorking(false);
-    }
-  }, [biometricWorking, markAppUnlocked, user]);
-
-  useEffect(() => {
-    if (!pinLockEnabled || !lockSessionKey || typeof window === "undefined") {
-      setAppLocked(false);
-      setUnlockPin("");
-      setUnlockError("");
-      return;
-    }
-
-    setAppLocked(window.sessionStorage.getItem(lockSessionKey) !== "1");
-  }, [lockSessionKey, pinLockEnabled]);
-
-  useEffect(() => {
-    if (!pinLockEnabled || !profile?.lockOnHide || typeof document === "undefined") {
-      return;
-    }
-
-    let nativeListener: { remove: () => Promise<void> } | null = null;
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "hidden") {
-        markAppLocked();
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("pagehide", markAppLocked);
-    void CapacitorApp.addListener("appStateChange", (state) => {
-      if (!state.isActive) {
-        markAppLocked();
-      }
-    })
-      .then((listener) => {
-        nativeListener = listener;
-      })
-      .catch(() => {
-        nativeListener = null;
-      });
-
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("pagehide", markAppLocked);
-      void nativeListener?.remove();
-    };
-  }, [lockSessionKey, markAppLocked, pinLockEnabled, profile?.lockOnHide]);
+  const {
+    appLocked,
+    unlockPin,
+    setUnlockPin,
+    unlockError,
+    biometricWorking,
+    pinIntent,
+    pinDraft,
+    setPinDraft,
+    pinError,
+    setPinError,
+    pinConfiguredLocally,
+    setPinConfiguredLocally,
+    markAppUnlocked,
+    confirmSignOut,
+    unlockWithPin,
+    unlockWithBiometrics,
+    openPinSetup,
+    closePinSetup,
+    handlePinToggle,
+    handleBiometricsToggle,
+  } = useAppLock({ db, user, profile, setPersonalDraft, setSettingsError });
 
   useEffect(() => {
     let nativeListener: { remove: () => Promise<void> } | null = null;
@@ -1182,70 +1011,6 @@ export default function KeluniaPage() {
       unsubscribe?.();
     };
   }, []);
-
-  useEffect(() => {
-    if (!appLocked || !profile?.useBiometrics || !user) {
-      return;
-    }
-
-    const promptKey = `${user.uid}:${lockSessionKey}`;
-
-    if (biometricPromptedRef.current === promptKey) {
-      return;
-    }
-
-    biometricPromptedRef.current = promptKey;
-    const timer = window.setTimeout(() => {
-      void unlockWithBiometrics();
-    }, 350);
-
-    return () => window.clearTimeout(timer);
-  }, [appLocked, lockSessionKey, profile?.useBiometrics, unlockWithBiometrics, user]);
-
-  function openPinSetup(intent: PinIntent) {
-    setPinIntent(intent);
-    setPinDraft({ pin: "", confirm: "" });
-    setPinError("");
-  }
-
-  function closePinSetup() {
-    setPinIntent(null);
-    setPinDraft({ pin: "", confirm: "" });
-    setPinError("");
-  }
-
-  function handlePinToggle(checked: boolean) {
-    if (checked) {
-      openPinSetup("pin");
-      return;
-    }
-
-    setPersonalDraft((current) => ({
-      ...current,
-      usePin: false,
-      useBiometrics: false,
-      lockOnHide: false,
-    }));
-
-    if (user) {
-      clearBiometricCredential(user.uid);
-      void httpsCallable(cloudFunctions, "disablePin")({}).catch((error) => {
-        console.warn("PIN-ul nu a putut fi dezactivat pe server:", error);
-      });
-    }
-  }
-
-  function handleBiometricsToggle(checked: boolean) {
-    if (!checked) {
-      setPersonalDraft((current) => ({ ...current, useBiometrics: false }));
-      if (user) {
-        clearBiometricCredential(user.uid);
-      }
-      return;
-    }
-
-    openPinSetup("biometrics");
-  }
 
   async function confirmPinSetup() {
     if (!user || !pinIntent) {

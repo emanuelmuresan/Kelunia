@@ -1,5 +1,21 @@
-import type { UserRole } from "@/context/AuthContext";
+import type { AppLanguage, UserRole } from "@/context/AuthContext";
 import type { AuditAction, AuditEntityType } from "@/lib/audit";
+
+/** The editable "my settings" draft held on the dashboard and passed to SettingsView. */
+export type PersonalDraft = {
+  displayName: string;
+  groupName: string;
+  usePin: boolean;
+  lockOnHide: boolean;
+  useBiometrics: boolean;
+  notifyGroupBookings: boolean;
+  notifyFixedGroupSchedules: boolean;
+  notifyWeekBefore: boolean;
+  notifyDayBefore: boolean;
+  notifyOffsets: string[];
+  notifyOffsetsDays: number[];
+  language: AppLanguage;
+};
 
 export type AppView = "calendar" | "fixed" | "list" | "settings";
 export type CalendarMode = "month" | "week" | "day";
