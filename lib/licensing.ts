@@ -272,6 +272,23 @@ export function dateFromFirestoreValue(value: unknown): Date | null {
   return null;
 }
 
+/** "12 sept. 2026, 14:30" from a Firestore Timestamp/Date/`{seconds}` value. */
+export function communityDateLabel(value: unknown): string {
+  const date = dateFromFirestoreValue(value);
+
+  if (!date) {
+    return "data nespecificata";
+  }
+
+  return date.toLocaleDateString("ro-RO", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export function locationLicenseAccess(location?: LocationItem | null, now = new Date()): LocationLicenseAccess {
   const plan = normalizeLocationPlan(location?.plan);
   const status = normalizeBillingStatus(location?.billingStatus);

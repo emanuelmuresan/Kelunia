@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useAuth, type AppLanguage, type UserRole } from "@/context/AuthContext";
 import { useCommunityApplicationMessages } from "@/features/landing/hooks/useCommunityApplications";
 import { DeleteAccountModal } from "@/features/settings/components/DeleteAccountModal";
+import { NewsletterModal } from "@/features/settings/components/NewsletterModal";
 import { db } from "@/lib/firebase";
 import { appText, localeLabel, supportedLocales, type UiCopyKey } from "@/lib/i18n/app-copy-catalog";
 import { billingStatusLabel, dateFromFirestoreValue, planLabel } from "@/lib/licensing";
@@ -213,13 +214,7 @@ export function SettingsView({
   const [communityReplyError, setCommunityReplyError] = useState("");
   const [communityReplyMessage, setCommunityReplyMessage] = useState("");
   const [communityReplyWorking, setCommunityReplyWorking] = useState(false);
-  const [newsletterDraft, setNewsletterDraft] = useState({ subject: "", body: "" });
-  const [newsletterMessage, setNewsletterMessage] = useState("");
-  const [newsletterLocalError, setNewsletterLocalError] = useState("");
-  const [newsletterWorking, setNewsletterWorking] = useState(false);
   const [newsletterPanelOpen, setNewsletterPanelOpen] = useState(false);
-  const [newsletterComposerOpen, setNewsletterComposerOpen] = useState(false);
-  const [newsletterTargetEmail, setNewsletterTargetEmail] = useState("");
   const [pagesEditing, setPagesEditing] = useState(false);
   const [managedUserEditing, setManagedUserEditing] = useState<Record<string, boolean>>({});
   const [managedUserDrafts, setManagedUserDrafts] = useState<Record<string, ManagedUserDraft>>({});
@@ -546,96 +541,6 @@ export function SettingsView({
     }
 
     return "Community";
-  }
-
-  function newsletterCampaignStatusLabel(status: NewsletterCampaign["status"]) {
-    if (status === "sending") {
-      return "se trimite";
-    }
-
-    if (status === "sent") {
-      return "trimis";
-    }
-
-    if (status === "partial") {
-      return "trimis parțial";
-    }
-
-    if (status === "failed") {
-      return "eroare";
-    }
-
-    return "în așteptare";
-  }
-
-  async function copyNewsletterEmails() {
-    const emails = newsletterSubscriberRows.map((subscriber) => subscriber.email).join(", ");
-
-    setNewsletterMessage("");
-    setNewsletterLocalError("");
-
-    if (!emails) {
-      setNewsletterLocalError("Nu există emailuri active de copiat.");
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(emails);
-      setNewsletterMessage("Emailurile au fost copiate.");
-    } catch (error) {
-      console.error("Emailurile nu au putut fi copiate:", error);
-      setNewsletterLocalError("Emailurile nu au putut fi copiate automat.");
-    }
-  }
-
-  function openNewsletterComposer(recipientEmail = "") {
-    setNewsletterTargetEmail(recipientEmail);
-    setNewsletterDraft({ subject: "", body: "" });
-    setNewsletterMessage("");
-    setNewsletterLocalError("");
-    setNewsletterComposerOpen(true);
-  }
-
-  async function sendNewsletter() {
-    const subject = newsletterDraft.subject.trim();
-    const body = newsletterDraft.body.trim();
-
-    setNewsletterMessage("");
-    setNewsletterLocalError("");
-
-    if (!newsletterTargetEmail && newsletterSubscriberRows.length === 0) {
-      setNewsletterLocalError("Nu există abonați activi.");
-      return;
-    }
-
-    if (subject.length < 4) {
-      setNewsletterLocalError("Scrie un subiect pentru email.");
-      return;
-    }
-
-    if (body.length < 20) {
-      setNewsletterLocalError("Scrie un mesaj puțin mai complet pentru newsletter.");
-      return;
-    }
-
-    setNewsletterWorking(true);
-
-    try {
-      await onSendNewsletterCampaign(subject, body, newsletterTargetEmail || undefined);
-      setNewsletterDraft({ subject: "", body: "" });
-      setNewsletterMessage(
-        newsletterTargetEmail
-          ? `Emailul a fost pornit pentru ${newsletterTargetEmail}.`
-          : "Campania a fost pornită. Resend o trimite către abonați."
-      );
-      setNewsletterComposerOpen(false);
-      setNewsletterTargetEmail("");
-    } catch (error) {
-      console.error("Newsletterul nu a putut fi trimis:", error);
-      setNewsletterLocalError("Newsletterul nu a putut fi pornit.");
-    } finally {
-      setNewsletterWorking(false);
-    }
   }
 
   function openCommunityApplication(application: CommunityApplication) {
@@ -1571,171 +1476,13 @@ export function SettingsView({
     )}
 
     {newsletterPanelOpen && (
-      <div className="modal-backdrop" role="presentation" onMouseDown={() => setNewsletterPanelOpen(false)}>
-        <section
-          className="modal-card community-message-card"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="newsletter-panel-title"
-          onMouseDown={(event) => event.stopPropagation()}
-        >
-          <div className="section-heading">
-            <div>
-              <span className="eyebrow">Newsletter</span>
-              <h2 id="newsletter-panel-title">Actualizari</h2>
-            </div>
-            <button className="icon-button" onClick={() => setNewsletterPanelOpen(false)} type="button" aria-label="Inchide">
-              x
-            </button>
-          </div>
-
-          <div className="settings-summary-list compact-summary-list">
-            <div>
-              <span>Abonati activi</span>
-              <strong>{newsletterSubscriberRows.length}</strong>
-            </div>
-            <div>
-              <span>Campanii trimise</span>
-              <strong>{newsletterCampaigns.length}</strong>
-            </div>
-          </div>
-
-          {(newsletterError || newsletterLocalError) && (
-            <p className="error-line">{newsletterError || newsletterLocalError}</p>
-          )}
-          {newsletterMessage && <p className="success-line">{newsletterMessage}</p>}
-
-          <div className="modal-actions">
-            <button className="secondary-button" onClick={copyNewsletterEmails} type="button">
-              Copiaza emailurile
-            </button>
-            <button className="primary-button" onClick={() => openNewsletterComposer()} type="button">
-              Trimite update tuturor
-            </button>
-          </div>
-
-          <div className="mini-list newsletter-list">
-            {newsletterSubscriberRows.length === 0 ? (
-              <p className="empty-line">Nu exista abonati activi.</p>
-            ) : (
-              newsletterSubscriberRows.map((subscriber) => (
-                <div className="mini-row" key={subscriber.id}>
-                  <div className="mini-row-main">
-                    <span>{subscriber.email}</span>
-                    <small>Inscris: {communityDateLabel(subscriber.createdAt)}</small>
-                  </div>
-                  <button
-                    className="secondary-button compact"
-                    onClick={() => openNewsletterComposer(subscriber.email)}
-                    type="button"
-                  >
-                    Trimite
-                  </button>
-                </div>
-              ))
-            )}
-          </div>
-
-          <div className="newsletter-campaign-list">
-            {newsletterCampaigns.slice(0, 5).map((campaign) => (
-              <div className="mini-row" key={campaign.id}>
-                <div className="mini-row-main">
-                  <span>{campaign.subject}</span>
-                  <small>
-                    {campaign.recipientEmail ? `catre ${campaign.recipientEmail} · ` : ""}
-                    {newsletterCampaignStatusLabel(campaign.status)} · {campaign.sentCount}/{campaign.recipientCount} trimise
-                  </small>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      </div>
-    )}
-
-    {newsletterComposerOpen && (
-      <div
-        className="modal-backdrop"
-        role="presentation"
-        onMouseDown={() => {
-          setNewsletterComposerOpen(false);
-          setNewsletterTargetEmail("");
-        }}
-      >
-        <section
-          className="modal-card small-card"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="newsletter-title"
-          onMouseDown={(event) => event.stopPropagation()}
-        >
-          <div className="section-heading">
-            <div>
-              <span className="eyebrow">Newsletter</span>
-              <h2 id="newsletter-title">Trimite update</h2>
-            </div>
-            <button
-              className="icon-button"
-              onClick={() => {
-                setNewsletterComposerOpen(false);
-                setNewsletterTargetEmail("");
-              }}
-              type="button"
-              aria-label="Închide"
-            >
-              ×
-            </button>
-          </div>
-
-          <p className="muted-note">
-            {newsletterTargetEmail
-              ? `Emailul va fi trimis prin Resend catre ${newsletterTargetEmail}.`
-              : `Emailul va fi trimis prin Resend catre ${newsletterSubscriberRows.length} abonati activi.`}
-          </p>
-
-          <div className="settings-form newsletter-compose">
-            <label>
-              Subiect
-              <input
-                value={newsletterDraft.subject}
-                onChange={(event) => setNewsletterDraft((current) => ({ ...current, subject: event.target.value }))}
-                placeholder="ex. Noutăți Kelunia pentru luna aceasta"
-              />
-            </label>
-
-            <label>
-              Mesaj
-              <textarea
-                value={newsletterDraft.body}
-                onChange={(event) => setNewsletterDraft((current) => ({ ...current, body: event.target.value }))}
-                placeholder="Scrie update-ul pe care vrei să îl primească abonații."
-              />
-            </label>
-
-            {(newsletterError || newsletterLocalError) && (
-              <p className="error-line">{newsletterError || newsletterLocalError}</p>
-            )}
-            {newsletterMessage && <p className="success-line">{newsletterMessage}</p>}
-
-            <div className="modal-actions">
-              <button
-                className="secondary-button"
-                onClick={() => {
-                  setNewsletterComposerOpen(false);
-                  setNewsletterTargetEmail("");
-                }}
-                disabled={newsletterWorking}
-                type="button"
-              >
-                Renunță
-              </button>
-              <button className="primary-button" disabled={newsletterWorking} onClick={sendNewsletter} type="button">
-                {newsletterWorking ? "Se pornește..." : "Trimite către toți"}
-              </button>
-            </div>
-          </div>
-        </section>
-      </div>
+      <NewsletterModal
+        subscriberRows={newsletterSubscriberRows}
+        campaigns={newsletterCampaigns}
+        newsletterError={newsletterError}
+        onClose={() => setNewsletterPanelOpen(false)}
+        onSendNewsletterCampaign={onSendNewsletterCampaign}
+      />
     )}
 
     {inboxOpen && (
