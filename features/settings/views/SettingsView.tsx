@@ -3,10 +3,9 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAuth, type AppLanguage, type UserRole } from "@/context/AuthContext";
-import { useCommunityApplicationMessages } from "@/features/landing/hooks/useCommunityApplications";
 import { DeleteAccountModal } from "@/features/settings/components/DeleteAccountModal";
 import { NewsletterModal } from "@/features/settings/components/NewsletterModal";
-import { db } from "@/lib/firebase";
+import { LandingInboxModal } from "@/features/settings/components/LandingInboxModal";
 import { appText, localeLabel, supportedLocales, type UiCopyKey } from "@/lib/i18n/app-copy-catalog";
 import { billingStatusLabel, dateFromFirestoreValue, planLabel } from "@/lib/licensing";
 import { roomAccessLabel } from "@/lib/room-access";
@@ -209,11 +208,6 @@ export function SettingsView({
   const language = personalDraft.language;
   const t = (key: UiCopyKey) => appText(language, key);
   const showLocationSettings = !isOwner || Boolean(currentLocationId);
-  const [selectedCommunityApplication, setSelectedCommunityApplication] = useState<CommunityApplication | null>(null);
-  const [communityReplyDraft, setCommunityReplyDraft] = useState("");
-  const [communityReplyError, setCommunityReplyError] = useState("");
-  const [communityReplyMessage, setCommunityReplyMessage] = useState("");
-  const [communityReplyWorking, setCommunityReplyWorking] = useState(false);
   const [newsletterPanelOpen, setNewsletterPanelOpen] = useState(false);
   const [pagesEditing, setPagesEditing] = useState(false);
   const [managedUserEditing, setManagedUserEditing] = useState<Record<string, boolean>>({});
@@ -228,9 +222,6 @@ export function SettingsView({
     NotificationPermission | "unsupported"
   >("unsupported");
   const accountEmail = user?.email ?? profile?.email ?? "";
-  const activeCommunityApplication = selectedCommunityApplication
-    ? communityApplications.find((application) => application.id === selectedCommunityApplication.id) ?? selectedCommunityApplication
-    : null;
   const activeNewsletterSubscribers = newsletterSubscribers.filter(
     (subscriber) => subscriber.status === "active" && !subscriber.unsubscribed
   );
@@ -264,14 +255,6 @@ export function SettingsView({
   const unreadLandingMessageCount = communityApplications.filter((application) => application.status === "new").length;
   const ownerNotificationsEnabled = ownerNotificationPermission === "granted";
   const profileDirty = profileBaseline ? !samePersonalDraft(personalDraft, profileBaseline) : false;
-  const {
-    messages: communityMessages,
-    communityMessagesError,
-  } = useCommunityApplicationMessages({
-    db,
-    applicationId: activeCommunityApplication?.id ?? "",
-    enabled: Boolean(activeCommunityApplication),
-  });
 
   useEffect(() => {
     refreshOwnerNotificationPermission();
@@ -493,126 +476,6 @@ export function SettingsView({
     }
 
     return `mai are ${days} zile`;
-  }
-
-  function communityDateLabel(value: unknown) {
-    const date = dateFromFirestoreValue(value);
-
-    if (!date) {
-      return "data nespecificata";
-    }
-
-    return date.toLocaleDateString("ro-RO", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  }
-
-  function communityStatusLabel(status: CommunityApplicationStatus) {
-    if (status === "reviewed") {
-      return "citită";
-    }
-
-    if (status === "replied") {
-      return "răspuns salvat";
-    }
-
-    if (status === "approved") {
-      return "aprobată";
-    }
-
-    if (status === "declined") {
-      return "respinsă";
-    }
-
-    return "nouă";
-  }
-
-  function communitySourceLabel(source: string) {
-    if (source === "landing-newsletter") {
-      return "Actualizări";
-    }
-
-    if (source === "landing-contact") {
-      return "Contact";
-    }
-
-    return "Community";
-  }
-
-  function openCommunityApplication(application: CommunityApplication) {
-    setSelectedCommunityApplication(application);
-    setInboxOpen(false);
-    setCommunityReplyDraft("");
-    setCommunityReplyError("");
-    setCommunityReplyMessage("");
-
-    if (application.status === "new") {
-      onMarkCommunityApplicationReviewed(application.id);
-    }
-  }
-
-  function closeCommunityApplication() {
-    setSelectedCommunityApplication(null);
-    setCommunityReplyDraft("");
-    setCommunityReplyError("");
-    setCommunityReplyMessage("");
-  }
-
-  async function saveCommunityReply() {
-    if (!activeCommunityApplication) {
-      return;
-    }
-
-    const cleanBody = communityReplyDraft.trim();
-
-    if (cleanBody.length < 5) {
-      setCommunityReplyError("Scrie un răspuns înainte de salvare.");
-      return;
-    }
-
-    setCommunityReplyWorking(true);
-    setCommunityReplyError("");
-    setCommunityReplyMessage("");
-
-    try {
-      await onSendCommunityApplicationReply(activeCommunityApplication, cleanBody);
-      setCommunityReplyDraft("");
-      setCommunityReplyMessage("Răspunsul a fost salvat și se trimite prin email.");
-    } catch (error) {
-      console.error("Răspunsul Community nu a putut fi salvat:", error);
-      setCommunityReplyError("Răspunsul nu a putut fi salvat.");
-    } finally {
-      setCommunityReplyWorking(false);
-    }
-  }
-
-  async function updateCommunityStatus(status: CommunityApplicationStatus) {
-    if (!activeCommunityApplication) {
-      return;
-    }
-
-    setCommunityReplyWorking(true);
-    setCommunityReplyError("");
-    setCommunityReplyMessage("");
-
-    try {
-      await onUpdateCommunityApplicationStatus(activeCommunityApplication.id, status);
-      setCommunityReplyMessage("Statusul cererii a fost actualizat.");
-
-      if (status === "approved") {
-        closeCommunityApplication();
-        onOpenLicenseCodes();
-      }
-    } catch (error) {
-      console.error("Statusul Community nu a putut fi actualizat:", error);
-      setCommunityReplyError("Statusul nu a putut fi actualizat.");
-    } finally {
-      setCommunityReplyWorking(false);
-    }
   }
 
   return (
@@ -1486,187 +1349,18 @@ export function SettingsView({
     )}
 
     {inboxOpen && (
-      <div className="modal-backdrop" role="presentation" onMouseDown={() => setInboxOpen(false)}>
-        <section
-          className="modal-card community-message-card"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="landing-inbox-title"
-          onMouseDown={(event) => event.stopPropagation()}
-        >
-          <div className="section-heading">
-            <div>
-              <span className="eyebrow">Inbox</span>
-              <h2 id="landing-inbox-title">Mesaje Landing</h2>
-            </div>
-            <button className="icon-button" onClick={() => setInboxOpen(false)} type="button" aria-label="Închide">
-              ×
-            </button>
-          </div>
-
-          <p className="muted-note">
-            {communityApplications.length} mesaje primite
-            {unreadLandingMessageCount > 0 ? ` · ${unreadLandingMessageCount} necitite` : ""}
-          </p>
-
-          {communityApplicationsError && <p className="error-line">{communityApplicationsError}</p>}
-
-          <div className="mini-list message-inbox-list">
-            {communityApplications.length === 0 ? (
-              <p className="empty-line">Nu există mesaje de pe landing page.</p>
-            ) : (
-              communityApplications.map((application) => (
-                <div
-                  className={`mini-row community-application-row ${application.status === "new" ? "unread" : ""}`}
-                  key={application.id}
-                  onClick={() => openCommunityApplication(application)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      openCommunityApplication(application);
-                    }
-                  }}
-                  role="button"
-                  tabIndex={0}
-                >
-                  <div className="mini-row-main">
-                    <span>{application.organizationName}</span>
-                    <small>
-                      {communitySourceLabel(application.source)} · {application.email} · {communityDateLabel(application.createdAt)}
-                    </small>
-                    <small>{application.details}</small>
-                    <small>Status: {communityStatusLabel(application.status)}</small>
-                  </div>
-
-                  {application.status === "new" && (
-                    <div className="row-actions">
-                      <span className="badge-pill">nou</span>
-                      <button
-                        className="secondary-button compact"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          onMarkCommunityApplicationReviewed(application.id);
-                        }}
-                        type="button"
-                      >
-                        Marchează citită
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
-        </section>
-      </div>
+      <LandingInboxModal
+        applications={communityApplications}
+        applicationsError={communityApplicationsError}
+        unreadCount={unreadLandingMessageCount}
+        onClose={() => setInboxOpen(false)}
+        onMarkReviewed={onMarkCommunityApplicationReviewed}
+        onSendReply={onSendCommunityApplicationReply}
+        onUpdateStatus={onUpdateCommunityApplicationStatus}
+        onOpenLicenseCodes={onOpenLicenseCodes}
+      />
     )}
 
-    {activeCommunityApplication && (
-      <div
-        className="modal-backdrop"
-        role="presentation"
-        onMouseDown={closeCommunityApplication}
-      >
-        <section
-          className="modal-card community-message-card"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="community-message-title"
-          onMouseDown={(event) => event.stopPropagation()}
-        >
-          <div className="section-heading">
-            <div>
-              <span className="eyebrow">{communitySourceLabel(activeCommunityApplication.source)}</span>
-              <h2 id="community-message-title">{activeCommunityApplication.organizationName}</h2>
-            </div>
-            <button
-              className="icon-button"
-              onClick={closeCommunityApplication}
-              type="button"
-              aria-label="Închide"
-            >
-              ×
-            </button>
-          </div>
-
-          <div className="message-detail">
-            <div className="message-meta">
-              <span>De la</span>
-              <strong>{activeCommunityApplication.email}</strong>
-            </div>
-            <div className="message-meta">
-              <span>Primită</span>
-              <strong>{communityDateLabel(activeCommunityApplication.createdAt)}</strong>
-            </div>
-            <div className="message-meta">
-              <span>Status</span>
-              <strong>{communityStatusLabel(activeCommunityApplication.status)}</strong>
-            </div>
-
-            <div className="message-thread">
-              <article className="message-bubble inbound">
-                <small>Cererea inițială</small>
-                <p>{activeCommunityApplication.details}</p>
-              </article>
-
-              {communityMessagesError && <p className="error-line">{communityMessagesError}</p>}
-
-              {communityMessages.map((message) => (
-                <article className="message-bubble outbound" key={message.id}>
-                  <small>
-                    Răspuns · {communityDateLabel(message.createdAt)} · {message.deliveryStatus === "sent" ? "trimis" : message.deliveryStatus === "failed" ? "eroare trimitere" : "în curs de trimitere"}
-                  </small>
-                  <p>{message.body}</p>
-                  {message.errorMessage && <small>{message.errorMessage}</small>}
-                </article>
-              ))}
-            </div>
-
-            <label className="reply-composer">
-              Răspuns
-              <textarea
-                value={communityReplyDraft}
-                onChange={(event) => setCommunityReplyDraft(event.target.value)}
-                placeholder="Scrie răspunsul pentru această organizație..."
-              />
-            </label>
-
-            {communityReplyError && <p className="error-line">{communityReplyError}</p>}
-            {communityReplyMessage && <p className="success-line">{communityReplyMessage}</p>}
-          </div>
-
-          <div className="modal-actions community-actions">
-            <button
-              className="primary-button"
-              disabled={communityReplyWorking}
-              onClick={saveCommunityReply}
-              type="button"
-            >
-              Trimite răspunsul
-            </button>
-            <button
-              className="secondary-button"
-              disabled={communityReplyWorking}
-              onClick={() => updateCommunityStatus("approved")}
-              type="button"
-            >
-              Aprobată
-            </button>
-            <button
-              className="secondary-button danger-button"
-              disabled={communityReplyWorking}
-              onClick={() => updateCommunityStatus("declined")}
-              type="button"
-            >
-              Respinsă
-            </button>
-            <button className="primary-button" onClick={closeCommunityApplication} type="button">
-              Închide
-            </button>
-          </div>
-        </section>
-      </div>
-    )}
     </>
   );
 }
