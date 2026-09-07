@@ -5,14 +5,7 @@ import { useRouter } from "next/navigation";
 import { registerPlugin } from "@capacitor/core";
 import { signOut } from "firebase/auth";
 import { httpsCallable } from "firebase/functions";
-import {
-  addDoc,
-  collection,
-  doc,
-  setDoc,
-  Timestamp,
-  updateDoc,
-} from "firebase/firestore";
+import { doc, setDoc, Timestamp } from "firebase/firestore";
 import { auth, cloudFunctions, db } from "@/lib/firebase";
 import { useAuth, type AppLanguage } from "@/context/AuthContext";
 import { AccessCodesModal } from "@/features/access-codes/components/AccessCodesModal";
@@ -38,7 +31,6 @@ import {
   shortDayLabels,
 } from "@/lib/config/app";
 import { dateKey, parseDateKey } from "@/lib/dates";
-import { initialLocationBillingFields } from "@/lib/licensing";
 import {
   canUseNativeNotifications,
   LocalNotifications,
@@ -51,16 +43,13 @@ import { can } from "@/lib/permissions/capabilities";
 import { bookingQueryWindow } from "@/lib/queries/bookings";
 import { bookingMatchesRoomAccess, filterRoomsByAccess, normalizeAllowedRoomIds, normalizeRoomAccessMode } from "@/lib/room-access";
 import { bookingsForDay } from "@/lib/scheduling";
-import { clearBiometricCredential, registerBiometricCredential, verifyBiometricCredential } from "@/lib/security";
+import { clearBiometricCredential, registerBiometricCredential, verifyBiometricCredential } from "@/lib/security";
 import type {
   AppView,
   Booking,
-  CalendarMode,
+  CalendarMode,
   ListFilter,
-  LocationEditor,
-  LocationItem,
-  LocationPlan,
-  PinIntent,
+  PinIntent,
   SortDirection,
   WriteTarget,
 } from "@/lib/types/domain";
@@ -99,6 +88,7 @@ import { useSpaceEditor } from "@/features/resources/hooks/useSpaceEditor";
 import { useFixedScheduleEditor } from "@/features/fixed-schedules/hooks/useFixedScheduleEditor";
 import { useCalendarSwipe } from "@/features/calendar/hooks/useCalendarSwipe";
 import { useManagedUserActions } from "@/features/users/hooks/useManagedUserActions";
+import { useLocationEditor } from "@/features/locations/hooks/useLocationEditor";
 import { appText } from "@/lib/i18n/app-copy-catalog";
 import { AppLockModal } from "@/features/security/components/AppLockModal";
 import { useCalendarSettings } from "@/features/settings/hooks/useCalendarSettings";
@@ -135,8 +125,6 @@ export default function KeluniaPage() {
   const [settingsMessage, setSettingsMessage] = useState("");
   const [settingsError, setSettingsError] = useState("");
 
-  const [locationEditor, setLocationEditor] = useState<LocationEditor | null>(null);
-  const [locationError, setLocationError] = useState("");
 
   const [personalDraft, setPersonalDraft] = useState({
     displayName: "",
@@ -284,6 +272,26 @@ export default function KeluniaPage() {
     today,
   });
   const {
+    auditLogs,
+    auditLoading,
+    auditError,
+    showAuditModal,
+    setShowAuditModal,
+    recordAuditLog,
+    loadAuditLogs,
+    openAuditHistory,
+  } = useAuditLogs({
+    db,
+    user,
+    profile,
+    isOwner,
+    isSuperAdmin,
+    currentLocationId,
+    locationName,
+    isOnline,
+    setIsOnline,
+  });
+  const {
     fixedPageEnabled,
     fixedPageEnabledDraft,
     fixedSectionDraft,
@@ -293,7 +301,6 @@ export default function KeluniaPage() {
     listViewDraft,
     listViewTitle,
     resourcesSectionDraft,
-    resourcesSectionTitle,
     roomsLabel,
     roomsLabelDraft,
     setFixedPageEnabledDraft,
@@ -302,9 +309,17 @@ export default function KeluniaPage() {
     setListViewDraft,
     setResourcesSectionDraft,
     setRoomsLabelDraft,
+    saveNavigationSettings,
   } = useCalendarSettings({
     userExists: Boolean(user),
     locationId: currentLocationId,
+    locationName,
+    user,
+    canEditCurrentLocation,
+    requireOnline,
+    recordAuditLog,
+    setSettingsError,
+    setSettingsMessage,
   });
   const { accessCodes, managedUsers } = useManagedLocationUsers({
     isManager: isSuperAdmin || isOwner,
@@ -384,26 +399,6 @@ export default function KeluniaPage() {
     };
   }
 
-  const {
-    auditLogs,
-    auditLoading,
-    auditError,
-    showAuditModal,
-    setShowAuditModal,
-    recordAuditLog,
-    loadAuditLogs,
-    openAuditHistory,
-  } = useAuditLogs({
-    db,
-    user,
-    profile,
-    isOwner,
-    isSuperAdmin,
-    currentLocationId,
-    locationName,
-    isOnline,
-    setIsOnline,
-  });
   const {
     address: locationSetupAddress,
     addressInputRef: locationSetupAddressInputRef,
@@ -586,6 +581,26 @@ export default function KeluniaPage() {
     currentLocationManagerLimit,
     requireOnline,
     recordAuditLog,
+    setSettingsError,
+    setSettingsMessage,
+  });
+
+  const {
+    locationEditor,
+    locationError,
+    setLocationEditor,
+    setLocationError,
+    openLocationEditor,
+    saveLocation,
+  } = useLocationEditor({
+    db,
+    user,
+    isOwner,
+    canEditCurrentLocation,
+    locations,
+    requireOnline,
+    recordAuditLog,
+    setActiveLocationId,
     setSettingsError,
     setSettingsMessage,
   });
@@ -1446,167 +1461,6 @@ export default function KeluniaPage() {
     } catch (error) {
       console.error("Grupul nu a putut fi salvat:", error);
       setGroupSetupError("Grupul nu a putut fi salvat. Verifică regulile Firebase.");
-    }
-  }
-
-  async function saveNavigationSettings() {
-    if (!canEditCurrentLocation) {
-      return;
-    }
-
-    if (!requireOnline("settings")) {
-      return;
-    }
-
-    const title = fixedSectionDraft.trim();
-    const listTitle = listViewDraft.trim();
-    const resourcesTitle = resourcesSectionDraft.trim();
-    const nextRoomsLabel = roomsLabelDraft.trim();
-    const nextGroupsLabel = groupsLabelDraft.trim();
-
-    if (!title) {
-      setSettingsError("Scrie numele paginii de programări fixe.");
-      return;
-    }
-
-    if (!listTitle) {
-      setSettingsError("Scrie numele butonului pentru listă.");
-      return;
-    }
-
-    if (!resourcesTitle || !nextRoomsLabel || !nextGroupsLabel) {
-      setSettingsError("Completeaza numele pentru sectiunea de sali si grupuri.");
-      return;
-    }
-
-    setSettingsError("");
-    setSettingsMessage("");
-
-    try {
-      const beforeSettings = {
-        fixedSectionTitle,
-        fixedPageEnabled,
-        listViewTitle,
-        resourcesSectionTitle,
-        roomsLabel,
-        groupsLabel,
-        locationId: currentLocationId,
-        locationName,
-      };
-      const afterSettings = {
-        fixedSectionTitle: title,
-        fixedPageEnabled: fixedPageEnabledDraft,
-        listViewTitle: listTitle,
-        resourcesSectionTitle: resourcesTitle,
-        roomsLabel: nextRoomsLabel,
-        groupsLabel: nextGroupsLabel,
-        locationId: currentLocationId,
-        locationName,
-        updatedBy: user?.email ?? "",
-        updatedAt: Timestamp.now(),
-      };
-      await setDoc(doc(db, "settings", `calendar_${currentLocationId}`), afterSettings);
-      await recordAuditLog("settings", "update", `calendar_${currentLocationId}`, beforeSettings, afterSettings);
-      setSettingsMessage("Paginile au fost salvate.");
-    } catch (error) {
-      console.error("Paginile nu au putut fi salvate:", error);
-      setSettingsError("Paginile nu au putut fi salvate. Verifică regulile Firebase.");
-    }
-  }
-
-  function openLocationEditor(item?: LocationItem) {
-    if (!isOwner && !canEditCurrentLocation) {
-      return;
-    }
-
-    setLocationEditor({
-      id: item?.id ?? null,
-      name: item?.name ?? "",
-      plan: item?.plan ?? "",
-      billingStatus: item?.billingStatus ?? "",
-      durationDays: "",
-    });
-    setLocationError("");
-    setSettingsMessage("");
-    setSettingsError("");
-  }
-
-  async function saveLocation() {
-    if ((!isOwner && !canEditCurrentLocation) || !locationEditor) {
-      return;
-    }
-
-    if (!requireOnline("location")) {
-      return;
-    }
-
-    const name = locationEditor.name.trim();
-
-    if (!name) {
-      setLocationError("Scrie numele locației.");
-      return;
-    }
-
-    setLocationError("");
-
-    try {
-      if (locationEditor.id) {
-        const previousLocation = locations.find((item) => item.id === locationEditor.id) ?? null;
-        const updatedLocation: Record<string, unknown> = {
-          name,
-          updatedBy: user?.email ?? "",
-          updatedAt: Timestamp.now(),
-        };
-
-        if (isOwner) {
-          const selectedPlan = (locationEditor.plan || previousLocation?.plan || "standard") as LocationPlan;
-          const selectedStatus = locationEditor.billingStatus || (selectedPlan === "trial" ? "trialing" : "active");
-          updatedLocation.plan = selectedPlan;
-          updatedLocation.billingStatus = selectedStatus;
-
-          const durationText = locationEditor.durationDays.trim();
-
-          if (durationText) {
-            const durationDays = Number.parseInt(durationText, 10);
-
-            if (!Number.isFinite(durationDays) || durationDays < 1 || durationDays > 3660) {
-              setLocationError("Valabilitatea trebuie sa fie intre 1 si 3660 zile.");
-              return;
-            }
-
-            const expiresAt = Timestamp.fromDate(new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000));
-
-            if (selectedStatus === "trialing") {
-              updatedLocation.trialEndsAt = expiresAt;
-              updatedLocation.subscriptionExpiresAt = null;
-            } else {
-              updatedLocation.subscriptionExpiresAt = expiresAt;
-              updatedLocation.trialEndsAt = null;
-            }
-          }
-        }
-
-        await updateDoc(doc(db, "locations", locationEditor.id), updatedLocation);
-        await recordAuditLog("location", "update", locationEditor.id, previousLocation, updatedLocation, locationEditor.id, name);
-      } else {
-        const createdPayload = {
-          name,
-          ownerEmail: user?.email ?? "",
-          createdBy: user?.email ?? "",
-          createdAt: Timestamp.now(),
-          deleted: false,
-          ...initialLocationBillingFields(),
-        };
-        const created = await addDoc(collection(db, "locations"), createdPayload);
-        await recordAuditLog("location", "create", created.id, null, createdPayload, created.id, name);
-        setActiveLocationId(created.id);
-      }
-
-      setLocationEditor(null);
-      setSettingsMessage(locationEditor.id ? "Locația a fost actualizată." : "Locația a fost adăugată.");
-    } catch (error) {
-      console.error("Locația nu a putut fi salvată:", error);
-      setLocationError("Locația nu a putut fi salvată. Verifică regulile Firebase.");
     }
   }
 
