@@ -6,9 +6,10 @@ import { useAuth, type AppLanguage, type UserRole } from "@/context/AuthContext"
 import { DeleteAccountModal } from "@/features/settings/components/DeleteAccountModal";
 import { NewsletterModal } from "@/features/settings/components/NewsletterModal";
 import { LandingInboxModal } from "@/features/settings/components/LandingInboxModal";
+import { ResourcesManagerModal } from "@/features/settings/components/ResourcesManagerModal";
+import { UsersManagerModal } from "@/features/settings/components/UsersManagerModal";
 import { appText, localeLabel, supportedLocales, type UiCopyKey } from "@/lib/i18n/app-copy-catalog";
 import { billingStatusLabel, dateFromFirestoreValue, planLabel } from "@/lib/licensing";
-import { roomAccessLabel } from "@/lib/room-access";
 import type {
   CommunityApplication,
   CommunityApplicationStatus,
@@ -42,12 +43,6 @@ type LicenseAccess = {
   statusLabel: string;
   status: string;
   daysRemaining: number | null;
-};
-
-type ManagedUserDraft = {
-  role: UserRole;
-  roomAccess: RoomAccessMode;
-  allowedRoomIds: string[];
 };
 
 function licenseRemainingLabel(licenseAccess: LicenseAccess) {
@@ -210,8 +205,6 @@ export function SettingsView({
   const showLocationSettings = !isOwner || Boolean(currentLocationId);
   const [newsletterPanelOpen, setNewsletterPanelOpen] = useState(false);
   const [pagesEditing, setPagesEditing] = useState(false);
-  const [managedUserEditing, setManagedUserEditing] = useState<Record<string, boolean>>({});
-  const [managedUserDrafts, setManagedUserDrafts] = useState<Record<string, ManagedUserDraft>>({});
   const [resourcesManagerOpen, setResourcesManagerOpen] = useState(false);
   const [usersManagerOpen, setUsersManagerOpen] = useState(false);
   const [inboxOpen, setInboxOpen] = useState(false);
@@ -259,79 +252,6 @@ export function SettingsView({
   useEffect(() => {
     refreshOwnerNotificationPermission();
   }, []);
-
-  function managedUserDraftFor(managedUser: ManagedUser): ManagedUserDraft {
-    return managedUserDrafts[managedUser.id] ?? {
-      role: managedUser.role,
-      roomAccess: managedUser.role === "manager" ? "all" : managedUser.roomAccess,
-      allowedRoomIds: managedUser.role === "manager" ? [] : managedUser.allowedRoomIds,
-    };
-  }
-
-  function openManagedUserEditor(managedUser: ManagedUser) {
-    setManagedUserDrafts((current) => ({
-      ...current,
-      [managedUser.id]: {
-        role: managedUser.role,
-        roomAccess: managedUser.role === "manager" ? "all" : managedUser.roomAccess,
-        allowedRoomIds: managedUser.role === "manager" ? [] : managedUser.allowedRoomIds,
-      },
-    }));
-    setManagedUserEditing((current) => ({ ...current, [managedUser.id]: true }));
-  }
-
-  function closeManagedUserEditor(userId: string) {
-    setManagedUserEditing((current) => {
-      const next = { ...current };
-      delete next[userId];
-      return next;
-    });
-    setManagedUserDrafts((current) => {
-      const next = { ...current };
-      delete next[userId];
-      return next;
-    });
-  }
-
-  function setManagedUserDraft(managedUser: ManagedUser, nextDraft: ManagedUserDraft) {
-    setManagedUserDrafts((current) => ({ ...current, [managedUser.id]: nextDraft }));
-  }
-
-  function sameRoomIds(first: string[], second: string[]) {
-    if (first.length !== second.length) {
-      return false;
-    }
-
-    const firstSet = new Set(first);
-    return second.every((item) => firstSet.has(item));
-  }
-
-  async function saveManagedUserEditor(managedUser: ManagedUser) {
-    const draft = managedUserDraftFor(managedUser);
-    const nextRoomAccess = draft.role === "manager" ? "all" : draft.roomAccess;
-    const nextAllowedRoomIds = nextRoomAccess === "selected" ? draft.allowedRoomIds : [];
-
-    if (draft.role !== managedUser.role) {
-      await onUpdateManagedUserRole(managedUser, draft.role);
-    }
-
-    if (
-      draft.role === managedUser.role &&
-      (nextRoomAccess !== managedUser.roomAccess || !sameRoomIds(nextAllowedRoomIds, managedUser.allowedRoomIds))
-    ) {
-      await onUpdateManagedUserRoomAccess(managedUser, nextRoomAccess, nextAllowedRoomIds);
-    }
-
-    if (draft.role !== managedUser.role && draft.role !== "manager") {
-      await onUpdateManagedUserRoomAccess(
-        { ...managedUser, role: draft.role },
-        nextRoomAccess,
-        nextAllowedRoomIds
-      );
-    }
-
-    closeManagedUserEditor(managedUser.id);
-  }
 
   function samePersonalDraft(first: PersonalDraft, second: PersonalDraft) {
     return first.displayName === second.displayName
@@ -881,268 +801,32 @@ export function SettingsView({
     </section>
 
     {resourcesManagerOpen && (
-      <div className="modal-backdrop" role="presentation" onMouseDown={() => setResourcesManagerOpen(false)}>
-        <section
-          className="modal-card manager-card"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="resources-manager-title"
-          onMouseDown={(event) => event.stopPropagation()}
-        >
-          <div className="modal-head">
-            <div>
-              <span className="eyebrow">{t("settings.organization")}</span>
-              <h2 id="resources-manager-title">{resourcesSectionDraft.trim() || defaultResourcesSectionTitle}</h2>
-            </div>
-          </div>
-
-          <div className="split-list">
-            <div className="mini-column">
-              <div className="mini-section-head">
-                <h3>{roomsLabelDraft.trim() || defaultRoomsLabel}</h3>
-                {canEditCurrentLocation && (
-                  <button className="secondary-button compact" onClick={() => onOpenSpaceEditor("room")} type="button">
-                    + {roomsLabelDraft.trim() || defaultRoomsLabel}
-                  </button>
-                )}
-              </div>
-
-              <div className="mini-list">
-                {rooms.length === 0 ? (
-                  <p className="empty-line">{t("settings.noItems")}</p>
-                ) : (
-                  rooms.map((room) => (
-                    <div className="mini-row" key={room.id}>
-                      <span>{room.name}</span>
-                      {canEditCurrentLocation && (
-                        <div className="row-actions">
-                          <button onClick={() => onOpenSpaceEditor("room", room)} type="button" aria-label={t("settings.edit")}>
-                            ✎
-                          </button>
-                          <button className="secondary-button compact danger-button" onClick={() => onRemoveSpaceItem("room", room.id)} type="button">
-                            {t("action.delete")}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-            <div className="mini-column">
-              <div className="mini-section-head">
-                <h3>{groupsLabelDraft.trim() || defaultGroupsLabel}</h3>
-                {canEditCurrentLocation && (
-                  <button className="secondary-button compact" onClick={() => onOpenSpaceEditor("group")} type="button">
-                    + {groupsLabelDraft.trim() || defaultGroupsLabel}
-                  </button>
-                )}
-              </div>
-
-              <div className="mini-list">
-                {groups.length === 0 ? (
-                  <p className="empty-line">{t("settings.noItems")}</p>
-                ) : (
-                  groups.map((group) => (
-                    <div className="mini-row" key={group.id}>
-                      <span className="group-name-with-swatch">
-                        {group.color && <i aria-hidden="true" style={{ backgroundColor: group.color }} />}
-                        {group.name}
-                      </span>
-                      {canEditCurrentLocation && (
-                        <div className="row-actions">
-                          <button onClick={() => onOpenSpaceEditor("group", group)} type="button" aria-label={t("settings.edit")}>
-                            ✎
-                          </button>
-                          <button className="secondary-button compact danger-button" onClick={() => onRemoveSpaceItem("group", group.id)} type="button">
-                            {t("action.delete")}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="modal-actions">
-            <button className="primary-button" onClick={() => setResourcesManagerOpen(false)} type="button">
-              {t("action.done")}
-            </button>
-          </div>
-        </section>
-      </div>
+      <ResourcesManagerModal
+        language={language}
+        title={resourcesSectionDraft.trim() || defaultResourcesSectionTitle}
+        roomsLabel={roomsLabelDraft.trim() || defaultRoomsLabel}
+        groupsLabel={groupsLabelDraft.trim() || defaultGroupsLabel}
+        rooms={rooms}
+        groups={groups}
+        canEditCurrentLocation={canEditCurrentLocation}
+        onClose={() => setResourcesManagerOpen(false)}
+        onOpenSpaceEditor={onOpenSpaceEditor}
+        onRemoveSpaceItem={onRemoveSpaceItem}
+      />
     )}
 
     {usersManagerOpen && (
-      <div className="modal-backdrop" role="presentation" onMouseDown={() => setUsersManagerOpen(false)}>
-        <section
-          className="modal-card manager-card"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="users-manager-title"
-          onMouseDown={(event) => event.stopPropagation()}
-        >
-          <div className="modal-head">
-            <div>
-              <span className="eyebrow">{t("settings.users")}</span>
-              <h2 id="users-manager-title">{visibleManagedUsers.length} conturi</h2>
-            </div>
-          </div>
-
-          <div className="users-table">
-              {visibleManagedUsers.map((managedUser) => {
-                const userDraft = managedUserDraftFor(managedUser);
-                const isEditingUser = Boolean(managedUserEditing[managedUser.id]);
-                const draftRole = isEditingUser ? userDraft.role : managedUser.role;
-                const draftRoomAccess = draftRole === "manager" ? "all" : userDraft.roomAccess;
-                const draftAllowedRoomIds = draftRoomAccess === "selected" ? userDraft.allowedRoomIds : [];
-                const userDraftChanged =
-                  draftRole !== managedUser.role ||
-                  draftRoomAccess !== managedUser.roomAccess ||
-                  !sameRoomIds(draftAllowedRoomIds, managedUser.allowedRoomIds);
-                const accessDisabled =
-                  !isEditingUser ||
-                  managedUser.isOwner ||
-                  draftRole === "manager" ||
-                  !canManageMembers ||
-                  managedUser.locationId !== currentLocationId;
-                const canEditManagedUser =
-                  !managedUser.isOwner &&
-                  canManageMembers &&
-                  managedUser.locationId === currentLocationId;
-
-                return (
-                <div className="user-row" key={managedUser.id}>
-                  <div>
-                    <strong>{managedUser.displayName || managedUser.email}</strong>
-                    <span>
-                      {managedUser.email} · {managedUser.locationName || t("settings.notSet")} · {managedUser.groupName || t("settings.notChosen")}
-                    </span>
-                  </div>
-
-                  <select
-                    value={draftRole}
-                    onChange={(event) => {
-                      const nextRole = event.target.value as UserRole;
-                      setManagedUserDraft(managedUser, {
-                        role: nextRole,
-                        roomAccess: nextRole === "manager" ? "all" : managedUser.roomAccess,
-                        allowedRoomIds: nextRole === "manager" || managedUser.roomAccess === "all" ? [] : managedUser.allowedRoomIds,
-                      });
-                    }}
-                    disabled={
-                      !isEditingUser ||
-                      managedUser.isOwner ||
-                      !canManageMembers ||
-                      managedUser.locationId !== currentLocationId
-                    }
-                  >
-                    <option value="guest">{t("role.guest")}</option>
-                    <option value="member">{t("role.collaborator")}</option>
-                    <option value="manager">{t("role.administrator")}</option>
-                  </select>
-
-                  <div className="user-room-access">
-                    <select
-                      value={draftRoomAccess}
-                      onChange={(event) => {
-                        const nextRoomAccess = event.target.value as RoomAccessMode;
-
-                        if (nextRoomAccess === "all") {
-                          setManagedUserDraft(managedUser, {
-                            ...userDraft,
-                            roomAccess: "all",
-                            allowedRoomIds: [],
-                          });
-                          return;
-                        }
-
-                        setManagedUserDraft(managedUser, {
-                          ...userDraft,
-                          roomAccess: "selected",
-                          allowedRoomIds: managedUser.allowedRoomIds,
-                        });
-                      }}
-                      disabled={accessDisabled}
-                    >
-                      <option value="all">{t("settings.roomsAll")}</option>
-                      <option value="selected">{t("settings.roomsSelected")}</option>
-                    </select>
-
-                    {draftRole !== "manager" && draftRoomAccess === "selected" && (
-                      <div className="room-check-grid user-room-check-grid">
-                        {rooms.length === 0 ? (
-                          <p className="empty-line">{t("settings.noItems")}</p>
-                        ) : (
-                          rooms.map((room) => (
-                            <label className="toggle-row compact-toggle" key={room.id}>
-                              <input
-                                type="checkbox"
-                                checked={draftAllowedRoomIds.includes(room.id)}
-                                disabled={accessDisabled}
-                                onChange={(event) => {
-                                  const allowedRoomIds = event.target.checked
-                                    ? [...draftAllowedRoomIds, room.id]
-                                    : draftAllowedRoomIds.filter((roomId) => roomId !== room.id);
-                                  setManagedUserDraft(managedUser, { ...userDraft, roomAccess: "selected", allowedRoomIds });
-                                }}
-                              />
-                              {room.name}
-                            </label>
-                          ))
-                        )}
-                      </div>
-                    )}
-
-                    <small>{roomAccessLabel({ ...managedUser, roomAccess: draftRoomAccess, allowedRoomIds: draftAllowedRoomIds }, rooms)}</small>
-                  </div>
-
-                  <div className="row-actions">
-                    {isEditingUser ? (
-                      <>
-                        <button className="secondary-button compact" onClick={() => closeManagedUserEditor(managedUser.id)} type="button">
-                          {t("action.cancel")}
-                        </button>
-                        <button
-                          className="primary-button compact"
-                          disabled={!userDraftChanged || (draftRoomAccess === "selected" && draftAllowedRoomIds.length === 0)}
-                          onClick={() => saveManagedUserEditor(managedUser)}
-                          type="button"
-                        >
-                          {t("action.save")}
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button className="secondary-button compact" disabled={!canEditManagedUser} onClick={() => openManagedUserEditor(managedUser)} type="button">
-                          {t("settings.edit")}
-                        </button>
-                        <button
-                          className="secondary-button compact danger-button"
-                          disabled={!canEditManagedUser}
-                          onClick={() => onRemoveManagedUser(managedUser)}
-                          type="button"
-                        >
-                          {t("action.delete")}
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-                );
-              })}
-          </div>
-
-          <div className="modal-actions">
-            <button className="primary-button" onClick={() => setUsersManagerOpen(false)} type="button">
-              {t("action.done")}
-            </button>
-          </div>
-        </section>
-      </div>
+      <UsersManagerModal
+        language={language}
+        managedUsers={visibleManagedUsers}
+        rooms={rooms}
+        canManageMembers={canManageMembers}
+        currentLocationId={currentLocationId}
+        onClose={() => setUsersManagerOpen(false)}
+        onUpdateManagedUserRole={onUpdateManagedUserRole}
+        onUpdateManagedUserRoomAccess={onUpdateManagedUserRoomAccess}
+        onRemoveManagedUser={onRemoveManagedUser}
+      />
     )}
 
     {profileEditorOpen && (
