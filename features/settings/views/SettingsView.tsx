@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useAuth, type AppLanguage, type UserRole } from "@/context/AuthContext";
 import { DeleteAccountModal } from "@/features/settings/components/DeleteAccountModal";
 import { NewsletterModal } from "@/features/settings/components/NewsletterModal";
@@ -9,8 +8,12 @@ import { LandingInboxModal } from "@/features/settings/components/LandingInboxMo
 import { ResourcesManagerModal } from "@/features/settings/components/ResourcesManagerModal";
 import { UsersManagerModal } from "@/features/settings/components/UsersManagerModal";
 import { ProfileEditorModal } from "@/features/settings/components/ProfileEditorModal";
-import { appText, localeLabel, type UiCopyKey } from "@/lib/i18n/app-copy-catalog";
-import { billingStatusLabel, dateFromFirestoreValue, planLabel } from "@/lib/licensing";
+import { ProfileSummaryCard } from "@/features/settings/components/ProfileSummaryCard";
+import { PagesSettingsCard } from "@/features/settings/components/PagesSettingsCard";
+import { LicenseSummaryCard, type LicenseAccess } from "@/features/settings/components/LicenseSummaryCard";
+import { OwnerLocationsCard } from "@/features/settings/components/OwnerLocationsCard";
+import { ResourcesSummaryCard } from "@/features/settings/components/ResourcesSummaryCard";
+import { UsersSummaryCard } from "@/features/settings/components/UsersSummaryCard";
 import type {
   CommunityApplication,
   CommunityApplicationStatus,
@@ -19,54 +22,11 @@ import type {
   ManagedUser,
   NewsletterCampaign,
   NewsletterSubscriber,
+  PersonalDraft,
   RoomAccessMode,
   RoomItem,
   SpaceKind,
 } from "@/lib/types/domain";
-
-type PersonalDraft = {
-  displayName: string;
-  groupName: string;
-  usePin: boolean;
-  lockOnHide: boolean;
-  useBiometrics: boolean;
-  notifyGroupBookings: boolean;
-  notifyFixedGroupSchedules: boolean;
-  notifyWeekBefore: boolean;
-  notifyDayBefore: boolean;
-  notifyOffsets: string[];
-  notifyOffsetsDays: number[];
-  language: AppLanguage;
-};
-
-type LicenseAccess = {
-  planLabel: string;
-  statusLabel: string;
-  status: string;
-  daysRemaining: number | null;
-};
-
-function licenseRemainingLabel(licenseAccess: LicenseAccess) {
-  if (licenseAccess.status === "expired") {
-    return "Expirata";
-  }
-
-  if (licenseAccess.daysRemaining === null) {
-    return licenseAccess.status === "active" ? "Fara data de expirare" : "Nespecificat";
-  }
-
-  const days = Math.max(0, licenseAccess.daysRemaining);
-
-  if (days === 0) {
-    return "Expira azi";
-  }
-
-  if (days === 1) {
-    return "Expira maine";
-  }
-
-  return `Expira in ${days} zile`;
-}
 
 type SettingsViewProps = {
   settingsError: string;
@@ -201,19 +161,19 @@ export function SettingsView({
   onEnableOwnerNotifications,
 }: SettingsViewProps) {
   const { user, profile } = useAuth();
-  const language = personalDraft.language;
-  const t = (key: UiCopyKey) => appText(language, key);
+  const language: AppLanguage = personalDraft.language;
   const showLocationSettings = !isOwner || Boolean(currentLocationId);
+  const resourcesTitle = resourcesSectionDraft.trim() || defaultResourcesSectionTitle;
+  const roomsLabel = roomsLabelDraft.trim() || defaultRoomsLabel;
+  const groupsLabel = groupsLabelDraft.trim() || defaultGroupsLabel;
+
   const [newsletterPanelOpen, setNewsletterPanelOpen] = useState(false);
-  const [pagesEditing, setPagesEditing] = useState(false);
   const [resourcesManagerOpen, setResourcesManagerOpen] = useState(false);
   const [usersManagerOpen, setUsersManagerOpen] = useState(false);
   const [inboxOpen, setInboxOpen] = useState(false);
   const [profileEditorOpen, setProfileEditorOpen] = useState(false);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
-  const [ownerNotificationPermission, setOwnerNotificationPermission] = useState<
-    NotificationPermission | "unsupported"
-  >("unsupported");
+
   const accountEmail = user?.email ?? profile?.email ?? "";
   const activeNewsletterSubscribers = newsletterSubscribers.filter(
     (subscriber) => subscriber.status === "active" && !subscriber.unsubscribed
@@ -246,51 +206,6 @@ export function SettingsView({
     return [...rows.values()];
   })();
   const unreadLandingMessageCount = communityApplications.filter((application) => application.status === "new").length;
-  const ownerNotificationsEnabled = ownerNotificationPermission === "granted";
-
-  useEffect(() => {
-    refreshOwnerNotificationPermission();
-  }, []);
-
-  function refreshOwnerNotificationPermission() {
-    if (typeof window === "undefined" || !("Notification" in window)) {
-      setOwnerNotificationPermission("unsupported");
-      return;
-    }
-
-    setOwnerNotificationPermission(Notification.permission);
-  }
-
-  async function enableOwnerNotificationsFromCard() {
-    await onEnableOwnerNotifications();
-    refreshOwnerNotificationPermission();
-  }
-
-  function locationExpiryLabel(location: LocationItem) {
-    const trialEnd = dateFromFirestoreValue(location.trialEndsAt);
-    const subscriptionEnd = dateFromFirestoreValue(location.subscriptionExpiresAt);
-    const endDate = location.billingStatus === "trialing" ? trialEnd : subscriptionEnd ?? trialEnd;
-
-    if (!endDate) {
-      return "fara data";
-    }
-
-    const days = Math.ceil((endDate.getTime() - Date.now()) / (24 * 60 * 60 * 1000));
-
-    if (days < 0) {
-      return `expirata de ${Math.abs(days)} zile`;
-    }
-
-    if (days === 0) {
-      return "expira azi";
-    }
-
-    if (days === 1) {
-      return "mai are 1 zi";
-    }
-
-    return `mai are ${days} zile`;
-  }
 
   return (
     <>
@@ -304,391 +219,92 @@ export function SettingsView({
       {settingsError && <p className="error-line settings-alert">{settingsError}</p>}
       {settingsMessage && <p className="success-line settings-alert">{settingsMessage}</p>}
 
-      <article className="settings-panel">
-        <div className="section-heading">
-          <div>
-            <span className="eyebrow">{t("settings.profile")}</span>
-            <h2>{t("settings.personal")}</h2>
-          </div>
-        </div>
-
-        {userExists ? (
-          <>
-          <div className="settings-summary-list profile-summary-list">
-            <div>
-              <span>{t("settings.name")}</span>
-              <strong>{personalDraft.displayName || t("settings.notSet")}</strong>
-            </div>
-            <div>
-              <span>{t("settings.role")}</span>
-              <strong>{isOwner ? t("role.owner") : isSuperAdmin ? t("role.administrator") : t("role.collaborator")}</strong>
-            </div>
-            <div>
-              <span>{appText(personalDraft.language, "common.language")}</span>
-              <strong>{localeLabel(personalDraft.language)}</strong>
-            </div>
-            {!isOwner && (
-              <div>
-                <span>{groupsLabelDraft.trim() || defaultGroupsLabel}</span>
-                <strong>{personalDraft.groupName || t("settings.notChosen")}</strong>
-              </div>
-            )}
-            <div>
-              <span>{t("settings.security")}</span>
-              <strong>
-                {personalDraft.useBiometrics
-                  ? t("settings.lockPinBiometric")
-                  : personalDraft.usePin
-                    ? t("settings.lockPin")
-                    : t("settings.lockNone")}
-              </strong>
-            </div>
-            <div>
-              <span>{t("settings.blockOnExit")}</span>
-              <strong>{personalDraft.lockOnHide ? t("settings.active") : t("settings.inactive")}</strong>
-            </div>
-            {!isOwner && (
-              <div>
-                <span>{t("settings.notifications")}</span>
-                <strong>
-                  {personalDraft.notifyGroupBookings
-                    ? `${personalDraft.notifyOffsets.length} active`
-                    : t("settings.inactive")}
-                </strong>
-              </div>
-            )}
-          </div>
-
-          <div className="settings-card-actions">
-            <button className="primary-button compact" onClick={() => setProfileEditorOpen(true)} type="button">
-              {t("settings.editSettings")}
-            </button>
-            <button className="secondary-button compact" onClick={onOpenPasswordModal} type="button">
-              {t("settings.password")}
-            </button>
-            <button className="danger-button compact" onClick={() => setDeleteAccountOpen(true)} type="button">
-              Șterge contul
-            </button>
-          </div>
-
-          </>
-        ) : (
-          <div className="empty-state">
-            <p>{t("auth.signIn")}</p>
-            <Link className="primary-link" href="/login">
-              {t("auth.signIn")}
-            </Link>
-          </div>
-        )}
-      </article>
+      <ProfileSummaryCard
+        userExists={userExists}
+        isOwner={isOwner}
+        isSuperAdmin={isSuperAdmin}
+        personalDraft={personalDraft}
+        groupsLabel={groupsLabel}
+        onEditProfile={() => setProfileEditorOpen(true)}
+        onOpenPasswordModal={onOpenPasswordModal}
+        onDeleteAccount={() => setDeleteAccountOpen(true)}
+      />
 
       {(isSuperAdmin || isOwner) && (
         <>
           {showLocationSettings && (
-          <article className="settings-panel">
-            <div className="section-heading">
-              <div>
-                <span className="eyebrow">{t("settings.navigation")}</span>
-                <h2>{t("settings.pages")}</h2>
-              </div>
-              {canEditCurrentLocation && !pagesEditing && (
-                <button className="secondary-button compact" onClick={() => setPagesEditing(true)} type="button">
-                  {t("settings.edit")}
-                </button>
-              )}
-            </div>
-
-            <div className="settings-form">
-              <label className="toggle-row">
-                <input
-                  type="checkbox"
-                  checked={fixedPageEnabledDraft}
-                  disabled={!canEditCurrentLocation || !pagesEditing}
-                  onChange={(event) => setFixedPageEnabledDraft(event.target.checked)}
-                />
-                Afișează pagina {fixedSectionDraft.trim() || defaultFixedSectionTitle}
-              </label>
-
-              <label>
-                {t("nav.fixed")}
-                <input
-                  value={fixedSectionDraft}
-                  disabled={!canEditCurrentLocation || !pagesEditing}
-                  onChange={(event) => setFixedSectionDraft(event.target.value)}
-                />
-              </label>
-
-              <label>
-                {t("nav.list")}
-                <input
-                  value={listViewDraft}
-                  disabled={!canEditCurrentLocation || !pagesEditing}
-                  onChange={(event) => setListViewDraft(event.target.value)}
-                />
-              </label>
-
-              <label>
-                {t("settings.organization")}
-                <input
-                  value={resourcesSectionDraft}
-                  disabled={!canEditCurrentLocation || !pagesEditing}
-                  placeholder={defaultResourcesSectionTitle}
-                  onChange={(event) => setResourcesSectionDraft(event.target.value)}
-                />
-              </label>
-
-              <label>
-                {defaultRoomsLabel}
-                <input
-                  value={roomsLabelDraft}
-                  disabled={!canEditCurrentLocation || !pagesEditing}
-                  placeholder={defaultRoomsLabel}
-                  onChange={(event) => setRoomsLabelDraft(event.target.value)}
-                />
-              </label>
-
-              <label>
-                {defaultGroupsLabel}
-                <input
-                  value={groupsLabelDraft}
-                  disabled={!canEditCurrentLocation || !pagesEditing}
-                  placeholder={defaultGroupsLabel}
-                  onChange={(event) => setGroupsLabelDraft(event.target.value)}
-                />
-              </label>
-
-              {canEditCurrentLocation && pagesEditing && (
-                <div className="modal-actions inline-actions">
-                  <button className="secondary-button" onClick={() => setPagesEditing(false)} type="button">
-                    {t("action.cancel")}
-                  </button>
-                  <button
-                    className="primary-button"
-                    onClick={() => {
-                      onSaveNavigationSettings();
-                      setPagesEditing(false);
-                    }}
-                    type="button"
-                  >
-                    {t("action.save")}
-                  </button>
-                </div>
-              )}
-            </div>
-          </article>
+            <PagesSettingsCard
+              language={language}
+              canEditCurrentLocation={canEditCurrentLocation}
+              fixedPageEnabledDraft={fixedPageEnabledDraft}
+              setFixedPageEnabledDraft={setFixedPageEnabledDraft}
+              fixedSectionDraft={fixedSectionDraft}
+              setFixedSectionDraft={setFixedSectionDraft}
+              defaultFixedSectionTitle={defaultFixedSectionTitle}
+              listViewDraft={listViewDraft}
+              setListViewDraft={setListViewDraft}
+              resourcesSectionDraft={resourcesSectionDraft}
+              setResourcesSectionDraft={setResourcesSectionDraft}
+              defaultResourcesSectionTitle={defaultResourcesSectionTitle}
+              roomsLabelDraft={roomsLabelDraft}
+              setRoomsLabelDraft={setRoomsLabelDraft}
+              defaultRoomsLabel={defaultRoomsLabel}
+              groupsLabelDraft={groupsLabelDraft}
+              setGroupsLabelDraft={setGroupsLabelDraft}
+              defaultGroupsLabel={defaultGroupsLabel}
+              onSaveNavigationSettings={onSaveNavigationSettings}
+            />
           )}
 
           {showLocationSettings && (
-          <article className="settings-panel">
-            <div className="section-heading">
-              <div>
-                <span className="eyebrow">{t("settings.access")}</span>
-                <h2>{t("settings.codes")}</h2>
-              </div>
-
-              {canManageAccessCodes && (
-                <button className="secondary-button compact" onClick={onOpenCodesEditor} type="button">
-                  {t("settings.edit")}
-                </button>
-              )}
-            </div>
-
-            <div className="settings-summary-list">
-              <div>
-                <span>{t("settings.plan")}</span>
-                <strong>{licenseAccess.planLabel}</strong>
-              </div>
-              <div>
-                <span>{t("settings.licenseStatus")}</span>
-                <strong>{licenseAccess.statusLabel}</strong>
-              </div>
-
-              <div>
-                <span>{t("settings.validity")}</span>
-                <strong>{licenseRemainingLabel(licenseAccess)}</strong>
-              </div>
-
-              <div>
-                <span>{t("settings.currentLocation")}</span>
-                <strong>{currentLocationCodeCount} coduri</strong>
-              </div>
-
-              <div>
-                <span>{t("settings.administrators")}</span>
-                <strong>
-                  {currentLocationManagerAccountCount}/{currentLocationManagerLimit}
-                </strong>
-              </div>
-            </div>
-          </article>
+            <LicenseSummaryCard
+              language={language}
+              licenseAccess={licenseAccess}
+              currentLocationCodeCount={currentLocationCodeCount}
+              currentLocationManagerAccountCount={currentLocationManagerAccountCount}
+              currentLocationManagerLimit={currentLocationManagerLimit}
+              canManageAccessCodes={canManageAccessCodes}
+              onOpenCodesEditor={onOpenCodesEditor}
+            />
           )}
 
           {isOwner && (
-            <article className="settings-panel">
-              <div className="section-heading">
-                <div>
-                  <span className="eyebrow">{t("role.owner")}</span>
-                  <h2>{t("settings.locations")}</h2>
-                </div>
-              </div>
-
-              <p className="muted-note">{locations.length} locatii in workspace.</p>
-
-              <div className="mini-list">
-                {locations.length === 0 ? (
-                  <p className="empty-line">{t("settings.noItems")}</p>
-                ) : (
-                  locations.map((location) => (
-                    <div className="mini-row" key={location.id}>
-                      <div className="mini-row-main">
-                        <span>{location.name}</span>
-                        {location.address && <small>{location.address}</small>}
-                        <small>
-                          {planLabel(location.plan ?? "standard")} · {billingStatusLabel(location.billingStatus ?? "trialing")} · {locationExpiryLabel(location)}
-                        </small>
-                      </div>
-                      <div className="row-actions">
-                        <button
-                          className="secondary-button compact location-open-button"
-                          onClick={() => onSelectLocation(location.id)}
-                          type="button"
-                        >
-                          {location.id === currentLocationId ? "Deschisa" : "Deschide"}
-                        </button>
-                        <button
-                          className="secondary-button compact"
-                          onClick={() => onOpenLocationEditor(location)}
-                          type="button"
-                        >
-                          Licenta
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-
-              <div className="owner-tool-grid">
-                <div className="owner-tool-card">
-                  <div>
-                    <span className="eyebrow">Licente</span>
-                    <h3>Control licente</h3>
-                    <p>{licenseCodeCount} coduri generate.</p>
-                  </div>
-
-                  <div className="owner-tool-actions">
-                    <button className="primary-button compact" onClick={onOpenLicenseCodes} type="button">
-                      Deschide
-                    </button>
-                  </div>
-                </div>
-
-                <div className="owner-tool-card">
-                  <div>
-                    <span className="eyebrow">Newsletter</span>
-                    <h3>Actualizări</h3>
-                    <p>{newsletterSubscriberRows.length} abonați activi.</p>
-                  </div>
-
-                  <div className="owner-tool-actions">
-                    <button className="primary-button compact" onClick={() => setNewsletterPanelOpen(true)} type="button">
-                      Deschide
-                    </button>
-                  </div>
-                </div>
-
-                <div className="owner-tool-card">
-                  <div>
-                    <span className="eyebrow">Inbox</span>
-                    <h3>Mesaje Landing</h3>
-                    <p>
-                      {communityApplications.length} mesaje primite
-                      {unreadLandingMessageCount > 0 ? ` · ${unreadLandingMessageCount} necitite` : ""}
-                    </p>
-                  </div>
-
-                  {communityApplicationsError && (
-                    <p className="error-line">{communityApplicationsError}</p>
-                  )}
-
-                  <div className="owner-tool-actions">
-                    {unreadLandingMessageCount > 0 && <span className="badge-pill">{unreadLandingMessageCount}</span>}
-                    {ownerNotificationsEnabled ? (
-                      <span className="badge-pill success">Notificari active</span>
-                    ) : (
-                      <button className="secondary-button compact" onClick={enableOwnerNotificationsFromCard} type="button">
-                        Activeaza notificari
-                      </button>
-                    )}
-                    <button className="primary-button compact" onClick={() => setInboxOpen(true)} type="button">
-                      Deschide inbox
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </article>
+            <OwnerLocationsCard
+              language={language}
+              locations={locations}
+              currentLocationId={currentLocationId}
+              licenseCodeCount={licenseCodeCount}
+              newsletterSubscriberCount={newsletterSubscriberRows.length}
+              communityApplicationsCount={communityApplications.length}
+              communityApplicationsError={communityApplicationsError}
+              unreadLandingMessageCount={unreadLandingMessageCount}
+              onSelectLocation={onSelectLocation}
+              onOpenLocationEditor={onOpenLocationEditor}
+              onOpenLicenseCodes={onOpenLicenseCodes}
+              onOpenNewsletter={() => setNewsletterPanelOpen(true)}
+              onOpenInbox={() => setInboxOpen(true)}
+              onEnableOwnerNotifications={onEnableOwnerNotifications}
+            />
           )}
 
           {showLocationSettings && (
-          <article className="settings-panel">
-            <div className="section-heading">
-              <div>
-                  <span className="eyebrow">{t("settings.organization")}</span>
-                <h2>{resourcesSectionDraft.trim() || defaultResourcesSectionTitle}</h2>
-              </div>
-            </div>
-
-            <div className="owner-tool-grid">
-              <div className="owner-tool-card">
-                <div>
-                  <span className="eyebrow">{roomsLabelDraft.trim() || defaultRoomsLabel}</span>
-                  <h3>{rooms.length} {rooms.length === 1 ? "element" : "elemente"}</h3>
-                  <p>{rooms.length > 0 ? rooms.slice(0, 3).map((room) => room.name).join(", ") : t("settings.noItems")}</p>
-                </div>
-              </div>
-
-              <div className="owner-tool-card">
-                <div>
-                  <span className="eyebrow">{groupsLabelDraft.trim() || defaultGroupsLabel}</span>
-                  <h3>{groups.length} {groups.length === 1 ? "element" : "elemente"}</h3>
-                  <p>{groups.length > 0 ? groups.slice(0, 3).map((group) => group.name).join(", ") : t("settings.noItems")}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="modal-actions inline-actions">
-              <button className="primary-button compact" onClick={() => setResourcesManagerOpen(true)} type="button">
-                {t("settings.resourcesOpen")}
-              </button>
-            </div>
-          </article>
+            <ResourcesSummaryCard
+              language={language}
+              title={resourcesTitle}
+              roomsLabel={roomsLabel}
+              groupsLabel={groupsLabel}
+              rooms={rooms}
+              groups={groups}
+              onOpenResourcesManager={() => setResourcesManagerOpen(true)}
+            />
           )}
 
           {showLocationSettings && (
-          <article className="settings-panel wide">
-            <div className="section-heading">
-              <div>
-                <span className="eyebrow">{t("settings.users")}</span>
-                <h2>{visibleManagedUsers.length} conturi</h2>
-              </div>
-            </div>
-
-            <div className="owner-tool-card">
-              <div>
-                <span className="eyebrow">{t("settings.access")}</span>
-                <h3>{visibleManagedUsers.length} {visibleManagedUsers.length === 1 ? "utilizator" : "utilizatori"}</h3>
-                <p>
-                  {visibleManagedUsers.filter((item) => item.role === "manager").length} administratori ·{" "}
-                  {visibleManagedUsers.filter((item) => item.role !== "manager").length} colaboratori si oaspeti
-                </p>
-              </div>
-              <div className="owner-tool-actions">
-                <button className="primary-button compact" onClick={() => setUsersManagerOpen(true)} type="button">
-                  {t("settings.users")}
-                </button>
-              </div>
-            </div>
-          </article>
+            <UsersSummaryCard
+              language={language}
+              managedUsers={visibleManagedUsers}
+              onOpenUsersManager={() => setUsersManagerOpen(true)}
+            />
           )}
         </>
       )}
@@ -697,9 +313,9 @@ export function SettingsView({
     {resourcesManagerOpen && (
       <ResourcesManagerModal
         language={language}
-        title={resourcesSectionDraft.trim() || defaultResourcesSectionTitle}
-        roomsLabel={roomsLabelDraft.trim() || defaultRoomsLabel}
-        groupsLabel={groupsLabelDraft.trim() || defaultGroupsLabel}
+        title={resourcesTitle}
+        roomsLabel={roomsLabel}
+        groupsLabel={groupsLabel}
         rooms={rooms}
         groups={groups}
         canEditCurrentLocation={canEditCurrentLocation}
@@ -727,7 +343,7 @@ export function SettingsView({
       <ProfileEditorModal
         isOwner={isOwner}
         groups={groups}
-        groupsLabel={groupsLabelDraft.trim() || defaultGroupsLabel}
+        groupsLabel={groupsLabel}
         personalDraft={personalDraft}
         setPersonalDraft={setPersonalDraft}
         onClose={() => setProfileEditorOpen(false)}
