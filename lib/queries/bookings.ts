@@ -28,6 +28,13 @@ export function bookingQueryWindow(date: Date, view: AppView, mode: CalendarMode
     };
   }
 
+  if (mode === "year") {
+    return {
+      start: dateKey(new Date(date.getFullYear(), 0, 1)),
+      end: dateKey(new Date(date.getFullYear(), 11, 31)),
+    };
+  }
+
   if (mode === "day") {
     return {
       start: dateKey(addDays(date, -60)),

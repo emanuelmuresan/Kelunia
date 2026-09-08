@@ -52,6 +52,9 @@ import type {
 } from "@/lib/types/domain";
 import { MonthView } from "@/features/calendar/views/MonthView";
 import { WeekView } from "@/features/calendar/views/WeekView";
+import { YearView } from "@/features/calendar/views/YearView";
+import { UpcomingTicker, upcomingForTicker } from "@/features/calendar/components/UpcomingTicker";
+import { useUpcomingTickerSettings } from "@/features/calendar/hooks/useUpcomingTickerSettings";
 import { DayView } from "@/features/calendar/views/DayView";
 import { CalendarToolbar } from "@/features/calendar/components/CalendarToolbar";
 import { ListView } from "@/features/bookings/views/ListView";
@@ -136,6 +139,7 @@ export default function KeluniaPage() {
   });
   const [groupSetupError, setGroupSetupError] = useState("");
   const { isOnline, setIsOnline } = useOnlineStatus();
+  const { tickerSettings, updateTickerSettings } = useUpcomingTickerSettings();
 
   useEffect(() => {
     if (!authLoading && user && !user.emailVerified) {
@@ -227,6 +231,12 @@ export default function KeluniaPage() {
     () => bookings.filter((booking) => bookingMatchesRoomAccess(booking, rooms, profile, hasFullRoomAccess)),
     [bookings, hasFullRoomAccess, profile, rooms]
   );
+  const tickerActive = useMemo(
+    () =>
+      tickerSettings.enabled &&
+      upcomingForTicker(visibleBookingsByRoomAccess, today, tickerSettings.leadDays).length > 0,
+    [tickerSettings.enabled, tickerSettings.leadDays, visibleBookingsByRoomAccess, today]
+  );
   const visibleFixedSchedulesByRoomAccess = useMemo(() => {
     if (hasFullRoomAccess) {
       return fixedSchedules;
@@ -310,6 +320,7 @@ export default function KeluniaPage() {
   const {
     activePeriodDays,
     monthCells,
+    yearMonths,
     movePeriod,
     periodTitle,
   } = useCalendar({
@@ -1080,7 +1091,7 @@ export default function KeluniaPage() {
   }
 
   return (
-    <main className="kelunia-shell">
+    <main className="kelunia-shell" data-ticker={tickerActive ? "on" : undefined}>
       <KeluniaShellChrome
         displayedView={displayedView}
         headerTitle={headerTitle}
@@ -1094,6 +1105,13 @@ export default function KeluniaPage() {
         userLabel={profile ? `${profile.displayName} · ${appRoleLabel(profile, role, language)}` : undefined}
         onNavigate={setActiveView}
         onSignOut={confirmSignOut}
+      />
+
+      <UpcomingTicker
+        bookings={visibleBookingsByRoomAccess}
+        today={today}
+        settings={tickerSettings}
+        onSelectBooking={setSelectedBooking}
       />
 
       <div
@@ -1126,7 +1144,18 @@ export default function KeluniaPage() {
               onCalendarModeChange={setCalendarMode}
             />
 
-          {calendarMode === "month" ? (
+          {calendarMode === "year" ? (
+            <YearView
+              yearMonths={yearMonths}
+              bookings={visibleBookingsByRoomAccess}
+              today={today}
+              onDateSelect={openDayBookings}
+              onOpenMonth={(firstDateKey) => {
+                setCurrentDate(parseDateKey(firstDateKey));
+                setCalendarMode("month");
+              }}
+            />
+          ) : calendarMode === "month" ? (
             <MonthView
               shortDayLabels={shortDayLabels}
               monthCells={monthCells}
@@ -1260,6 +1289,8 @@ export default function KeluniaPage() {
         onUpdateCommunityApplicationStatus={updateCommunityApplicationStatus}
         onSendNewsletterCampaign={sendNewsletterCampaign}
         onEnableOwnerNotifications={enableOwnerNotifications}
+        tickerSettings={tickerSettings}
+        onTickerSettingsChange={updateTickerSettings}
         />
       )}
       </ErrorBoundary>

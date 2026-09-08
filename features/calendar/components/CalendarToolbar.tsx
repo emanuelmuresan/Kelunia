@@ -59,6 +59,7 @@ export function CalendarToolbar({
 
       <div className="segmented-control" role="group" aria-label={appText(language, "calendar.mode")}>
         {[
+          ["year", appText(language, "calendar.year")],
           ["month", appText(language, "calendar.month")],
           ["week", appText(language, "calendar.week")],
           ["day", appText(language, "calendar.day")],

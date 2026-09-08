@@ -9,6 +9,16 @@ test.skip(!process.env.VISUAL, "set VISUAL=1 to capture screenshots");
 
 test("capture mobile calendar + FAB + notify-now", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => {
+    try {
+      localStorage.setItem(
+        "kelunia.upcomingTicker",
+        JSON.stringify({ enabled: true, color: "#8b5cf6", leadDays: 7 })
+      );
+    } catch {
+      /* ignore */
+    }
+  });
   await page.goto("/login");
   await page.locator('input[type="email"]').fill(USER.email);
   await page.locator('input[type="password"]').first().fill(USER.password);
@@ -17,6 +27,12 @@ test("capture mobile calendar + FAB + notify-now", async ({ page }) => {
   await page.waitForTimeout(1500);
 
   await page.screenshot({ path: "test-results/calendar-mobile.png" });
+
+  await page.getByRole("button", { name: "An", exact: true }).click();
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: "test-results/year-mobile.png", fullPage: true });
+  await page.getByRole("button", { name: "Lună", exact: true }).click();
+  await page.waitForTimeout(400);
 
   await page.getByRole("button", { name: /Rezervare nouă/ }).click();
   await page.locator('.modal-card[role="dialog"]').waitFor();

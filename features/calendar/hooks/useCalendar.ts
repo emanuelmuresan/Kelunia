@@ -29,9 +29,7 @@ export function useCalendar({
     return [];
   }, [calendarMode, currentDate]);
 
-  const monthCells = useMemo(() => {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
+  function buildMonthCells(year: number, month: number) {
     const firstDay = new Date(year, month, 1);
     const blanks = (firstDay.getDay() + 6) % 7;
     const count = new Date(year, month + 1, 0).getDate();
@@ -50,9 +48,30 @@ export function useCalendar({
     }
 
     return cells;
+  }
+
+  const monthCells = useMemo(
+    () => buildMonthCells(currentDate.getFullYear(), currentDate.getMonth()),
+    [currentDate]
+  );
+
+  const yearMonths = useMemo(() => {
+    const year = currentDate.getFullYear();
+
+    return Array.from({ length: 12 }, (_, month) => ({
+      month,
+      year,
+      firstDateKey: dateKey(new Date(year, month, 1)),
+      label: new Date(year, month, 1).toLocaleDateString("ro-RO", { month: "long" }),
+      cells: buildMonthCells(year, month),
+    }));
   }, [currentDate]);
 
   const periodTitle = useMemo(() => {
+    if (calendarMode === "year") {
+      return String(currentDate.getFullYear());
+    }
+
     if (calendarMode === "month") {
       return currentDate.toLocaleDateString("ro-RO", { month: "long", year: "numeric" });
     }
@@ -74,7 +93,9 @@ export function useCalendar({
   function movePeriod(direction: -1 | 1) {
     const copy = new Date(currentDate);
 
-    if (calendarMode === "month") {
+    if (calendarMode === "year") {
+      copy.setFullYear(copy.getFullYear() + direction);
+    } else if (calendarMode === "month") {
       copy.setMonth(copy.getMonth() + direction);
     } else if (calendarMode === "week") {
       copy.setDate(copy.getDate() + direction * 7);
@@ -88,6 +109,7 @@ export function useCalendar({
   return {
     activePeriodDays,
     monthCells,
+    yearMonths,
     movePeriod,
     periodTitle,
   };

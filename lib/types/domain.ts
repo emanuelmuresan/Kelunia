@@ -18,7 +18,7 @@ export type PersonalDraft = {
 };
 
 export type AppView = "calendar" | "fixed" | "list" | "settings";
-export type CalendarMode = "month" | "week" | "day";
+export type CalendarMode = "month" | "week" | "day" | "year";
 export type ListFilter = "future" | "past" | "all";
 export type SortDirection = "asc" | "desc";
 export type SpaceKind = "room" | "group";

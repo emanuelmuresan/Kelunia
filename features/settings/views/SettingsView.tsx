@@ -9,6 +9,8 @@ import { ResourcesManagerModal } from "@/features/settings/components/ResourcesM
 import { UsersManagerModal } from "@/features/settings/components/UsersManagerModal";
 import { ProfileEditorModal } from "@/features/settings/components/ProfileEditorModal";
 import { ProfileSummaryCard } from "@/features/settings/components/ProfileSummaryCard";
+import { TickerSettingsCard } from "@/features/settings/components/TickerSettingsCard";
+import type { UpcomingTickerSettings } from "@/features/calendar/hooks/useUpcomingTickerSettings";
 import { PagesSettingsCard } from "@/features/settings/components/PagesSettingsCard";
 import { LicenseSummaryCard, type LicenseAccess } from "@/features/settings/components/LicenseSummaryCard";
 import { OwnerLocationsCard } from "@/features/settings/components/OwnerLocationsCard";
@@ -95,6 +97,8 @@ type SettingsViewProps = {
   onUpdateCommunityApplicationStatus: (applicationId: string, status: CommunityApplicationStatus) => Promise<void>;
   onSendNewsletterCampaign: (subject: string, body: string, recipientEmail?: string) => Promise<void>;
   onEnableOwnerNotifications: () => Promise<void>;
+  tickerSettings: UpcomingTickerSettings;
+  onTickerSettingsChange: (patch: Partial<UpcomingTickerSettings>) => void;
 };
 
 export function SettingsView({
@@ -159,6 +163,8 @@ export function SettingsView({
   onUpdateCommunityApplicationStatus,
   onSendNewsletterCampaign,
   onEnableOwnerNotifications,
+  tickerSettings,
+  onTickerSettingsChange,
 }: SettingsViewProps) {
   const { user, profile } = useAuth();
   const language: AppLanguage = personalDraft.language;
@@ -229,6 +235,14 @@ export function SettingsView({
         onOpenPasswordModal={onOpenPasswordModal}
         onDeleteAccount={() => setDeleteAccountOpen(true)}
       />
+
+      {userExists && (
+        <TickerSettingsCard
+          language={language}
+          settings={tickerSettings}
+          onChange={onTickerSettingsChange}
+        />
+      )}
 
       {(isSuperAdmin || isOwner) && (
         <>

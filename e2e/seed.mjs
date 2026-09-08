@@ -106,6 +106,27 @@ async function seedFirestore() {
     createdAt: now,
     createdBy: "seed@e2e.test",
   });
+
+  const soon = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+  await db.doc(`events/e2e-booking-1`).set({
+    group: GROUP_NAME,
+    room: "Sala 1",
+    roomId: "e2e-room-1",
+    locationId: LOCATION_ID,
+    locationName: LOCATION_NAME,
+    startDate: soon,
+    endDate: soon,
+    startTime: "18:00",
+    endTime: "19:30",
+    reason: "Repetiție",
+    authorEmail: E2E_USER.email,
+    authorName: E2E_USER.displayName,
+    updatedBy: E2E_USER.displayName,
+    updatedAt: now,
+    createdAt: now,
+    deleted: false,
+  });
 }
 
 await seedAuth();
