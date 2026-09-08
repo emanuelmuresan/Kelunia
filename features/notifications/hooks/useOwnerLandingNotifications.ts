@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import type { User } from "firebase/auth";
 
-import { canUseNativeNotifications, LocalNotifications } from "@/lib/notifications";
+import { canUseNativeNotifications, LocalNotifications, nativeNotificationId } from "@/lib/notifications";
 import type { CommunityApplication } from "@/lib/types/domain";
 
 type UseOwnerLandingNotificationsParams = {
@@ -60,7 +60,7 @@ export function useOwnerLandingNotifications({
       LocalNotifications.schedule({
         notifications: [
           {
-            id: Math.max(1, Date.now() % 2147483647),
+            id: nativeNotificationId(user.uid, `landing:${firstMessage.id}`, { value: 1, unit: "hours" }),
             title,
             body,
             schedule: { at: new Date(Date.now() + 500) },

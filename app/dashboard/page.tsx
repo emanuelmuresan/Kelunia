@@ -14,6 +14,7 @@ import { BookingModal } from "@/features/bookings/components/BookingModal";
 import { DayBookingsModal } from "@/features/bookings/components/DayBookingsModal";
 import { FixedScheduleModal } from "@/features/fixed-schedules/components/FixedScheduleModal";
 import { KeluniaShellChrome } from "@/features/shell/components/KeluniaShellChrome";
+import { ErrorBoundary } from "@/features/shell/components/ErrorBoundary";
 import {
   accessCodeUsageLabel,
   isAccessCodeFull,
@@ -849,6 +850,7 @@ export default function KeluniaPage() {
   } = useAppLock({ db, user, profile, setPersonalDraft, setSettingsError });
 
   useBookingDeepLink({
+    db,
     bookings,
     setActiveView,
     setSelectedBooking,
@@ -1112,6 +1114,7 @@ export default function KeluniaPage() {
         onTouchEnd={handleSwipeEnd}
         onTouchCancel={clearSwipe}
       >
+      <ErrorBoundary region="dashboard-view">
       {displayedView === "fixed" && (
         <FixedSchedulesView
           fixedSectionTitle={fixedSectionTitle}
@@ -1274,6 +1277,7 @@ export default function KeluniaPage() {
         onEnableOwnerNotifications={enableOwnerNotifications}
         />
       )}
+      </ErrorBoundary>
       </div>
 
       <AuditHistoryModal
