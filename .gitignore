@@ -55,3 +55,6 @@ replay_*.log
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# claude code local overrides
+.claude/settings.local.json
