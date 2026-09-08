@@ -15,6 +15,7 @@ type ProfileSummaryCardProps = {
   onEditProfile: () => void;
   onOpenPasswordModal: () => void;
   onDeleteAccount: () => void;
+  onReportProblem: () => void;
 };
 
 /** "Personal" panel: read-only summary of the signed-in user's profile + card actions. */
@@ -27,6 +28,7 @@ export function ProfileSummaryCard({
   onEditProfile,
   onOpenPasswordModal,
   onDeleteAccount,
+  onReportProblem,
 }: ProfileSummaryCardProps) {
   const language: AppLanguage = personalDraft.language;
   const t = (key: UiCopyKey) => appText(language, key);
@@ -93,6 +95,9 @@ export function ProfileSummaryCard({
           </button>
           <button className="secondary-button compact" onClick={onOpenPasswordModal} type="button">
             {t("settings.password")}
+          </button>
+          <button className="secondary-button compact" onClick={onReportProblem} type="button">
+            Raportează o problemă
           </button>
           <button className="danger-button compact" onClick={onDeleteAccount} type="button">
             Șterge contul

@@ -98,6 +98,7 @@ import { AppLockModal } from "@/features/security/components/AppLockModal";
 import { useCalendarSettings } from "@/features/settings/hooks/useCalendarSettings";
 import { usePasswordManagement } from "@/features/settings/hooks/usePasswordManagement";
 import { useManagedLocationUsers } from "@/features/users/hooks/useManagedLocationUsers";
+import { useErrorReports } from "@/features/settings/hooks/useErrorReports";
 import { useOwnerLandingNotifications } from "@/features/notifications/hooks/useOwnerLandingNotifications";
 import { useKeluniaPushBridge } from "@/features/notifications/hooks/useKeluniaPushBridge";
 import { useBookingDeepLink } from "@/features/bookings/hooks/useBookingDeepLink";
@@ -326,6 +327,11 @@ export default function KeluniaPage() {
   const { accessCodes, managedUsers } = useManagedLocationUsers({
     isManager: isSuperAdmin || isOwner,
     locationId: currentLocationId,
+  });
+  const { errorReports, errorReportsError, resolveReport } = useErrorReports({
+    db,
+    user,
+    enabled: Boolean(user && isOwner),
   });
 
   useGroupBookingNotifications({ bookings: visibleBookingsByRoomAccess, fixedSchedules, profile, user });
@@ -1311,6 +1317,9 @@ export default function KeluniaPage() {
         onEnableOwnerNotifications={enableOwnerNotifications}
         tickerSettings={tickerSettings}
         onTickerSettingsChange={updateTickerSettings}
+        errorReports={errorReports}
+        errorReportsError={errorReportsError}
+        onResolveErrorReport={resolveReport}
         />
       )}
       </ErrorBoundary>

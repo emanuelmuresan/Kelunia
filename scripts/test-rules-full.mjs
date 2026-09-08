@@ -119,6 +119,28 @@ await chk("settings: member reads own-location settings when doc is absent", "AL
 });
 await chk("settings: member cannot read another location's settings", "DENY", () => getDoc(doc(dbMember(), "settings", "calendar_place_other")));
 
+console.log("\n--- errorReports ---");
+const errReport = (over = {}) => ({
+  message: "TypeError: x is undefined", componentStack: "at Foo", userMessage: "s-a blocat calendarul",
+  path: "/dashboard", userAgent: "test", appVersion: "web", uid: MEMBER, email: "mem@x.com",
+  status: "new", createdAt: ts(), ...over,
+});
+await chk("errorReports: signed-in user files own report", "ALLOW", () => addDoc(collection(dbMember(), "errorReports"), errReport()));
+await chk("errorReports: cannot spoof another uid", "DENY", () => addDoc(collection(dbMember(), "errorReports"), errReport({ uid: OWNER })));
+await chk("errorReports: cannot create pre-resolved", "DENY", () => addDoc(collection(dbMember(), "errorReports"), errReport({ status: "resolved" })));
+await chk("errorReports: non-owner cannot read", "DENY", async () => {
+  await te.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), "errorReports", "er1"), errReport()));
+  await getDoc(doc(dbMember(), "errorReports", "er1"));
+});
+await chk("errorReports: owner reads", "ALLOW", async () => {
+  await te.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), "errorReports", "er1"), errReport()));
+  await getDoc(doc(dbOwner(), "errorReports", "er1"));
+});
+await chk("errorReports: owner marks resolved", "ALLOW", async () => {
+  await te.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), "errorReports", "er1"), errReport()));
+  await updateDoc(doc(dbOwner(), "errorReports", "er1"), { status: "resolved", resolvedAt: ts(), resolvedBy: OWNER_EMAIL });
+});
+
 console.log("\n--- auditLogs (one per entity type, manager) ---");
 for (const et of ["booking", "fixedSchedule", "room", "group", "accessCode", "user", "location", "settings"]) {
   await chk(`audit: create ${et}`, "ALLOW", () => addDoc(collection(dbMgr(), "auditLogs"), {

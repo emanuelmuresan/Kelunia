@@ -9,6 +9,9 @@ import { ResourcesManagerModal } from "@/features/settings/components/ResourcesM
 import { UsersManagerModal } from "@/features/settings/components/UsersManagerModal";
 import { ProfileEditorModal } from "@/features/settings/components/ProfileEditorModal";
 import { ProfileSummaryCard } from "@/features/settings/components/ProfileSummaryCard";
+import { ReportProblemModal } from "@/features/shell/components/ReportProblemModal";
+import { ErrorReportsModal } from "@/features/settings/components/ErrorReportsModal";
+import type { ErrorReport } from "@/features/settings/hooks/useErrorReports";
 import { TickerSettingsCard } from "@/features/settings/components/TickerSettingsCard";
 import type { UpcomingTickerSettings } from "@/features/calendar/hooks/useUpcomingTickerSettings";
 import { PagesSettingsCard } from "@/features/settings/components/PagesSettingsCard";
@@ -99,6 +102,9 @@ type SettingsViewProps = {
   onEnableOwnerNotifications: () => Promise<void>;
   tickerSettings: UpcomingTickerSettings;
   onTickerSettingsChange: (patch: Partial<UpcomingTickerSettings>) => void;
+  errorReports: ErrorReport[];
+  errorReportsError: string;
+  onResolveErrorReport: (reportId: string) => Promise<void>;
 };
 
 export function SettingsView({
@@ -165,6 +171,9 @@ export function SettingsView({
   onEnableOwnerNotifications,
   tickerSettings,
   onTickerSettingsChange,
+  errorReports,
+  errorReportsError,
+  onResolveErrorReport,
 }: SettingsViewProps) {
   const { user, profile } = useAuth();
   const language: AppLanguage = personalDraft.language;
@@ -179,6 +188,8 @@ export function SettingsView({
   const [inboxOpen, setInboxOpen] = useState(false);
   const [profileEditorOpen, setProfileEditorOpen] = useState(false);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
+  const [reportProblemOpen, setReportProblemOpen] = useState(false);
+  const [errorReportsOpen, setErrorReportsOpen] = useState(false);
 
   const accountEmail = user?.email ?? profile?.email ?? "";
   const activeNewsletterSubscribers = newsletterSubscribers.filter(
@@ -234,6 +245,7 @@ export function SettingsView({
         onEditProfile={() => setProfileEditorOpen(true)}
         onOpenPasswordModal={onOpenPasswordModal}
         onDeleteAccount={() => setDeleteAccountOpen(true)}
+        onReportProblem={() => setReportProblemOpen(true)}
       />
 
       {userExists && (
@@ -299,6 +311,28 @@ export function SettingsView({
               onOpenInbox={() => setInboxOpen(true)}
               onEnableOwnerNotifications={onEnableOwnerNotifications}
             />
+          )}
+
+          {isOwner && (
+            <article className="settings-panel">
+              <div className="section-heading">
+                <div>
+                  <span className="eyebrow">Suport</span>
+                  <h2>Rapoarte de problemă</h2>
+                </div>
+              </div>
+              <p className="muted-note">
+                {errorReports.length} rapoarte
+                {errorReports.filter((report) => report.status === "new").length > 0
+                  ? ` · ${errorReports.filter((report) => report.status === "new").length} nerezolvate`
+                  : ""}
+              </p>
+              <div className="settings-card-actions">
+                <button className="primary-button compact" onClick={() => setErrorReportsOpen(true)} type="button">
+                  Deschide
+                </button>
+              </div>
+            </article>
           )}
 
           {showLocationSettings && (
@@ -395,6 +429,17 @@ export function SettingsView({
         onSendReply={onSendCommunityApplicationReply}
         onUpdateStatus={onUpdateCommunityApplicationStatus}
         onOpenLicenseCodes={onOpenLicenseCodes}
+      />
+    )}
+
+    <ReportProblemModal open={reportProblemOpen} onClose={() => setReportProblemOpen(false)} />
+
+    {errorReportsOpen && (
+      <ErrorReportsModal
+        reports={errorReports}
+        reportsError={errorReportsError}
+        onClose={() => setErrorReportsOpen(false)}
+        onResolve={onResolveErrorReport}
       />
     )}
 

@@ -1638,6 +1638,26 @@ service cloud.firestore {
       allow read, delete: if signedInVerified() && isOwner();
     }
 
+    match /errorReports/{reportId} {
+      allow create: if signedInVerified()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.status == "new"
+        && request.resource.data.userMessage is string
+        && request.resource.data.userMessage.size() <= 4000
+        && request.resource.data.message is string
+        && request.resource.data.message.size() <= 6000
+        && request.resource.data.keys().hasOnly([
+          "message", "componentStack", "userMessage", "path", "userAgent",
+          "appVersion", "uid", "email", "status", "createdAt",
+          "resolvedAt", "resolvedBy"
+        ]);
+      allow read: if signedInVerified() && isOwner();
+      allow update: if signedInVerified() && isOwner()
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(["status", "resolvedAt", "resolvedBy"]);
+      allow delete: if signedInVerified() && isOwner();
+    }
+
     match /newsletterCampaigns/{campaignId} {
       allow read: if signedInVerified() && isOwner();
       allow create: if validNewsletterCampaignCreate(request.resource.data);
