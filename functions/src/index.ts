@@ -4,6 +4,7 @@ import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { getMessaging } from "firebase-admin/messaging";
 import { logger } from "firebase-functions";
 import { defineSecret, defineString } from "firebase-functions/params";
+import { setGlobalOptions } from "firebase-functions/v2";
 import { onDocumentCreated, onDocumentWritten } from "firebase-functions/v2/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { Resend } from "resend";
@@ -11,6 +12,11 @@ import { createHash } from "node:crypto";
 import { connect } from "node:http2";
 
 initializeApp();
+
+// Region default for every function + a hard ceiling so a traffic spike or abuse
+// can't scale Cloud Run (and the bill) without bound. Per-function `region` options
+// below are now redundant but kept for readability.
+setGlobalOptions({ region: "europe-west1", maxInstances: 20 });
 
 const db = getFirestore();
 
@@ -1227,6 +1233,7 @@ export const syncUserSecurityClaims = onDocumentWritten(
   },
   async (event) => {
     const { userId } = event.params;
+    const before = event.data?.before;
     const after = event.data?.after;
 
     try {
@@ -1236,8 +1243,18 @@ export const syncUserSecurityClaims = onDocumentWritten(
         return;
       }
 
-      const profile = after.data() as UserProfile;
-      const claims = userClaimsFromProfile(profile);
+      const claims = userClaimsFromProfile(after.data() as UserProfile);
+
+      // Most user-doc writes are personal-settings changes (name, notification
+      // prefs, language) that don't touch a single security-relevant field. Skip
+      // the privileged Admin call + forced token refresh when nothing changed.
+      if (before?.exists) {
+        const prevClaims = userClaimsFromProfile(before.data() as UserProfile);
+
+        if (JSON.stringify(prevClaims) === JSON.stringify(claims)) {
+          return;
+        }
+      }
 
       await getAuth().setCustomUserClaims(userId, claims);
       logger.info("Synced user security claims", { userId, claims });
@@ -1252,7 +1269,7 @@ async function newsletterRecipients(recipientEmail = "") {
   const recipients = new Map<string, NewsletterRecipient>();
   const targetEmail = cleanEmail(recipientEmail);
 
-  const subscriberSnapshot = await db.collection("newsletterSubscribers").get();
+  const subscriberSnapshot = await db.collection("newsletterSubscribers").limit(5000).get();
 
   subscriberSnapshot.forEach((doc) => {
     const data = doc.data();
@@ -1266,6 +1283,7 @@ async function newsletterRecipients(recipientEmail = "") {
   const legacySnapshot = await db
     .collection("communityApplications")
     .where("source", "==", "landing-newsletter")
+    .limit(5000)
     .get();
 
   legacySnapshot.forEach((doc) => {
