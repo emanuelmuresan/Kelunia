@@ -339,24 +339,32 @@ export function useBookingEditor({
       return;
     }
 
+    const deletedPayload = softDeletePayload();
+
     try {
-      const deletedPayload = softDeletePayload();
       await updateDoc(doc(db, "events", booking.id), deletedPayload);
-      await updateLocationCounterSafely(db, booking.locationId || currentLocationId, "bookingCount", -1);
-      await recordAuditLog(
-        "booking",
-        "delete",
-        booking.id,
-        booking,
-        { ...booking, ...deletedPayload },
-        booking.locationId,
-        booking.locationName || locationName
-      );
-      setSelectedBooking(null);
     } catch (error) {
       console.error("Programarea nu a putut fi ștearsă:", error);
       setFormError("Programarea nu a putut fi ștearsă.");
+      return;
     }
+
+    // The row already disappears via the Firestore local cache; close the details
+    // modal now and let the counter + audit log settle in the background.
+    setSelectedBooking(null);
+
+    void updateLocationCounterSafely(db, booking.locationId || currentLocationId, "bookingCount", -1).catch(
+      (error) => console.warn("Contorul de programări nu a putut fi actualizat:", error)
+    );
+    void recordAuditLog(
+      "booking",
+      "delete",
+      booking.id,
+      booking,
+      { ...booking, ...deletedPayload },
+      booking.locationId,
+      booking.locationName || locationName
+    ).catch((error) => console.warn("Jurnalul de audit pentru ștergere nu a putut fi scris:", error));
   }
 
   return {
