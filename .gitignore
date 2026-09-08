@@ -12,6 +12,13 @@
 
 # testing
 /coverage
+/test-results
+/playwright-report
+/playwright/.cache
+/.firebase
+firestore-debug.log
+firebase-debug.log
+ui-debug.log
 
 # next.js
 /.next/
