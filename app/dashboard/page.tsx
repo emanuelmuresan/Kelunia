@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
 import { httpsCallable } from "firebase/functions";
@@ -31,8 +31,6 @@ import {
 } from "@/lib/config/app";
 import { dateKey, parseDateKey } from "@/lib/dates";
 import {
-  canUseNativeNotifications,
-  LocalNotifications,
   normalizeNotificationOffsetRules,
   normalizeNotificationOffsets,
   notificationOffsetToKey,
@@ -40,7 +38,7 @@ import {
 } from "@/lib/notifications";
 import { can } from "@/lib/permissions/capabilities";
 import { bookingQueryWindow } from "@/lib/queries/bookings";
-import { bookingMatchesRoomAccess, filterRoomsByAccess, normalizeAllowedRoomIds, normalizeRoomAccessMode } from "@/lib/room-access";
+import { bookingMatchesRoomAccess, filterRoomsByAccess } from "@/lib/room-access";
 import { bookingsForDay } from "@/lib/scheduling";
 import { registerBiometricCredential } from "@/lib/security";
 import type {
@@ -80,7 +78,7 @@ import { useCommunityApplications } from "@/features/landing/hooks/useCommunityA
 import { useNewsletter } from "@/features/newsletter/hooks/useNewsletter";
 import { useOnlineStatus } from "@/features/network/hooks/useOnlineStatus";
 import { useGroupBookingNotifications } from "@/features/notifications/hooks/useGroupBookingNotifications";
-import { hasKeluniaPushConfig, listenKeluniaForegroundPush, registerKeluniaPushToken } from "@/lib/push-notifications";
+import { hasKeluniaPushConfig, registerKeluniaPushToken } from "@/lib/push-notifications";
 import { useLocationResources } from "@/features/resources/hooks/useLocationResources";
 import { useSpaceEditor } from "@/features/resources/hooks/useSpaceEditor";
 import { useFixedScheduleEditor } from "@/features/fixed-schedules/hooks/useFixedScheduleEditor";
@@ -93,6 +91,11 @@ import { AppLockModal } from "@/features/security/components/AppLockModal";
 import { useCalendarSettings } from "@/features/settings/hooks/useCalendarSettings";
 import { usePasswordManagement } from "@/features/settings/hooks/usePasswordManagement";
 import { useManagedLocationUsers } from "@/features/users/hooks/useManagedLocationUsers";
+import { useOwnerLandingNotifications } from "@/features/notifications/hooks/useOwnerLandingNotifications";
+import { useKeluniaPushBridge } from "@/features/notifications/hooks/useKeluniaPushBridge";
+import { useBookingDeepLink } from "@/features/bookings/hooks/useBookingDeepLink";
+import { useRequiredGroupSetup } from "@/features/groups/hooks/useRequiredGroupSetup";
+import { useDashboardViewSync } from "@/features/dashboard/hooks/useDashboardViewSync";
 
 const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
 
@@ -130,9 +133,7 @@ export default function KeluniaPage() {
     notifyOffsetsDays: [1, 7],
     language: "ro" as AppLanguage,
   });
-  const [groupSetupDraft, setGroupSetupDraft] = useState("");
   const [groupSetupError, setGroupSetupError] = useState("");
-  const [groupSetupCompleted, setGroupSetupCompleted] = useState(false);
   const { isOnline, setIsOnline } = useOnlineStatus();
 
   useEffect(() => {
@@ -196,7 +197,6 @@ export default function KeluniaPage() {
     enabled: Boolean(user && isOwner),
     user,
   });
-  const mustChooseGroup = Boolean(user && profile && !isSuperAdmin && !profile.groupName.trim() && !groupSetupCompleted);
   const bookingsWindow = useMemo(
     () => bookingQueryWindow(currentDate, activeView, calendarMode, listFilter),
     [activeView, calendarMode, currentDate, listFilter]
@@ -306,15 +306,6 @@ export default function KeluniaPage() {
   });
 
   useGroupBookingNotifications({ bookings: visibleBookingsByRoomAccess, fixedSchedules, profile, user });
-  useAccessCodeGroupSync({
-    isManager: isSuperAdmin,
-    isOnline,
-    profile,
-    setGroupSetupCompleted,
-    setGroupSetupDraft,
-    setPersonalDraft,
-    user,
-  });
   const {
     activePeriodDays,
     monthCells,
@@ -377,6 +368,37 @@ export default function KeluniaPage() {
       updatedAt: Timestamp.now(),
     };
   }
+
+  const {
+    groupSetupDraft,
+    setGroupSetupDraft,
+    setGroupSetupCompleted,
+    mustChooseGroup,
+    saveRequiredGroup,
+  } = useRequiredGroupSetup({
+    db,
+    user,
+    profile,
+    role,
+    isSuperAdmin,
+    groups,
+    currentLocationId,
+    locationName,
+    requireOnline,
+    recordAuditLog,
+    setPersonalDraft,
+    setGroupSetupError,
+  });
+
+  useAccessCodeGroupSync({
+    isManager: isSuperAdmin,
+    isOnline,
+    profile,
+    setGroupSetupCompleted,
+    setGroupSetupDraft,
+    setPersonalDraft,
+    user,
+  });
 
   const {
     address: locationSetupAddress,
@@ -466,45 +488,19 @@ export default function KeluniaPage() {
     setActiveView,
   });
 
-  useEffect(() => {
-    if (!profile) {
-      return;
-    }
-
-    if (isOwner || needsLocationSetup) {
-      return;
-    }
-
-    setActiveLocationId((current) => current || profile.locationId || "main-location");
-  }, [isOwner, needsLocationSetup, profile]);
-
-  useEffect(() => {
-    if (!profile || !needsLocationSetup) {
-      return;
-    }
-
-    setLocationSetupName((current) => current || profile.locationName || "");
-  }, [needsLocationSetup, profile, setLocationSetupName]);
-
-  useEffect(() => {
-    if (!isOwner || !activeLocationId || locations.some((location) => location.id === activeLocationId)) {
-      return;
-    }
-
-    setActiveLocationId("");
-  }, [activeLocationId, isOwner, locations]);
-
-  useEffect(() => {
-    if (!fixedPageEnabled && activeView === "fixed") {
-      setActiveView("calendar");
-    }
-  }, [activeView, fixedPageEnabled]);
-
-  useEffect(() => {
-    if (isOwner && !currentLocationId && activeView !== "settings") {
-      setActiveView("settings");
-    }
-  }, [activeView, currentLocationId, isOwner]);
+  useDashboardViewSync({
+    profile,
+    isOwner,
+    needsLocationSetup,
+    activeLocationId,
+    setActiveLocationId,
+    locations,
+    setLocationSetupName,
+    activeView,
+    setActiveView,
+    fixedPageEnabled,
+    currentLocationId,
+  });
 
   useEffect(() => {
     if (!profile) {
@@ -538,7 +534,7 @@ export default function KeluniaPage() {
       language: profile.language,
     });
     setGroupSetupDraft(profile.groupName);
-  }, [profile]);
+  }, [profile, setGroupSetupDraft]);
 
   const visibleManagedUsers = useMemo(
     () => managedUsers.filter((managedUser) => managedUser.locationId === currentLocationId),
@@ -673,67 +669,8 @@ export default function KeluniaPage() {
     setSettingsError("Notificările nu au fost permise pe acest dispozitiv.");
   }
 
-  const ownerLandingNotificationPrimedRef = useRef(false);
-  const ownerLandingNotificationSeenRef = useRef<Set<string>>(new Set());
+  useOwnerLandingNotifications({ user, isOwner, communityApplications });
 
-  useEffect(() => {
-    if (!user || !isOwner) {
-      ownerLandingNotificationPrimedRef.current = false;
-      ownerLandingNotificationSeenRef.current = new Set();
-      return;
-    }
-
-    const unreadMessages = communityApplications.filter((application) => application.status === "new");
-
-    if (!ownerLandingNotificationPrimedRef.current) {
-      ownerLandingNotificationSeenRef.current = new Set(unreadMessages.map((application) => application.id));
-      ownerLandingNotificationPrimedRef.current = true;
-      return;
-    }
-
-    const newMessages = unreadMessages.filter(
-      (application) => !ownerLandingNotificationSeenRef.current.has(application.id)
-    );
-
-    unreadMessages.forEach((application) => {
-      ownerLandingNotificationSeenRef.current.add(application.id);
-    });
-
-    if (newMessages.length === 0 || typeof window === "undefined") {
-      return;
-    }
-
-    const firstMessage = newMessages[0];
-    const title = newMessages.length === 1 ? "Mesaj nou în Kelunia" : `${newMessages.length} mesaje noi în Kelunia`;
-    const body = firstMessage.organizationName || firstMessage.email;
-
-    if (canUseNativeNotifications()) {
-      LocalNotifications.schedule({
-        notifications: [
-          {
-            id: Math.max(1, Date.now() % 2147483647),
-            title,
-            body,
-            schedule: { at: new Date(Date.now() + 500) },
-            smallIcon: "ic_stat_icon_config_sample",
-            iconColor: "#0f766e",
-          },
-        ],
-      }).catch((error) => {
-        console.warn("Notificarea pentru mesaj nou nu a putut fi programată:", error);
-      });
-      return;
-    }
-
-    if (!("Notification" in window) || Notification.permission !== "granted") {
-      return;
-    }
-
-    new Notification(title, {
-      body,
-      icon: "/icon-192.png",
-    });
-  }, [communityApplications, isOwner, user]);
   const {
     canEditBooking,
     editingId,
@@ -911,106 +848,14 @@ export default function KeluniaPage() {
     handleBiometricsToggle,
   } = useAppLock({ db, user, profile, setPersonalDraft, setSettingsError });
 
-  useEffect(() => {
-    let nativeListener: { remove: () => Promise<void> } | null = null;
+  useBookingDeepLink({
+    bookings,
+    setActiveView,
+    setSelectedBooking,
+    setSelectedBookingNotice,
+  });
 
-    void LocalNotifications.addListener("localNotificationActionPerformed", (event) => {
-      const bookingId = String(event.notification?.extra?.bookingId ?? "");
-
-      if (!bookingId || bookingId.startsWith("fixed:")) {
-        return;
-      }
-
-      const booking = bookings.find((item) => item.id === bookingId);
-
-      if (booking) {
-        setSelectedBookingNotice("");
-        setSelectedBooking(booking);
-        setActiveView("calendar");
-      }
-    })
-      .then((listener) => {
-        nativeListener = listener;
-      })
-      .catch(() => {
-        nativeListener = null;
-      });
-
-    return () => {
-      void nativeListener?.remove();
-    };
-  }, [bookings, setActiveView]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    const bookingId = new URLSearchParams(window.location.search).get("booking");
-
-    if (!bookingId || bookingId.startsWith("fixed:")) {
-      return;
-    }
-
-    const booking = bookings.find((item) => item.id === bookingId);
-
-    if (!booking) {
-      return;
-    }
-
-    setSelectedBookingNotice("");
-    setSelectedBooking(booking);
-    setActiveView("calendar");
-    window.history.replaceState(null, "", "/dashboard");
-  }, [bookings, setActiveView]);
-
-  useEffect(() => {
-    if (!user || !profile || typeof window === "undefined") {
-      return;
-    }
-
-    void registerKeluniaPushToken(user, profile);
-  }, [profile, user]);
-
-  useEffect(() => {
-    let unsubscribe: (() => void) | undefined;
-    let cancelled = false;
-
-    void listenKeluniaForegroundPush(async (payload: { data?: Record<string, string>; notification?: { body?: string; title?: string } }) => {
-      const data = payload.data ?? {};
-      const title = data.title || payload.notification?.title || "Kelunia";
-      const body = data.body || payload.notification?.body || "";
-
-      if (!("serviceWorker" in navigator) || !("Notification" in window) || Notification.permission !== "granted") {
-        return;
-      }
-
-      const registration = await navigator.serviceWorker.ready;
-      await registration.showNotification(title, {
-        body,
-        badge: "/icon-192.png",
-        data: {
-          bookingId: data.bookingId || "",
-          url: data.url || "/dashboard",
-        },
-        icon: "/icon-192.png",
-        requireInteraction: true,
-        tag: data.tag || data.bookingId || "kelunia-notification",
-      });
-    }).then((nextUnsubscribe: () => void) => {
-      if (cancelled) {
-        nextUnsubscribe();
-        return;
-      }
-
-      unsubscribe = nextUnsubscribe;
-    });
-
-    return () => {
-      cancelled = true;
-      unsubscribe?.();
-    };
-  }, []);
+  useKeluniaPushBridge({ user, profile });
 
   async function confirmPinSetup() {
     if (!user || !pinIntent) {
@@ -1165,67 +1010,6 @@ export default function KeluniaPage() {
       }
     } catch (error) {
       console.warn("Setările au fost salvate, dar starea locală nu a putut fi actualizată:", error);
-    }
-  }
-
-  async function saveRequiredGroup() {
-    setGroupSetupError("");
-
-    if (!requireOnline("group")) {
-      return;
-    }
-
-    if (!user || !profile) {
-      return;
-    }
-
-    if (!groupSetupDraft.trim()) {
-      setGroupSetupError("Alege grupul din care faci parte.");
-      return;
-    }
-
-    if (!currentLocationId) {
-      setGroupSetupError("Contul nu are încă o locație asociată. Verifică dacă ai folosit codul corect.");
-      return;
-    }
-
-    if (!groups.some((group) => group.name === groupSetupDraft)) {
-      setGroupSetupError("Alege un grup existent în locația ta.");
-      return;
-    }
-
-    const requiredRoomAccess = role === "manager" ? "all" : normalizeRoomAccessMode(profile.roomAccess);
-    const requiredAllowedRoomIds = requiredRoomAccess === "selected" ? normalizeAllowedRoomIds(profile.allowedRoomIds) : [];
-
-    try {
-      await setDoc(
-        doc(db, "users", user.uid),
-        {
-          email: user.email,
-          displayName: profile.displayName,
-          groupName: groupSetupDraft,
-          role,
-          locationId: profile.locationId,
-          locationName: profile.locationName || locationName,
-          roomAccess: requiredRoomAccess,
-          allowedRoomIds: requiredAllowedRoomIds,
-        },
-        { merge: true }
-      );
-      await recordAuditLog(
-        "user",
-        "update",
-        user.uid,
-        profile,
-        { groupName: groupSetupDraft, group: groupSetupDraft },
-        profile.locationId,
-        profile.locationName || locationName
-      );
-      setPersonalDraft((current) => ({ ...current, groupName: groupSetupDraft }));
-      setGroupSetupCompleted(true);
-    } catch (error) {
-      console.error("Grupul nu a putut fi salvat:", error);
-      setGroupSetupError("Grupul nu a putut fi salvat. Verifică regulile Firebase.");
     }
   }
 
