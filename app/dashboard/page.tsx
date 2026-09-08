@@ -713,22 +713,10 @@ export default function KeluniaPage() {
 
   function openDayBookings(date: string) {
     setCurrentDate(parseDateKey(date));
-
-    const dayBookings = bookingsForDay(visibleBookingsByRoomAccess, date);
-
-    if (dayBookings.length === 0) {
-      setSelectedDay(null);
-      openCreateForm(date, { defaultStartTime: "12:00" });
-      return;
-    }
-
-    if (dayBookings.length === 1) {
-      setSelectedDay(null);
-      setSelectedBookingNotice("");
-      setSelectedBooking(dayBookings[0]);
-      return;
-    }
-
+    // Always open the day list — pick a booking there, or use its "add" button
+    // when the day is empty. (Previously 0 bookings jumped straight to the create
+    // form and 1 booking straight to its details.)
+    setSelectedBookingNotice("");
     setSelectedDay(date);
   }
 

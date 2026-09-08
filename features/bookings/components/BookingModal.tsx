@@ -1,6 +1,6 @@
 "use client";
 
-import type { FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { appText, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 import type { BookingForm, GroupItem, ManagedUser, RoomItem } from "@/lib/types/domain";
 
@@ -37,6 +37,8 @@ export function BookingModal({
   onClose,
   onSubmit,
 }: BookingModalProps) {
+  const [notifyNowOpen, setNotifyNowOpen] = useState(false);
+
   if (!open) {
     return null;
   }
@@ -167,16 +169,86 @@ export function BookingModal({
           </label>
           <div className="full-field notification-options booking-notification-options">
             <div className="notification-quick-actions">
-              <button
-                className="primary-button compact"
-                disabled={!formData.group}
-                name="bookingAction"
-                type="submit"
-                value="notify-group-now"
-              >
-                {appText(language, "booking.notifyNow")}
-              </button>
-              <span>{formData.group ? appText(language, "booking.groupNowHelp") : appText(language, "booking.groupRequired")}</span>
+              {!notifyNowOpen ? (
+                <>
+                  <button
+                    className="primary-button compact"
+                    disabled={!formData.group}
+                    type="button"
+                    onClick={() => setNotifyNowOpen(true)}
+                  >
+                    {appText(language, "booking.notifyNow")}
+                  </button>
+                  <span>{formData.group ? appText(language, "booking.groupNowHelp") : appText(language, "booking.groupRequired")}</span>
+                </>
+              ) : (
+                <div className="notify-now-confirm">
+                  <strong>{appText(language, "booking.audience")}</strong>
+
+                  <label className="toggle-row compact-toggle">
+                    <input
+                      type="radio"
+                      name="notifyNowAudience"
+                      checked={formData.notifyGroupAudience !== "selected"}
+                      onChange={() => onChange({ ...formData, notifyGroupAudience: "all", notifyGroupRecipients: [] })}
+                    />
+                    {appText(language, "booking.audienceAll")}
+                  </label>
+                  <label className="toggle-row compact-toggle">
+                    <input
+                      type="radio"
+                      name="notifyNowAudience"
+                      checked={formData.notifyGroupAudience === "selected"}
+                      onChange={() => onChange({ ...formData, notifyGroupAudience: "selected" })}
+                    />
+                    {appText(language, "booking.audienceSelected")}
+                  </label>
+
+                  {formData.notifyGroupAudience === "selected" && (
+                    <div className="recipient-check-grid">
+                      {selectedGroupMembers.length === 0 ? (
+                        <p className="empty-line">{appText(language, "booking.noActiveUsers")}</p>
+                      ) : (
+                        selectedGroupMembers.map((managedUser) => {
+                          const email = managedUser.email.toLowerCase();
+
+                          return (
+                            <label className="toggle-row compact-toggle" key={managedUser.id}>
+                              <input
+                                type="checkbox"
+                                checked={formData.notifyGroupRecipients.includes(email)}
+                                onChange={(event) => {
+                                  const notifyGroupRecipients = event.target.checked
+                                    ? Array.from(new Set([...formData.notifyGroupRecipients, email]))
+                                    : formData.notifyGroupRecipients.filter((item) => item !== email);
+
+                                  onChange({ ...formData, notifyGroupRecipients });
+                                }}
+                              />
+                              {managedUser.displayName || managedUser.email}
+                            </label>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
+
+                  <div className="inline-add">
+                    <button className="secondary-button compact" type="button" onClick={() => setNotifyNowOpen(false)}>
+                      {appText(language, "action.cancel")}
+                    </button>
+                    <button
+                      className="primary-button compact"
+                      type="submit"
+                      name="bookingAction"
+                      value="notify-group-now"
+                      disabled={!formData.group || (formData.notifyGroupAudience === "selected" && formData.notifyGroupRecipients.length === 0)}
+                    >
+                      {appText(language, "booking.notifyNow")}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             <label className="toggle-row">
@@ -259,7 +331,7 @@ export function BookingModal({
               {appText(language, "booking.groupReminder")}
             </label>
 
-            {(formData.notifyGroupOnThisBooking || formData.group) && (
+            {formData.notifyGroupOnThisBooking && (
               <div className="notification-audience">
                 <label>
                   {appText(language, "booking.audience")}
