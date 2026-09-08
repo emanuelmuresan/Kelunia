@@ -4536,3 +4536,84 @@ img {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* Floating "+" action — create a booking from calendar/list without hunting for a toolbar button */
+.fab-add {
+  position: fixed;
+  right: max(18px, env(safe-area-inset-right));
+  bottom: calc(80px + env(safe-area-inset-bottom));
+  z-index: 34;
+  width: 56px;
+  height: 56px;
+  border: none;
+  border-radius: 50%;
+  background: var(--teal);
+  color: #fff;
+  font-size: 2rem;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 12px 26px rgba(16, 184, 215, 0.42);
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.fab-add:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 32px rgba(16, 184, 215, 0.5);
+}
+
+.fab-add:active {
+  transform: translateY(0);
+}
+
+.fab-add:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* In-modal "notify now" audience confirmation */
+.notify-now-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #f7fbfa;
+}
+
+.notify-now-confirm > strong {
+  font-size: 0.9rem;
+}
+
+.notify-now-confirm .inline-add {
+  margin-top: 4px;
+}
+
+/* Mobile: the month grid fills the viewport instead of scrolling the page */
+@media (max-width: 820px) {
+  .calendar-panel:has(.month-calendar) {
+    display: flex;
+    flex-direction: column;
+    height: calc(100dvh - 120px - 72px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    min-height: 360px;
+  }
+
+  .calendar-panel:has(.month-calendar) > .month-calendar {
+    flex: 1 1 auto;
+    min-height: 0;
+    grid-template-rows: auto repeat(6, minmax(0, 1fr));
+  }
+
+  .calendar-panel:has(.month-calendar) .month-cell {
+    height: auto;
+    min-height: 0;
+  }
+
+  .calendar-panel:has(.month-calendar) .cell-events {
+    overflow: hidden;
+  }
+}

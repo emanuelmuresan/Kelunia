@@ -1120,10 +1120,7 @@ export default function KeluniaPage() {
           <CalendarToolbar
               periodTitle={periodTitle}
               calendarMode={calendarMode}
-              canManageBookings={canManageBookings}
-              isOnline={isOnline}
               language={language}
-              onCreateBooking={() => openCreateForm(dateKey(currentDate))}
               onMovePeriod={movePeriod}
               onToday={() => setCurrentDate(new Date())}
               onCalendarModeChange={setCalendarMode}
@@ -1267,6 +1264,18 @@ export default function KeluniaPage() {
       )}
       </ErrorBoundary>
       </div>
+
+      {canManageBookings && (displayedView === "calendar" || displayedView === "list") && (
+        <button
+          className="fab-add"
+          type="button"
+          disabled={!isOnline}
+          aria-label={appText(language, "booking.newShort")}
+          onClick={() => openCreateForm(dateKey(currentDate))}
+        >
+          +
+        </button>
+      )}
 
       <AuditHistoryModal
         open={showAuditModal}

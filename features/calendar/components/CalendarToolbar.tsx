@@ -6,10 +6,7 @@ import type { CalendarMode } from "@/lib/types/domain";
 type CalendarToolbarProps = {
   periodTitle: string;
   calendarMode: CalendarMode;
-  canManageBookings: boolean;
-  isOnline: boolean;
   language?: SupportedLocale;
-  onCreateBooking: () => void;
   onMovePeriod: (direction: -1 | 1) => void;
   onToday: () => void;
   onCalendarModeChange: (mode: CalendarMode) => void;
@@ -18,10 +15,7 @@ type CalendarToolbarProps = {
 export function CalendarToolbar({
   periodTitle,
   calendarMode,
-  canManageBookings,
-  isOnline,
   language = "ro",
-  onCreateBooking,
   onMovePeriod,
   onToday,
   onCalendarModeChange,
@@ -35,17 +29,6 @@ export function CalendarToolbar({
         </div>
 
         <div className="toolbar-actions">
-          {canManageBookings && (
-            <button
-              className="primary-button compact"
-              disabled={!isOnline}
-              onClick={onCreateBooking}
-              type="button"
-            >
-              + {appText(language, "booking.newShort")}
-            </button>
-          )}
-
           <button
             className="icon-only"
             onClick={() => onMovePeriod(-1)}
