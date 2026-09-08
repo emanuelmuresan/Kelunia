@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { appText, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
-import type { BookingForm, GroupItem, ManagedUser, RoomItem } from "@/lib/types/domain";
+import type { Booking, BookingForm, FixedSchedule, GroupItem, ManagedUser, RoomItem } from "@/lib/types/domain";
+import { findBookingConflict } from "@/features/bookings/services/booking-conflicts";
 
 export type BookingFormState = BookingForm;
 
@@ -13,6 +14,8 @@ interface BookingModalProps {
   groups: GroupItem[];
   managedUsers: ManagedUser[];
   rooms: RoomItem[];
+  bookings: Booking[];
+  fixedSchedules: FixedSchedule[];
   groupsLabel?: string;
   roomsLabel?: string;
   language?: SupportedLocale;
@@ -29,6 +32,8 @@ export function BookingModal({
   groups,
   managedUsers,
   rooms,
+  bookings,
+  fixedSchedules,
   groupsLabel = "Grup",
   roomsLabel = "Sala",
   language = "ro",
@@ -38,6 +43,14 @@ export function BookingModal({
   onSubmit,
 }: BookingModalProps) {
   const [notifyNowOpen, setNotifyNowOpen] = useState(false);
+
+  const conflict = useMemo(() => {
+    if (!formData.startDate || !formData.room || !formData.startTime || !formData.endTime) {
+      return null;
+    }
+
+    return findBookingConflict({ bookings, fixedSchedules, form: formData, ignoredId: editingId });
+  }, [bookings, fixedSchedules, formData, editingId]);
 
   if (!open) {
     return null;
@@ -428,6 +441,9 @@ export function BookingModal({
               </>
             )}
           </div>
+          {conflict && !error && (
+            <p className="error-line full-field">Există deja o programare: {conflict}.</p>
+          )}
           {error && <p className="error-line full-field">{error}</p>}
           <div className="modal-actions full-field">
             <button className="secondary-button" type="button" onClick={onClose}>{appText(language, "action.cancel")}</button>

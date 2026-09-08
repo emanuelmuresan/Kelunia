@@ -12,6 +12,7 @@ type BookingDetailsModalProps = {
   canEdit: boolean;
   canCreate?: boolean;
   onAdd?: () => void;
+  onDuplicate?: () => void;
   onClose: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -27,6 +28,7 @@ export function BookingDetailsModal({
   canEdit,
   canCreate = false,
   onAdd,
+  onDuplicate,
   onClose,
   onEdit,
   onDelete,
@@ -132,6 +134,16 @@ export function BookingDetailsModal({
                 {appText(language, "action.delete")}
               </button>
             </>
+          )}
+
+          {canCreate && onDuplicate && (
+            <button
+              className="secondary-button"
+              onClick={onDuplicate}
+              type="button"
+            >
+              Repetă
+            </button>
           )}
 
           {canCreate && onAdd && (

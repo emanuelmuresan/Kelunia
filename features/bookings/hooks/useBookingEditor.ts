@@ -57,6 +57,13 @@ type UseBookingEditorParams = {
   setSettingsError: (message: string) => void;
   softDeletePayload: () => Record<string, unknown>;
   user: User | null;
+  pushToast: (input: {
+    message: string;
+    actionLabel?: string;
+    onAction?: () => void | Promise<void>;
+    tone?: "default" | "error";
+    durationMs?: number;
+  }) => string;
 };
 
 export function useBookingEditor({
@@ -80,6 +87,7 @@ export function useBookingEditor({
   setSettingsError,
   softDeletePayload,
   user,
+  pushToast,
 }: UseBookingEditorParams) {
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -160,6 +168,33 @@ export function useBookingEditor({
       notifyGroupOffsets: booking.notifyGroupOffsets?.length ? booking.notifyGroupOffsets : ["15m"],
       notifyGroupAudience: booking.notifyGroupAudience === "selected" ? "selected" : "all",
       notifyGroupRecipients: booking.notifyGroupRecipients?.length ? booking.notifyGroupRecipients : [],
+    });
+    setShowBookingModal(true);
+  }
+
+  function duplicateBooking(booking: Booking) {
+    if (!canManageBookings || !requireBookingOnline()) {
+      return;
+    }
+
+    setSelectedBooking(null);
+    setEditingId(null);
+    setFormError("");
+    setFormData({
+      group: booking.group,
+      room: booking.room,
+      roomId: booking.roomId || rooms.find((room) => room.name === booking.room)?.id || "",
+      startDate: "",
+      endDate: "",
+      startTime: booking.startTime,
+      endTime: booking.endTime,
+      reason: booking.reason,
+      notifyOnThisBooking: false,
+      notifyOffsets: ["15m"],
+      notifyGroupOnThisBooking: false,
+      notifyGroupOffsets: ["15m"],
+      notifyGroupAudience: "all",
+      notifyGroupRecipients: [],
     });
     setShowBookingModal(true);
   }
@@ -334,8 +369,36 @@ export function useBookingEditor({
     }
   }
 
+  async function restoreBooking(booking: Booking) {
+    try {
+      await updateDoc(doc(db, "events", booking.id), {
+        deleted: false,
+        deletedAt: null,
+        deletedBy: "",
+        deletedByUid: "",
+        updatedBy: profile?.displayName ?? user?.email ?? "",
+        updatedAt: Timestamp.now(),
+      });
+      void updateLocationCounterSafely(db, booking.locationId || currentLocationId, "bookingCount", 1).catch(
+        (error) => console.warn("Contorul de programări nu a putut fi actualizat:", error)
+      );
+      void recordAuditLog(
+        "booking",
+        "update",
+        booking.id,
+        { ...booking, deleted: true },
+        { ...booking, deleted: false },
+        booking.locationId,
+        booking.locationName || locationName
+      ).catch(() => undefined);
+    } catch (error) {
+      console.error("Anularea ștergerii nu a reușit:", error);
+      setFormError("Anularea ștergerii nu a reușit. Reîncarcă și încearcă din nou.");
+    }
+  }
+
   async function removeBooking(booking: Booking) {
-    if (!canEditBooking(booking) || !requireBookingOnline() || !confirm("Ștergi această programare?")) {
+    if (!canEditBooking(booking) || !requireBookingOnline()) {
       return;
     }
 
@@ -365,10 +428,17 @@ export function useBookingEditor({
       booking.locationId,
       booking.locationName || locationName
     ).catch((error) => console.warn("Jurnalul de audit pentru ștergere nu a putut fi scris:", error));
+
+    pushToast({
+      message: "Programare ștearsă",
+      actionLabel: "Anulează",
+      onAction: () => restoreBooking(booking),
+    });
   }
 
   return {
     canEditBooking,
+    duplicateBooking,
     editingId,
     formData,
     formError,

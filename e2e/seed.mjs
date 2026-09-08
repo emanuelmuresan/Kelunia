@@ -99,6 +99,15 @@ async function seedFirestore() {
     createdBy: "seed@e2e.test",
   });
 
+  await db.doc(`groups/e2e-group-2`).set({
+    name: "Grupa B",
+    locationId: LOCATION_ID,
+    locationName: LOCATION_NAME,
+    color: "#b9503d",
+    createdAt: now,
+    createdBy: "seed@e2e.test",
+  });
+
   await db.doc(`rooms/e2e-room-1`).set({
     name: "Sala 1",
     locationId: LOCATION_ID,

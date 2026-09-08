@@ -4782,3 +4782,97 @@ img {
     height: calc(100dvh - 120px - 72px - 46px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   }
 }
+
+/* Calendar quick group filter */
+.calendar-group-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.group-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.group-chip.active {
+  border-color: transparent;
+  background: var(--blue);
+  color: #fff;
+}
+
+.group-chip.group-colored-booking.active {
+  background: var(--group-color, var(--blue));
+}
+
+.group-chip i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+/* Transient toasts (booking deleted · Undo) */
+.toast-stack {
+  position: fixed;
+  left: 50%;
+  bottom: calc(84px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(420px, calc(100vw - 32px));
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 0.85rem;
+  box-shadow: 0 14px 34px rgba(22, 23, 43, 0.32);
+}
+
+.toast > span {
+  flex: 1;
+}
+
+.toast-error {
+  background: var(--coral);
+}
+
+.toast-action {
+  border: none;
+  background: transparent;
+  color: #7db8ff;
+  font-weight: 800;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.toast-error .toast-action {
+  color: #ffe0d8;
+}
+
+.toast-close {
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
