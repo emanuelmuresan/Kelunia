@@ -11,10 +11,12 @@ test("capture mobile calendar + FAB + notify-now", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript(() => {
     try {
-      localStorage.setItem(
-        "kelunia.upcomingTicker",
-        JSON.stringify({ enabled: true, color: "#8b5cf6", leadDays: 7 })
-      );
+      if (!localStorage.getItem("kelunia.upcomingTicker")) {
+        localStorage.setItem(
+          "kelunia.upcomingTicker",
+          JSON.stringify({ enabled: true, color: "#8b5cf6", leadDays: 7 })
+        );
+      }
     } catch {
       /* ignore */
     }
@@ -27,6 +29,19 @@ test("capture mobile calendar + FAB + notify-now", async ({ page }) => {
   await page.waitForTimeout(1500);
 
   await page.screenshot({ path: "test-results/calendar-mobile.png" });
+
+  // and without the ticker
+  await page.evaluate(() => {
+    try {
+      localStorage.setItem("kelunia.upcomingTicker", JSON.stringify({ enabled: false, color: "#1787ff", leadDays: 7 }));
+    } catch {
+      /* ignore */
+    }
+  });
+  await page.reload();
+  await page.locator("main.kelunia-shell").waitFor({ timeout: 30_000 });
+  await page.waitForTimeout(1200);
+  await page.screenshot({ path: "test-results/calendar-no-ticker.png" });
 
   await page.getByRole("button", { name: "An", exact: true }).click();
   await page.waitForTimeout(600);

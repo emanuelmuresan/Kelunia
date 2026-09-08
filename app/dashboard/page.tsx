@@ -59,7 +59,6 @@ import { UpcomingTicker, upcomingForTicker } from "@/features/calendar/component
 import { useUpcomingTickerSettings } from "@/features/calendar/hooks/useUpcomingTickerSettings";
 import { DayView } from "@/features/calendar/views/DayView";
 import { CalendarToolbar } from "@/features/calendar/components/CalendarToolbar";
-import { CalendarGroupFilter } from "@/features/calendar/components/CalendarGroupFilter";
 import { ListView } from "@/features/bookings/views/ListView";
 import { FixedSchedulesView } from "@/features/fixed-schedules/views/FixedSchedulesView";
 import { BookingDetailsModal } from "@/features/bookings/components/BookingDetailsModal";
@@ -114,7 +113,6 @@ export default function KeluniaPage() {
 
   const [activeView, setActiveView] = useState<AppView>("calendar");
   const [calendarMode, setCalendarMode] = useState<CalendarMode>("month");
-  const [calendarGroupFilter, setCalendarGroupFilter] = useState("");
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const [activeLocationId, setActiveLocationId] = useState("");
   const [listFilter, setListFilter] = useState<ListFilter>("future");
@@ -242,13 +240,6 @@ export default function KeluniaPage() {
       tickerSettings.enabled &&
       upcomingForTicker(visibleBookingsByRoomAccess, today, tickerSettings.leadDays).length > 0,
     [tickerSettings.enabled, tickerSettings.leadDays, visibleBookingsByRoomAccess, today]
-  );
-  const calendarBookings = useMemo(
-    () =>
-      calendarGroupFilter
-        ? visibleBookingsByRoomAccess.filter((booking) => booking.group === calendarGroupFilter)
-        : visibleBookingsByRoomAccess,
-    [calendarGroupFilter, visibleBookingsByRoomAccess]
   );
   const visibleFixedSchedulesByRoomAccess = useMemo(() => {
     if (hasFullRoomAccess) {
@@ -1164,16 +1155,10 @@ export default function KeluniaPage() {
               onCalendarModeChange={setCalendarMode}
             />
 
-          <CalendarGroupFilter
-            groups={groups}
-            value={calendarGroupFilter}
-            onChange={setCalendarGroupFilter}
-          />
-
           {calendarMode === "year" ? (
             <YearView
               yearMonths={yearMonths}
-              bookings={calendarBookings}
+              bookings={visibleBookingsByRoomAccess}
               today={today}
               onDateSelect={openDayBookings}
               onOpenMonth={(firstDateKey) => {
@@ -1186,7 +1171,7 @@ export default function KeluniaPage() {
               shortDayLabels={shortDayLabels}
               monthCells={monthCells}
               today={today}
-              bookings={calendarBookings}
+              bookings={visibleBookingsByRoomAccess}
               groups={groups}
               canManageBookings={canManageBookings}
               isOnline={isOnline}
@@ -1199,7 +1184,7 @@ export default function KeluniaPage() {
             calendarMode === "week" ? (
             <WeekView
               activePeriodDays={activePeriodDays}
-              bookings={calendarBookings}
+              bookings={visibleBookingsByRoomAccess}
               groups={groups}
               canManageBookings={canManageBookings}
               isOnline={isOnline}
@@ -1211,7 +1196,7 @@ export default function KeluniaPage() {
           ) : (
             <DayView
               activePeriodDays={activePeriodDays}
-              bookings={calendarBookings}
+              bookings={visibleBookingsByRoomAccess}
               groups={groups}
               canManageBookings={canManageBookings}
               isOnline={isOnline}

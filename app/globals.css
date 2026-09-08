@@ -79,7 +79,9 @@ img {
   width: min(1180px, calc(100% - 28px));
   max-width: calc(100vw - 28px - env(safe-area-inset-left) - env(safe-area-inset-right));
   margin: 0 auto;
-  padding: calc(120px + env(safe-area-inset-top)) 0 calc(72px + env(safe-area-inset-bottom));
+  /* --kelunia-topbar-h is measured from the fixed topbar (JS) and already
+     includes its safe-area padding; the fallback covers first paint. */
+  padding: var(--kelunia-topbar-h, calc(120px + env(safe-area-inset-top))) 0 calc(72px + env(safe-area-inset-bottom));
   overflow-x: clip;
 }
 
@@ -2626,7 +2628,7 @@ img {
   .kelunia-shell {
     width: min(1180px, calc(100% - 18px));
     max-width: calc(100vw - 18px - env(safe-area-inset-left) - env(safe-area-inset-right));
-    padding-top: calc(106px + env(safe-area-inset-top));
+
   }
 
   .app-topbar,
@@ -2866,7 +2868,7 @@ img {
   .kelunia-shell {
     width: min(1180px, calc(100% - 12px));
     max-width: calc(100vw - 12px - env(safe-area-inset-left) - env(safe-area-inset-right));
-    padding-top: calc(100px + env(safe-area-inset-top));
+
   }
 
   .app-topbar,
@@ -4599,8 +4601,8 @@ img {
   .calendar-panel:has(.month-calendar) {
     display: flex;
     flex-direction: column;
-    height: calc(100dvh - 120px - 72px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
-    min-height: 360px;
+    height: calc(100dvh - var(--kelunia-topbar-h, 120px) - 72px - env(safe-area-inset-bottom));
+    min-height: 320px;
   }
 
   .calendar-panel:has(.month-calendar) > .month-calendar {
@@ -4715,9 +4717,9 @@ img {
 /* Upcoming-events ticker (per-device, toggled in settings) */
 .upcoming-ticker {
   position: sticky;
-  top: calc(118px + env(safe-area-inset-top));
+  top: var(--kelunia-topbar-h, 118px);
   z-index: 20;
-  margin: 0 0 10px;
+  margin: 0 0 8px;
   border: 1px solid var(--line);
   border-left: 4px solid var(--ticker-accent, var(--blue));
   border-radius: 8px;
@@ -4779,47 +4781,8 @@ img {
 /* Ticker present: shave its height off the fixed month grid so nothing scrolls */
 @media (max-width: 820px) {
   main[data-ticker="on"] .calendar-panel:has(.month-calendar) {
-    height: calc(100dvh - 120px - 72px - 46px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    height: calc(100dvh - var(--kelunia-topbar-h, 120px) - 72px - 46px - env(safe-area-inset-bottom));
   }
-}
-
-/* Calendar quick group filter */
-.calendar-group-filter {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 10px;
-}
-
-.group-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 12px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: #fff;
-  color: var(--muted);
-  font-size: 0.78rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.group-chip.active {
-  border-color: transparent;
-  background: var(--blue);
-  color: #fff;
-}
-
-.group-chip.group-colored-booking.active {
-  background: var(--group-color, var(--blue));
-}
-
-.group-chip i {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  display: inline-block;
 }
 
 /* Transient toasts (booking deleted · Undo) */
@@ -4901,4 +4864,18 @@ img {
   font-size: 0.7rem;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+/* Mobile: sit the calendar flush under the topbar with only a hairline gap */
+@media (max-width: 820px) {
+  .swipe-page-region {
+    min-height: 0;
+  }
+
+  .kelunia-shell > .swipe-page-region > .calendar-panel {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    border-top: 0;
+    box-shadow: 0 12px 24px rgba(24, 35, 48, 0.06);
+  }
 }

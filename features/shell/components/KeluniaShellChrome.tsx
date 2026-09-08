@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { InstallAppPrompt } from "@/components/InstallAppPrompt";
 import { appText, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
@@ -52,10 +53,29 @@ export function KeluniaShellChrome({
   onSignOut,
 }: KeluniaShellChromeProps) {
   const headerTitleLines = splitBalancedTitle(headerTitle);
+  const topbarRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const node = topbarRef.current;
+
+    if (!node || typeof ResizeObserver === "undefined") {
+      return;
+    }
+
+    const apply = () => {
+      document.documentElement.style.setProperty("--kelunia-topbar-h", `${Math.round(node.offsetHeight)}px`);
+    };
+
+    apply();
+    const observer = new ResizeObserver(apply);
+    observer.observe(node);
+
+    return () => observer.disconnect();
+  }, [headerTitle, userLabel, isOnline, showLicenseWarning]);
 
   return (
     <>
-      <header className="app-topbar app-main-topbar">
+      <header className="app-topbar app-main-topbar" ref={topbarRef}>
         <div className="app-topbar-brand" aria-label="Kelunia">
           <img src="/icon-192.png" alt="" />
         </div>
