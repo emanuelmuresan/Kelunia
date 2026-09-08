@@ -1517,11 +1517,14 @@ service cloud.firestore {
     }
 
     match /settings/{settingId} {
+      // Match on the doc id (settings/calendar_<locationId>) rather than
+      // resource.data so a not-yet-created settings doc resolves cleanly instead
+      // of throwing a null-deref evaluation error on every member's first load.
       allow read: if signedInVerified()
         && settingId != "auth_codes"
         && (
           isOwner()
-          || resource.data.locationId == userLocationId()
+          || settingId == "calendar_" + userLocationId()
         );
       allow create, update: if settingId != "auth_codes"
         && (

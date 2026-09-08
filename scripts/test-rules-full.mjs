@@ -9,7 +9,7 @@
  */
 import { readFileSync } from "node:fs";
 import { initializeTestEnvironment } from "@firebase/rules-unit-testing";
-import { doc, setDoc, updateDoc, addDoc, deleteDoc, collection, increment, Timestamp } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc, addDoc, deleteDoc, collection, increment, Timestamp } from "firebase/firestore";
 
 const LOC = "place_loc1";
 const MGR = "managerUid00000000000000000001";
@@ -112,6 +112,12 @@ await chk("location: manager cannot change plan", "DENY", () => updateDoc(doc(db
 console.log("\n--- settings (calendar_<loc>) ---");
 await chk("settings: manager update (setDoc)", "ALLOW", () => setDoc(doc(dbMgr(), "settings", `calendar_${LOC}`), settingsDoc({ fixedSectionTitle: "Nou" })));
 await chk("settings: member cannot update", "DENY", () => setDoc(doc(dbMember(), "settings", `calendar_${LOC}`), settingsDoc({ fixedSectionTitle: "Hax" })));
+await chk("settings: member reads own-location settings", "ALLOW", () => getDoc(doc(dbMember(), "settings", `calendar_${LOC}`)));
+await chk("settings: member reads own-location settings when doc is absent", "ALLOW", async () => {
+  await te.withSecurityRulesDisabled((c) => deleteDoc(doc(c.firestore(), "settings", `calendar_${LOC}`)));
+  await getDoc(doc(dbMember(), "settings", `calendar_${LOC}`));
+});
+await chk("settings: member cannot read another location's settings", "DENY", () => getDoc(doc(dbMember(), "settings", "calendar_place_other")));
 
 console.log("\n--- auditLogs (one per entity type, manager) ---");
 for (const et of ["booking", "fixedSchedule", "room", "group", "accessCode", "user", "location", "settings"]) {
