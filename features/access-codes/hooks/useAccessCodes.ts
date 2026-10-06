@@ -17,6 +17,7 @@ import type { AuditAction, AuditEntityType } from "@/lib/audit";
 import { cloudFunctions } from "@/lib/firebase";
 import { accessCodeExpiryDays } from "@/lib/config/app";
 import {
+  buildAccessInviteShareText,
   generateAccessCode,
   isAccessCodeFull,
   maxUsesForAccessRole,
@@ -197,17 +198,18 @@ export function useAccessCodes({
     }
   }
 
-  async function copyInviteLink(code: string) {
+  async function copyInviteLink(item: LocationCode) {
     setCodesError("");
     setCodesMessage("");
 
-    const inviteUrl = inviteUrlForCode(code);
+    const inviteUrl = inviteUrlForCode(item.code);
+    const shareText = buildAccessInviteShareText(item, inviteUrl);
 
     try {
-      await navigator.clipboard.writeText(inviteUrl);
-      setCodesMessage("Linkul de invitatie a fost copiat.");
+      await navigator.clipboard.writeText(shareText);
+      setCodesMessage("Mesajul de invitatie a fost copiat.");
     } catch (error) {
-      console.warn("Linkul nu a putut fi copiat:", error);
+      console.warn("Mesajul nu a putut fi copiat:", error);
       setCodesError(`Linkul este ${inviteUrl}. Copiaza-l manual daca browserul nu permite copierea automata.`);
     }
   }
@@ -370,8 +372,18 @@ export function useAccessCodes({
         setCodesMessage(`Cod generat: ${generatedCode}. Verifica invitatia si apasa Trimite.`);
       } else {
         try {
-          await navigator.clipboard.writeText(inviteUrlForCode(generatedCode));
-          setCodesMessage(`Link de invitatie generat si copiat pentru codul ${generatedCode}.`);
+          const shareText = buildAccessInviteShareText(
+            {
+              code: generatedCode,
+              role: selectedRole,
+              groupName: selectedRole === "manager" ? "" : codeGenerator.groupName.trim(),
+              locationName: location.name,
+              expiresAt: (generatedPayload as { expiresAt?: unknown } | null)?.expiresAt,
+            },
+            inviteUrlForCode(generatedCode)
+          );
+          await navigator.clipboard.writeText(shareText);
+          setCodesMessage(`Mesaj de invitatie generat si copiat pentru codul ${generatedCode}.`);
         } catch {
           setCodesMessage(`Cod generat: ${generatedCode}`);
         }

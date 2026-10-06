@@ -37,7 +37,7 @@ interface AccessCodesModalProps {
   isAccessCodeFull: (item: LocationCode) => boolean;
   isAccessCodeExpired: (item: LocationCode) => boolean;
   accessCodeExpiryLabel: (item: LocationCode) => string;
-  onCopyInviteLink: (code: string) => void;
+  onCopyInviteLink: (item: LocationCode) => void;
   onSendInvite: (item: LocationCode) => void;
   onSendInviteEmail: () => void;
   language?: SupportedLocale;
@@ -240,17 +240,14 @@ export function AccessCodesModal({
                 value={codeGenerator.role}
                 onChange={(event) => {
                   const nextRole = event.target.value as UserRole | "";
-                  // Administrator codes are always for the location this modal is
-                  // already open for, so the location step is skipped entirely -
-                  // straight to Generate. Member/guest still pick it explicitly.
-                  const autoLocationId = nextRole === "manager" ? editableCodeLocations[0]?.id ?? "" : "";
+                  // Codes always belong to the location this modal is open for.
                   onCodeGeneratorChange({
                     ...codeGenerator,
                     role: nextRole,
                     groupName: "",
                     roomAccess: "all",
                     allowedRoomIds: [],
-                    locationId: autoLocationId,
+                    locationId: nextRole ? editableCodeLocations[0]?.id ?? "" : "",
                   });
                 }}
               >
@@ -259,18 +256,6 @@ export function AccessCodesModal({
                 <option value="member">{appText(language, "role.collaborator")}</option>
                 <option value="manager">{appText(language, "role.administrator")}</option>
               </select>
-
-              {codeGenerator.role === "member" || codeGenerator.role === "guest" ? (
-                <select
-                  value={codeGenerator.locationId}
-                  onChange={(event) => onCodeGeneratorChange({ ...codeGenerator, locationId: event.target.value })}
-                >
-                  <option value="">{appText(language, "settings.location")}</option>
-                  {editableCodeLocations.map((location) => (
-                    <option key={location.id} value={location.id}>{location.name}</option>
-                  ))}
-                </select>
-              ) : null}
 
               {codeGenerator.role === "manager" && (
                 <>
@@ -481,8 +466,8 @@ export function AccessCodesModal({
                     <button onClick={() => onCopy(item.code)} type="button">
                       {appText(language, "action.copy")}
                     </button>
-                    <button onClick={() => onCopyInviteLink(item.code)} type="button">
-                      Link
+                    <button onClick={() => onCopyInviteLink(item)} type="button">
+                      Mesaj
                     </button>
                     <button onClick={() => onSendInvite(item)} disabled={!item.active || isAccessCodeFull(item) || isAccessCodeExpired(item)} type="button">
                       Email

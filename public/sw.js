@@ -1,4 +1,4 @@
-const CACHE_NAME = "kelunia-shell-v16";
+const CACHE_NAME = "kelunia-shell-v17";
 const APP_SHELL = ["/", "/dashboard", "/login", "/manifest.json", "/icon-192.png", "/icon-512.png", "/kelunia-logo.png", "/semnatura.png"];
 const IS_LOCAL =
   self.location.hostname === "localhost" ||
@@ -82,20 +82,19 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // Network-first: the exported RSC payloads (dashboard.txt, __next.*.txt)
+  // reference build-hashed chunks, so serving them cache-first pins the app to
+  // an old build after every deploy. The cache is only an offline fallback.
   event.respondWith(
-    caches.match(request).then((cached) => {
-      if (cached) {
-        return cached;
-      }
-
-      return fetch(request)
-        .then((response) => {
+    fetch(request)
+      .then((response) => {
+        if (response.ok) {
           const copy = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-          return response;
-        })
-        .catch(() => cached || Response.error());
-    })
+        }
+        return response;
+      })
+      .catch(async () => (await caches.match(request)) || Response.error())
   );
 });
 
