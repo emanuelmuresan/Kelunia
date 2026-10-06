@@ -294,6 +294,7 @@ export interface LocationCode {
   active: boolean;
   createdBy?: string;
   createdAt?: unknown;
+  expiresAt?: unknown;
   lastInviteEmailSentAt?: unknown;
   lastInviteEmailSentBy?: string;
   lastInviteEmailSentTo?: string;

@@ -15,6 +15,7 @@ import type { UserRole } from "@/context/AuthContext";
 import type { SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 import type { AuditAction, AuditEntityType } from "@/lib/audit";
 import { cloudFunctions } from "@/lib/firebase";
+import { accessCodeExpiryDays } from "@/lib/config/app";
 import {
   generateAccessCode,
   isAccessCodeFull,
@@ -335,6 +336,7 @@ export function useAccessCodes({
             active: true,
             createdBy: user?.email ?? "",
             createdAt: Timestamp.now(),
+            expiresAt: Timestamp.fromMillis(Date.now() + accessCodeExpiryDays * 24 * 60 * 60 * 1000),
             deleted: false,
           };
 
@@ -505,6 +507,44 @@ export function useAccessCodes({
     }
   }
 
+  async function extendAccessCodeExpiry(item: LocationCode) {
+    if (!canEditCurrentLocation || item.locationId !== currentLocationId) {
+      return;
+    }
+
+    if (!requireOnline("codes")) {
+      return;
+    }
+
+    setCodesError("");
+    setCodesMessage("");
+
+    const nextExpiresAt = Timestamp.fromMillis(Date.now() + accessCodeExpiryDays * 24 * 60 * 60 * 1000);
+
+    try {
+      const updatedCode = { ...item, expiresAt: nextExpiresAt, updatedBy: user?.email ?? "", updatedAt: Timestamp.now() };
+      await updateDoc(doc(db, "accessCodes", item.id), {
+        role: item.role,
+        groupName: item.role === "manager" ? "" : item.groupName,
+        roomAccess: item.role === "manager" ? "all" : item.roomAccess,
+        allowedRoomIds: item.role === "manager" || item.roomAccess === "all" ? [] : item.allowedRoomIds,
+        locationId: item.locationId,
+        locationName: item.locationName || locationName,
+        active: item.active,
+        maxUses: item.maxUses,
+        usedCount: item.usedCount,
+        expiresAt: nextExpiresAt,
+        updatedBy: user?.email ?? "",
+        updatedAt: Timestamp.now(),
+      });
+      await recordAuditLog("accessCode", "update", item.id, item, updatedCode, item.locationId, item.locationName || locationName);
+      setCodesMessage(`Codul a fost prelungit cu ${accessCodeExpiryDays} zile.`);
+    } catch (error) {
+      console.error("Codul nu a putut fi prelungit:", error);
+      setCodesError("Codul nu a putut fi prelungit. Verifica regulile Firebase.");
+    }
+  }
+
   async function removeAccessCode(item: LocationCode) {
     if (!canEditCurrentLocation || item.locationId !== currentLocationId || !requireOnline("codes") || !confirm(`Stergi codul ${item.code}?`)) {
       return;
@@ -532,6 +572,7 @@ export function useAccessCodes({
     codesWorking,
     copyAccessCode,
     copyInviteLink,
+    extendAccessCodeExpiry,
     generateLocationCode,
     openCodesEditor,
     removeAccessCode,

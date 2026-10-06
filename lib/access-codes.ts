@@ -50,6 +50,7 @@ export function normalizeAccessCode(id: string, data: Record<string, unknown>): 
     active: data.active !== false,
     createdBy: data.createdBy ? String(data.createdBy) : undefined,
     createdAt: data.createdAt,
+    expiresAt: data.expiresAt,
   };
 }
 
@@ -67,6 +68,29 @@ export function accessCodeUsageLabel(item: LocationCode) {
 
 export function isAccessCodeFull(item: LocationCode) {
   return item.maxUses !== null && item.usedCount >= item.maxUses;
+}
+
+// Codes created before expiresAt existed carry no such field and never expire
+// (grandfathered) - matches firestore.rules' accessCodeNotExpired().
+export function isAccessCodeExpired(item: Pick<LocationCode, "expiresAt">) {
+  const expiresAt = item.expiresAt as { toMillis?: () => number } | undefined;
+
+  if (!expiresAt || typeof expiresAt.toMillis !== "function") {
+    return false;
+  }
+
+  return expiresAt.toMillis() <= Date.now();
+}
+
+export function accessCodeExpiryLabel(item: Pick<LocationCode, "expiresAt">) {
+  const expiresAt = item.expiresAt as { toDate?: () => Date } | undefined;
+
+  if (!expiresAt || typeof expiresAt.toDate !== "function") {
+    return "";
+  }
+
+  const label = expiresAt.toDate().toLocaleDateString("ro-RO", { day: "2-digit", month: "short", year: "numeric" });
+  return isAccessCodeExpired(item) ? `Expirat pe ${label}` : `Expiră pe ${label}`;
 }
 
 export function generateAccessCode() {

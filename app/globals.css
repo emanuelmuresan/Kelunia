@@ -1767,6 +1767,15 @@ img {
   font-weight: 800;
 }
 
+.code-expiry {
+  font-weight: 600;
+}
+
+.code-expiry-expired {
+  color: var(--coral);
+  font-weight: 700;
+}
+
 .code-row-muted .code-chip {
   background: #f3f4f6;
   color: var(--muted);

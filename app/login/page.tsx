@@ -35,11 +35,27 @@ function accessCodeUsage(data: Record<string, unknown>, role: UserRole) {
   };
 }
 
+// Codes created before expiresAt existed have no such field and never expire
+// (grandfathered) - only a code that explicitly carries a past expiresAt is rejected.
+function isAccessCodeExpired(data: Record<string, unknown>) {
+  const expiresAt = data.expiresAt as { toMillis?: () => number } | undefined;
+
+  if (!expiresAt || typeof expiresAt.toMillis !== "function") {
+    return false;
+  }
+
+  return expiresAt.toMillis() <= Date.now();
+}
+
 function assertAccessCodeCanBeUsed(data: Record<string, unknown>, role: UserRole) {
   const usage = accessCodeUsage(data, role);
 
   if (!usage.active) {
     throw new Error("Codul de acces este oprit. Cere un cod nou de la administrator.");
+  }
+
+  if (isAccessCodeExpired(data)) {
+    throw new Error("Codul de acces a expirat. Cere un cod nou de la administrator.");
   }
 
   if (usage.maxUses !== null && usage.usedCount >= usage.maxUses) {

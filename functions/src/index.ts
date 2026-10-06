@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
-import { FieldValue, getFirestore } from "firebase-admin/firestore";
+import { FieldValue, getFirestore, Timestamp } from "firebase-admin/firestore";
 import { getMessaging } from "firebase-admin/messaging";
 import { logger } from "firebase-functions";
 import { defineSecret, defineString } from "firebase-functions/params";
@@ -80,6 +80,7 @@ type AccessCodeDocument = {
   active?: boolean;
   code?: string;
   deleted?: boolean;
+  expiresAt?: Timestamp;
   groupName?: string;
   locationId?: string;
   locationName?: string;
@@ -685,12 +686,21 @@ function roleLabel(role: UserRole) {
   return "Oaspete";
 }
 
+function accessCodeExpiryDateLabel(accessCode: AccessCodeDocument) {
+  if (!accessCode.expiresAt) {
+    return "";
+  }
+
+  return accessCode.expiresAt.toDate().toLocaleDateString("ro-RO", { day: "2-digit", month: "long", year: "numeric" });
+}
+
 function accessInviteText(request: AccessInviteEmailRequest, accessCode: AccessCodeDocument) {
   const code = accessCode.code ?? request.code ?? "";
   const email = cleanEmail(request.toEmail);
   const link = appUrl(`/login?invite=${encodeURIComponent(code)}${email ? `&email=${encodeURIComponent(email)}` : ""}`);
   const groupName = accessCode.role === "manager" ? "" : accessCode.groupName?.trim();
   const customMessage = request.message?.trim();
+  const expiryLabel = accessCodeExpiryDateLabel(accessCode);
 
   return [
     customMessage || `Ai primit o invitație pentru Kelunia, locația ${accessCode.locationName ?? ""}.`,
@@ -707,6 +717,7 @@ function accessInviteText(request: AccessInviteEmailRequest, accessCode: AccessC
     "",
     `Link invitație: ${link}`,
     `Cod acces: ${code}`,
+    expiryLabel ? `Acest cod expiră pe ${expiryLabel}. Dacă a trecut termenul, cere unul nou.` : "",
     "",
     "Dacă linkul nu se deschide corect, intră manual în aplicația Kelunia și folosește codul de acces de mai sus.",
     "",
@@ -721,6 +732,7 @@ function accessInviteHtml(request: AccessInviteEmailRequest, accessCode: AccessC
   const link = appUrl(`/login?invite=${encodeURIComponent(code)}${email ? `&email=${encodeURIComponent(email)}` : ""}`);
   const groupName = accessCode.role === "manager" ? "" : accessCode.groupName?.trim();
   const customMessage = escapeHtml(request.message?.trim() || `Ai primit o invitație pentru Kelunia, locația ${accessCode.locationName ?? ""}.`).replace(/\n/g, "<br />");
+  const expiryLabel = accessCodeExpiryDateLabel(accessCode);
 
   return [
     '<div style="font-family:Arial,sans-serif;line-height:1.6;color:#172033;max-width:640px">',
@@ -741,6 +753,9 @@ function accessInviteHtml(request: AccessInviteEmailRequest, accessCode: AccessC
     `<p><a href="${escapeHtml(link)}" style="display:inline-block;background:#0f766e;color:#fff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:700">Deschide invitația</a></p>`,
     '<p style="margin:18px 0 8px;color:#667085">Cod acces</p>',
     `<p style="font-size:24px;font-weight:700;letter-spacing:1px;margin:0 0 18px">${escapeHtml(code)}</p>`,
+    expiryLabel
+      ? `<p style="font-size:13px;color:#b9503d;margin:0 0 18px"><strong>Acest cod expiră pe ${escapeHtml(expiryLabel)}.</strong> Dacă a trecut termenul, cere unul nou.</p>`
+      : "",
     `<p style="font-size:13px;color:#667085;margin-top:18px">Dacă butonul nu merge, deschide acest link: ${escapeHtml(link)}</p>`,
     '<p style="font-size:13px;color:#667085;margin-top:8px">Dacă linkul nu se deschide corect, intră manual în aplicația Kelunia și folosește codul de acces de mai sus.</p>',
     "</div>",
@@ -897,6 +912,10 @@ export const sendAccessInviteEmail = onCall(
 
     if (accessCode.deleted === true || accessCode.active === false) {
       throw new HttpsError("failed-precondition", "Codul nu mai este activ.");
+    }
+
+    if (accessCode.expiresAt && accessCode.expiresAt.toMillis() <= Date.now()) {
+      throw new HttpsError("failed-precondition", "Codul a expirat. Generează unul nou înainte să trimiți invitația.");
     }
 
     const claims = request.auth.token as {

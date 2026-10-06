@@ -85,5 +85,6 @@ export function appRoleLabel(profile: { isOwner?: boolean } | null | undefined, 
 }
 
 export const memberAccessCodeMaxUses = 10;
+export const accessCodeExpiryDays = 7;
 export const listPageSize = 50;
 export const maxNotificationDelayMs = 2147483647;

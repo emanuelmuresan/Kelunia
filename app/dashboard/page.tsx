@@ -18,7 +18,9 @@ import { ErrorBoundary } from "@/features/shell/components/ErrorBoundary";
 import { ToastStack } from "@/features/shell/components/ToastStack";
 import { useToasts } from "@/features/shell/hooks/useToasts";
 import {
+  accessCodeExpiryLabel,
   accessCodeUsageLabel,
+  isAccessCodeExpired,
   isAccessCodeFull,
 } from "@/lib/access-codes";
 import {
@@ -608,7 +610,8 @@ export default function KeluniaPage() {
           item.locationId === currentLocationId &&
           item.role === "manager" &&
           item.active &&
-          !isAccessCodeFull(item)
+          !isAccessCodeFull(item) &&
+          !isAccessCodeExpired(item)
       ).length,
     [accessCodes, currentLocationId]
   );
@@ -625,6 +628,7 @@ export default function KeluniaPage() {
     codesWorking,
     copyAccessCode,
     copyInviteLink,
+    extendAccessCodeExpiry,
     generateLocationCode,
     inviteDraft,
     openCodesEditor,
@@ -1363,8 +1367,11 @@ export default function KeluniaPage() {
         onCopy={copyAccessCode}
         onToggleActive={toggleAccessCodeActive}
         onRemove={removeAccessCode}
+        onExtendExpiry={extendAccessCodeExpiry}
         accessCodeUsageLabel={accessCodeUsageLabel}
         isAccessCodeFull={isAccessCodeFull}
+        isAccessCodeExpired={isAccessCodeExpired}
+        accessCodeExpiryLabel={accessCodeExpiryLabel}
         onCopyInviteLink={copyInviteLink}
         onSendInvite={sendAccessInvite}
         onSendInviteEmail={sendInviteEmailFromModal}

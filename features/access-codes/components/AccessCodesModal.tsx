@@ -32,8 +32,11 @@ interface AccessCodesModalProps {
   onCopy: (code: string) => void;
   onToggleActive: (item: LocationCode) => void;
   onRemove: (item: LocationCode) => void;
+  onExtendExpiry: (item: LocationCode) => void;
   accessCodeUsageLabel: (item: LocationCode) => string;
   isAccessCodeFull: (item: LocationCode) => boolean;
+  isAccessCodeExpired: (item: LocationCode) => boolean;
+  accessCodeExpiryLabel: (item: LocationCode) => string;
   onCopyInviteLink: (code: string) => void;
   onSendInvite: (item: LocationCode) => void;
   onSendInviteEmail: () => void;
@@ -66,8 +69,11 @@ export function AccessCodesModal({
   onCopy,
   onToggleActive,
   onRemove,
+  onExtendExpiry,
   accessCodeUsageLabel,
   isAccessCodeFull,
+  isAccessCodeExpired,
+  accessCodeExpiryLabel,
   onCopyInviteLink,
   onSendInvite,
   onSendInviteEmail,
@@ -320,7 +326,7 @@ export function AccessCodesModal({
               const editDisabled = codesWorking || !isEditingCode;
 
               return (
-                <div className={`code-row ${!item.active || isAccessCodeFull(item) ? "code-row-muted" : ""}`} key={item.id}>
+                <div className={`code-row ${!item.active || isAccessCodeFull(item) || isAccessCodeExpired(item) ? "code-row-muted" : ""}`} key={item.id}>
                   <span className="code-chip">{item.code}</span>
                   <select
                     value={draftRole}
@@ -399,7 +405,14 @@ export function AccessCodesModal({
                     )}
                     <small>{roomAccessLabel({ ...item, roomAccess: draftRoomAccess, allowedRoomIds: draftAllowedRoomIds }, rooms)}</small>
                   </div>
-                  <span className="code-usage">{accessCodeUsageLabel(item)}</span>
+                  <span className="code-usage">
+                    {accessCodeUsageLabel(item)}
+                    {accessCodeExpiryLabel(item) && (
+                      <small className={isAccessCodeExpired(item) ? "code-expiry-expired" : "code-expiry"}>
+                        {" "}· {accessCodeExpiryLabel(item)}
+                      </small>
+                    )}
+                  </span>
                   <div className="code-row-actions">
                     <button onClick={() => onCopy(item.code)} type="button">
                       {appText(language, "action.copy")}
@@ -407,9 +420,14 @@ export function AccessCodesModal({
                     <button onClick={() => onCopyInviteLink(item.code)} type="button">
                       Link
                     </button>
-                    <button onClick={() => onSendInvite(item)} disabled={!item.active || isAccessCodeFull(item)} type="button">
+                    <button onClick={() => onSendInvite(item)} disabled={!item.active || isAccessCodeFull(item) || isAccessCodeExpired(item)} type="button">
                       Email
                     </button>
+                    {isAccessCodeExpired(item) && (
+                      <button onClick={() => onExtendExpiry(item)} type="button">
+                        Prelungește
+                      </button>
+                    )}
                     {isEditingCode ? (
                       <>
                         <button className="secondary-button compact" onClick={() => closeCodeEditor(item.id)} type="button">

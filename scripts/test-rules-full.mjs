@@ -157,6 +157,17 @@ await chk("audit: spoofed actorUid rejected", "DENY", () => addDoc(collection(db
 
 console.log("\n--- accessCodes ---");
 await chk("accessCode: soft-delete (updateDoc {...softDelete, active:false})", "ALLOW", () => updateDoc(doc(dbMgr(), "accessCodes", "CODE1"), { ...softDelete(), active: false }));
+await chk("accessCode: create with expiresAt timestamp", "ALLOW", () =>
+  setDoc(doc(dbMgr(), "accessCodes", "CODE_NEW"), accessCodeDoc({ code: "CODE_NEW", expiresAt: Timestamp.fromMillis(Date.now() + 7 * 86400000) }))
+);
+await chk("accessCode: manager extends expiresAt on an existing code", "ALLOW", () =>
+  updateDoc(doc(dbMgr(), "accessCodes", "CODE1"), {
+    role: "member", groupName: "G", roomAccess: "all", allowedRoomIds: [],
+    locationId: LOC, locationName: "L", maxUses: 10, usedCount: 0, active: true,
+    expiresAt: Timestamp.fromMillis(Date.now() + 7 * 86400000),
+    updatedBy: "m@x.com", updatedAt: ts(),
+  })
+);
 
 console.log("\n--- email_verified gate ---");
 await chk("unverified manager cannot edit room", "DENY", () => updateDoc(doc(dbUnverified(), "rooms", "room1"), { name: "x", locationId: LOC, locationName: "L", updatedBy: "x", updatedAt: ts() }));
@@ -177,7 +188,7 @@ console.log("\n--- access-code self-registration (full transaction, all 3 roles)
 // users/{uid} doc, and bumps the code's usedCount - in one transaction, with
 // no users/{uid} doc existing beforehand. Covers manager/member/guest since
 // each has a different maxUses convention (1 / 10 / null).
-async function seedAccessCode(codeId, role) {
+async function seedAccessCode(codeId, role, over = {}) {
   await te.withSecurityRulesDisabled((c) =>
     setDoc(doc(c.firestore(), "accessCodes", codeId), {
       code: codeId, role, locationId: LOC, locationName: "L",
@@ -185,6 +196,7 @@ async function seedAccessCode(codeId, role) {
       roomAccess: "all", allowedRoomIds: [],
       maxUses: role === "manager" ? 1 : role === "member" ? 10 : null,
       usedCount: 0, active: true, createdBy: "m@x.com", createdAt: ts(),
+      ...over,
     })
   );
 }
@@ -219,6 +231,16 @@ for (const role of ["manager", "member", "guest"]) {
     await attemptAccessCodeSignup(uid, codeId);
   });
 }
+
+await chk("access-code self-registration: expired code is denied", "DENY", async () => {
+  await seedAccessCode("SELFCODE_EXPIRED", "member", { expiresAt: Timestamp.fromMillis(Date.now() - 86400000) });
+  await attemptAccessCodeSignup("selfSignupUidExpired00001", "SELFCODE_EXPIRED");
+});
+
+await chk("access-code self-registration: no-expiresAt (legacy) code still works", "ALLOW", async () => {
+  await seedAccessCode("SELFCODE_LEGACY", "guest");
+  await attemptAccessCodeSignup("selfSignupUidLegacy000001", "SELFCODE_LEGACY");
+});
 
 await te.cleanup();
 console.log(`\n${pass} passed, ${fail} failed`);
