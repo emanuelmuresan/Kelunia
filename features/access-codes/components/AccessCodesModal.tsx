@@ -80,7 +80,6 @@ export function AccessCodesModal({
   language = "ro",
 }: AccessCodesModalProps) {
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [groupFilter, setGroupFilter] = useState("all");
   const [view, setView] = useState<"active" | "history">("active");
   const [editingCodeIds, setEditingCodeIds] = useState<Record<string, boolean>>({});
   const [codeDrafts, setCodeDrafts] = useState<Record<string, AccessCodeDraft>>({});
@@ -88,7 +87,6 @@ export function AccessCodesModal({
   useEffect(() => {
     if (!open) {
       setShowCreateForm(false);
-      setGroupFilter("all");
       setView("active");
       setEditingCodeIds({});
       setCodeDrafts({});
@@ -104,21 +102,7 @@ export function AccessCodesModal({
   const historyCodes = useMemo(() => accessCodes.filter((item) => !isUsableCode(item)), [accessCodes, isUsableCode]);
   const tabCodes = view === "active" ? activeCodes : historyCodes;
 
-  const visibleAccessCodes = useMemo(() => {
-    if (groupFilter === "all") {
-      return tabCodes;
-    }
-
-    if (groupFilter === "__manager__") {
-      return tabCodes.filter((item) => item.role === "manager");
-    }
-
-    if (groupFilter === "__without_group__") {
-      return tabCodes.filter((item) => item.role !== "manager" && !item.groupName.trim());
-    }
-
-    return tabCodes.filter((item) => item.groupName === groupFilter);
-  }, [tabCodes, groupFilter]);
+  const visibleAccessCodes = tabCodes;
 
   function codeDraftFor(item: LocationCode): AccessCodeDraft {
     return codeDrafts[item.id] ?? {
@@ -211,16 +195,6 @@ export function AccessCodesModal({
         </div>
 
         <div className="code-toolbar">
-          <label>
-            {appText(language, "access.filterByGroup")}
-            <select className="code-filter-select" value={groupFilter} onChange={(event) => setGroupFilter(event.target.value)}>
-              <option value="all">{appText(language, "access.allCodes")}</option>
-              <option value="__manager__">{appText(language, "settings.administrators")}</option>
-              <option value="__without_group__">{appText(language, "access.noGroup")}</option>
-              {groups.map((group) => <option key={group.id} value={group.name}>{group.name}</option>)}
-            </select>
-          </label>
-
           <button className="primary-button compact" onClick={() => setShowCreateForm((current) => !current)} type="button">
             {showCreateForm ? appText(language, "booking.close") : appText(language, "access.createCode")}
           </button>
@@ -340,8 +314,6 @@ export function AccessCodesModal({
             <p className="empty-line">{appText(language, "access.noCodes")}</p>
           ) : tabCodes.length === 0 ? (
             <p className="empty-line">{appText(language, view === "active" ? "access.noActiveCodes" : "access.noHistoryCodes")}</p>
-          ) : visibleAccessCodes.length === 0 ? (
-            <p className="empty-line">{appText(language, "access.noFilterCodes")}</p>
           ) : (
             visibleAccessCodes.map((item) => {
               const codeDraft = codeDraftFor(item);
