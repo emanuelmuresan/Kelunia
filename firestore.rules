@@ -1833,13 +1833,24 @@ service cloud.firestore {
     }
 
     match /locations/{locationId} {
-      allow get: if signedInVerified()
-        && (
-          isOwner()
-          || locationId == userLocationId()
-          || !hasUserDoc()
-          || hasPendingLocationSetup()
-        );
+      // The !hasUserDoc() branch is a deliberate bootstrap exception: a brand-new
+      // access-code registration creates the Auth user, then reads the location
+      // (to confirm it still exists / get its live name) BEFORE the users/{uid}
+      // profile doc is written and BEFORE the verification email is even sent —
+      // so signedInVerified() can never be true yet. Gating this whole allow on
+      // signedInVerified() silently broke every non-owner access-code signup
+      // ("Missing or insufficient permissions" on account creation). Only the
+      // no-user-doc bootstrap case skips verification; every other branch below
+      // still requires it.
+      allow get: if (
+          signedInVerified()
+          && (
+            isOwner()
+            || locationId == userLocationId()
+            || hasPendingLocationSetup()
+          )
+        )
+        || (signedIn() && !hasUserDoc());
       allow list: if signedInVerified() && isOwner();
       allow create: if signedInVerified()
         && validLocationCreate();

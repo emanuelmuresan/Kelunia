@@ -9,7 +9,7 @@
  */
 import { readFileSync } from "node:fs";
 import { initializeTestEnvironment } from "@firebase/rules-unit-testing";
-import { doc, getDoc, setDoc, updateDoc, addDoc, deleteDoc, collection, increment, Timestamp } from "firebase/firestore";
+import { doc, getDoc, getDocs, setDoc, updateDoc, addDoc, deleteDoc, collection, increment, Timestamp } from "firebase/firestore";
 
 const LOC = "place_loc1";
 const MGR = "managerUid00000000000000000001";
@@ -77,6 +77,8 @@ const dbMgr2 = () => te.authenticatedContext(MGR2, { email: "m2@x.com", email_ve
 const dbMember = () => te.authenticatedContext(MEMBER, { email: "mem@x.com", email_verified: true, firebase: { sign_in_provider: "password" } }).firestore();
 const dbOwner = () => te.authenticatedContext(OWNER, { email: OWNER_EMAIL, email_verified: true, firebase: { sign_in_provider: "password" } }).firestore();
 const dbUnverified = () => te.authenticatedContext(MGR, { email: "m@x.com", email_verified: false, firebase: { sign_in_provider: "password" } }).firestore();
+const NEWUSER = "newUserUid00000000000000001";
+const dbNewUser = () => te.authenticatedContext(NEWUSER, { email: "new@x.com", email_verified: false, firebase: { sign_in_provider: "password" } }).firestore();
 
 let pass = 0, fail = 0;
 async function chk(label, want, fn) {
@@ -159,6 +161,15 @@ await chk("accessCode: soft-delete (updateDoc {...softDelete, active:false})", "
 console.log("\n--- email_verified gate ---");
 await chk("unverified manager cannot edit room", "DENY", () => updateDoc(doc(dbUnverified(), "rooms", "room1"), { name: "x", locationId: LOC, locationName: "L", updatedBy: "x", updatedAt: ts() }));
 await chk("unverified manager cannot soft-delete booking-style", "DENY", () => updateDoc(doc(dbUnverified(), "rooms", "room1"), softDelete()));
+
+console.log("\n--- locations: unverified bootstrap read (access-code registration) ---");
+// Regression for: a brand-new access-code signup creates the Auth user, then
+// reads /locations/{id} to confirm it exists and get its live name - BEFORE
+// the users/{uid} profile doc is written and BEFORE verification even starts.
+// signedInVerified() can never be true at that point.
+await chk("locations: brand-new unverified user (no users doc) reads a location by id", "ALLOW", () => getDoc(doc(dbNewUser(), "locations", LOC)));
+await chk("locations: unverified user WITH an existing users doc still cannot read", "DENY", () => getDoc(doc(dbUnverified(), "locations", LOC)));
+await chk("locations: brand-new unverified user cannot list locations", "DENY", () => getDocs(collection(dbNewUser(), "locations")));
 
 await te.cleanup();
 console.log(`\n${pass} passed, ${fail} failed`);
