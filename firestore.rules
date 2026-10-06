@@ -647,7 +647,12 @@ service cloud.firestore {
           )
           || (
             request.resource.data.isOwner == false
-            && request.resource.data.locationSetupRequired != true
+            // .get(..., false): access-code signups never used to write this
+            // field at all (now fixed client-side to send false explicitly),
+            // and a raw != comparison against a missing key hard-errors the
+            // whole rule instead of just failing the condition - which is
+            // exactly what broke every access-code registration before.
+            && request.resource.data.get("locationSetupRequired", false) != true
             && validAccessCodeForUserCreate(request.resource.data, userId)
           )
         );

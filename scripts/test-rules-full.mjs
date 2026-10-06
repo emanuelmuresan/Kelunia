@@ -9,7 +9,7 @@
  */
 import { readFileSync } from "node:fs";
 import { initializeTestEnvironment } from "@firebase/rules-unit-testing";
-import { doc, getDoc, getDocs, setDoc, updateDoc, addDoc, deleteDoc, collection, increment, Timestamp } from "firebase/firestore";
+import { doc, getDoc, getDocs, setDoc, updateDoc, addDoc, deleteDoc, collection, increment, runTransaction, Timestamp } from "firebase/firestore";
 
 const LOC = "place_loc1";
 const MGR = "managerUid00000000000000000001";
@@ -170,6 +170,55 @@ console.log("\n--- locations: unverified bootstrap read (access-code registratio
 await chk("locations: brand-new unverified user (no users doc) reads a location by id", "ALLOW", () => getDoc(doc(dbNewUser(), "locations", LOC)));
 await chk("locations: unverified user WITH an existing users doc still cannot read", "DENY", () => getDoc(doc(dbUnverified(), "locations", LOC)));
 await chk("locations: brand-new unverified user cannot list locations", "DENY", () => getDocs(collection(dbNewUser(), "locations")));
+
+console.log("\n--- access-code self-registration (full transaction, all 3 roles) ---");
+// Mirrors createProfile()'s runTransaction in app/login/page.tsx exactly: the
+// brand-new, unverified Auth user reads the access code, writes their own
+// users/{uid} doc, and bumps the code's usedCount - in one transaction, with
+// no users/{uid} doc existing beforehand. Covers manager/member/guest since
+// each has a different maxUses convention (1 / 10 / null).
+async function seedAccessCode(codeId, role) {
+  await te.withSecurityRulesDisabled((c) =>
+    setDoc(doc(c.firestore(), "accessCodes", codeId), {
+      code: codeId, role, locationId: LOC, locationName: "L",
+      groupName: role === "manager" ? "" : "G",
+      roomAccess: "all", allowedRoomIds: [],
+      maxUses: role === "manager" ? 1 : role === "member" ? 10 : null,
+      usedCount: 0, active: true, createdBy: "m@x.com", createdAt: ts(),
+    })
+  );
+}
+
+async function attemptAccessCodeSignup(uid, codeId) {
+  const d = te.authenticatedContext(uid, { email: `${uid}@x.com`, email_verified: false, firebase: { sign_in_provider: "password" } }).firestore();
+  const userRef = doc(d, "users", uid);
+  const codeRef = doc(d, "accessCodes", codeId);
+
+  await runTransaction(d, async (transaction) => {
+    const codeSnap = await transaction.get(codeRef);
+    const codeData = codeSnap.data();
+
+    transaction.set(userRef, {
+      uid, email: `${uid}@x.com`, displayName: "New User", group: codeData.groupName, groupName: codeData.groupName,
+      role: codeData.role, isOwner: false, locationId: codeData.locationId, locationName: codeData.locationName,
+      accessCodeId: codeId, accessCodeRole: codeData.role, roomAccess: codeData.roomAccess, allowedRoomIds: codeData.allowedRoomIds,
+      usePin: false, lockOnHide: false, useBiometrics: false, language: "ro", createdAt: ts(),
+    });
+    transaction.update(codeRef, {
+      active: true, maxUses: codeData.maxUses, usedCount: (codeData.usedCount ?? 0) + 1,
+      lastUsedAt: ts(), lastUsedBy: `${uid}@x.com`, lastUsedByUid: uid,
+    });
+  });
+}
+
+for (const role of ["manager", "member", "guest"]) {
+  const codeId = `SELFCODE_${role.toUpperCase()}`;
+  const uid = `selfSignupUid${role}0000000001`;
+  await chk(`access-code self-registration: new unverified ${role} completes signup`, "ALLOW", async () => {
+    await seedAccessCode(codeId, role);
+    await attemptAccessCodeSignup(uid, codeId);
+  });
+}
 
 await te.cleanup();
 console.log(`\n${pass} passed, ${fail} failed`);

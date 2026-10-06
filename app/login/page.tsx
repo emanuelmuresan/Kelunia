@@ -304,6 +304,7 @@ export default function LoginPage() {
         accessCodeRole: role,
         roomAccess: cleanRoomAccess,
         allowedRoomIds: cleanAllowedRoomIds,
+        locationSetupRequired: false,
         usePin: false,
         lockOnHide: false,
         useBiometrics: false,
