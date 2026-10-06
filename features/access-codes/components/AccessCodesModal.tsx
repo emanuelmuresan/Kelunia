@@ -240,12 +240,17 @@ export function AccessCodesModal({
                 value={codeGenerator.role}
                 onChange={(event) => {
                   const nextRole = event.target.value as UserRole | "";
+                  // Administrator codes are always for the location this modal is
+                  // already open for, so the location step is skipped entirely -
+                  // straight to Generate. Member/guest still pick it explicitly.
+                  const autoLocationId = nextRole === "manager" ? editableCodeLocations[0]?.id ?? "" : "";
                   onCodeGeneratorChange({
                     ...codeGenerator,
                     role: nextRole,
                     groupName: "",
                     roomAccess: "all",
                     allowedRoomIds: [],
+                    locationId: autoLocationId,
                   });
                 }}
               >
@@ -254,69 +259,89 @@ export function AccessCodesModal({
                 <option value="member">{appText(language, "role.collaborator")}</option>
                 <option value="manager">{appText(language, "role.administrator")}</option>
               </select>
-              <select
-                value={codeGenerator.groupName}
-                onChange={(event) => onCodeGeneratorChange({ ...codeGenerator, groupName: event.target.value })}
-                disabled={!codeGenerator.role || codeGenerator.role === "manager"}
-              >
-                <option value="">{codeGenerator.role === "manager" ? appText(language, "access.noGroup") : appText(language, "booking.selectGroup")}</option>
-                {groups.map((group) => <option key={group.id} value={group.name}>{group.name}</option>)}
-              </select>
-              <select
-                value={codeGenerator.locationId}
-                onChange={(event) => onCodeGeneratorChange({ ...codeGenerator, locationId: event.target.value })}
-              >
-                <option value="">{appText(language, "settings.location")}</option>
-                {editableCodeLocations.map((location) => (
-                  <option key={location.id} value={location.id}>{location.name}</option>
-                ))}
-              </select>
-              <input
-                type="email"
-                value={codeGenerator.inviteEmail}
-                onChange={(event) => onCodeGeneratorChange({ ...codeGenerator, inviteEmail: event.target.value })}
-                placeholder={appText(language, "access.recipientEmail")}
-              />
-              <select
-                value={codeGenerator.roomAccess}
-                onChange={(event) =>
-                  onCodeGeneratorChange({
-                    ...codeGenerator,
-                    roomAccess: event.target.value as RoomAccessMode,
-                    allowedRoomIds: [],
-                  })
-                }
-                disabled={!codeGenerator.role || codeGenerator.role === "manager"}
-              >
-                <option value="all">{appText(language, "settings.roomsAll")}</option>
-                <option value="selected">{appText(language, "settings.roomsSelected")}</option>
-              </select>
-              {codeGenerator.roomAccess === "selected" && codeGenerator.role && codeGenerator.role !== "manager" && (
-                <div className="room-check-grid">
-                  {rooms.length === 0 ? (
-                    <p className="empty-line">{appText(language, "settings.noItems")}</p>
-                  ) : (
-                    rooms.map((room) => (
-                      <label className="toggle-row compact-toggle" key={room.id}>
-                        <input
-                          type="checkbox"
-                          checked={codeGenerator.allowedRoomIds.includes(room.id)}
-                          onChange={(event) => {
-                            const allowedRoomIds = event.target.checked
-                              ? [...codeGenerator.allowedRoomIds, room.id]
-                              : codeGenerator.allowedRoomIds.filter((roomId) => roomId !== room.id);
-                            onCodeGeneratorChange({ ...codeGenerator, allowedRoomIds });
-                          }}
-                        />
-                        {room.name}
-                      </label>
-                    ))
-                  )}
-                </div>
+
+              {codeGenerator.role === "member" || codeGenerator.role === "guest" ? (
+                <select
+                  value={codeGenerator.locationId}
+                  onChange={(event) => onCodeGeneratorChange({ ...codeGenerator, locationId: event.target.value })}
+                >
+                  <option value="">{appText(language, "settings.location")}</option>
+                  {editableCodeLocations.map((location) => (
+                    <option key={location.id} value={location.id}>{location.name}</option>
+                  ))}
+                </select>
+              ) : null}
+
+              {codeGenerator.role === "manager" && (
+                <>
+                  <input
+                    type="email"
+                    value={codeGenerator.inviteEmail}
+                    onChange={(event) => onCodeGeneratorChange({ ...codeGenerator, inviteEmail: event.target.value })}
+                    placeholder={appText(language, "access.recipientEmail")}
+                  />
+                  <button className="secondary-button compact" disabled={codesWorking} onClick={onGenerate} type="button">
+                    {codesWorking ? appText(language, "action.generating") : appText(language, "action.generate")}
+                  </button>
+                </>
               )}
-              <button className="secondary-button compact" disabled={codesWorking} onClick={onGenerate} type="button">
-                {codesWorking ? appText(language, "action.generating") : appText(language, "action.generate")}
-              </button>
+
+              {(codeGenerator.role === "member" || codeGenerator.role === "guest") && codeGenerator.locationId && (
+                <>
+                  <select
+                    value={codeGenerator.groupName}
+                    onChange={(event) => onCodeGeneratorChange({ ...codeGenerator, groupName: event.target.value })}
+                  >
+                    <option value="">{appText(language, "booking.selectGroup")}</option>
+                    {groups.map((group) => <option key={group.id} value={group.name}>{group.name}</option>)}
+                  </select>
+                  <input
+                    type="email"
+                    value={codeGenerator.inviteEmail}
+                    onChange={(event) => onCodeGeneratorChange({ ...codeGenerator, inviteEmail: event.target.value })}
+                    placeholder={appText(language, "access.recipientEmail")}
+                  />
+                  <select
+                    value={codeGenerator.roomAccess}
+                    onChange={(event) =>
+                      onCodeGeneratorChange({
+                        ...codeGenerator,
+                        roomAccess: event.target.value as RoomAccessMode,
+                        allowedRoomIds: [],
+                      })
+                    }
+                  >
+                    <option value="all">{appText(language, "settings.roomsAll")}</option>
+                    <option value="selected">{appText(language, "settings.roomsSelected")}</option>
+                  </select>
+                  {codeGenerator.roomAccess === "selected" && (
+                    <div className="room-check-grid">
+                      {rooms.length === 0 ? (
+                        <p className="empty-line">{appText(language, "settings.noItems")}</p>
+                      ) : (
+                        rooms.map((room) => (
+                          <label className="toggle-row compact-toggle" key={room.id}>
+                            <input
+                              type="checkbox"
+                              checked={codeGenerator.allowedRoomIds.includes(room.id)}
+                              onChange={(event) => {
+                                const allowedRoomIds = event.target.checked
+                                  ? [...codeGenerator.allowedRoomIds, room.id]
+                                  : codeGenerator.allowedRoomIds.filter((roomId) => roomId !== room.id);
+                                onCodeGeneratorChange({ ...codeGenerator, allowedRoomIds });
+                              }}
+                            />
+                            {room.name}
+                          </label>
+                        ))
+                      )}
+                    </div>
+                  )}
+                  <button className="secondary-button compact" disabled={codesWorking} onClick={onGenerate} type="button">
+                    {codesWorking ? appText(language, "action.generating") : appText(language, "action.generate")}
+                  </button>
+                </>
+              )}
             </div>
           </div>
         )}
@@ -345,88 +370,105 @@ export function AccessCodesModal({
                 draftGroupName !== item.groupName ||
                 draftRoomAccess !== item.roomAccess ||
                 !sameRoomIds(draftAllowedRoomIds, item.allowedRoomIds);
-              const editDisabled = codesWorking || !isEditingCode;
+
+              const roleLabel = (role: UserRole) =>
+                role === "manager"
+                  ? appText(language, "role.administrator")
+                  : role === "member"
+                    ? appText(language, "role.collaborator")
+                    : appText(language, "role.guest");
 
               return (
                 <div className={`code-row ${!item.active || isAccessCodeFull(item) || isAccessCodeExpired(item) ? "code-row-muted" : ""}`} key={item.id}>
                   <span className="code-chip">{item.code}</span>
-                  <select
-                    value={draftRole}
-                    onChange={(event) => {
-                      const nextRole = event.target.value as UserRole;
-                      setCodeDraft(item, {
-                        role: nextRole,
-                        groupName: nextRole === "manager" ? "" : codeDraft.groupName,
-                        roomAccess: nextRole === "manager" ? "all" : item.roomAccess,
-                        allowedRoomIds: nextRole === "manager" || item.roomAccess === "all" ? [] : item.allowedRoomIds,
-                      });
-                    }}
-                    disabled={editDisabled}
-                  >
-                    <option value="guest">{appText(language, "role.guest")}</option>
-                    <option value="member">{appText(language, "role.collaborator")}</option>
-                    <option value="manager">{appText(language, "role.administrator")}</option>
-                  </select>
-                  <select
-                    value={draftGroupName}
-                    onChange={(event) => setCodeDraft(item, { ...codeDraft, groupName: event.target.value })}
-                    disabled={editDisabled || draftRole === "manager"}
-                  >
-                    <option value="">{draftRole === "manager" ? appText(language, "access.noGroup") : appText(language, "booking.selectGroup")}</option>
-                    {groups.map((group) => <option key={group.id} value={group.name}>{group.name}</option>)}
-                  </select>
-                  <div className="code-room-access">
-                    <select
-                      value={draftRoomAccess}
-                      onChange={(event) => {
-                        const nextRoomAccess = event.target.value as RoomAccessMode;
-
-                        if (nextRoomAccess === "all") {
+                  {isEditingCode ? (
+                    <>
+                      <select
+                        value={draftRole}
+                        onChange={(event) => {
+                          const nextRole = event.target.value as UserRole;
                           setCodeDraft(item, {
-                            ...codeDraft,
-                            roomAccess: "all",
-                            allowedRoomIds: [],
+                            role: nextRole,
+                            groupName: nextRole === "manager" ? "" : codeDraft.groupName,
+                            roomAccess: nextRole === "manager" ? "all" : item.roomAccess,
+                            allowedRoomIds: nextRole === "manager" || item.roomAccess === "all" ? [] : item.allowedRoomIds,
                           });
-                          return;
-                        }
+                        }}
+                      >
+                        <option value="guest">{appText(language, "role.guest")}</option>
+                        <option value="member">{appText(language, "role.collaborator")}</option>
+                        <option value="manager">{appText(language, "role.administrator")}</option>
+                      </select>
+                      <select
+                        value={draftGroupName}
+                        onChange={(event) => setCodeDraft(item, { ...codeDraft, groupName: event.target.value })}
+                        disabled={draftRole === "manager"}
+                      >
+                        <option value="">{draftRole === "manager" ? appText(language, "access.noGroup") : appText(language, "booking.selectGroup")}</option>
+                        {groups.map((group) => <option key={group.id} value={group.name}>{group.name}</option>)}
+                      </select>
+                      <div className="code-room-access">
+                        <select
+                          value={draftRoomAccess}
+                          onChange={(event) => {
+                            const nextRoomAccess = event.target.value as RoomAccessMode;
 
-                        setCodeDraft(item, {
-                          ...codeDraft,
-                          roomAccess: "selected",
-                          allowedRoomIds: item.allowedRoomIds,
-                        });
-                      }}
-                      disabled={editDisabled || draftRole === "manager"}
-                    >
-                      <option value="all">{appText(language, "settings.roomsAll")}</option>
-                      <option value="selected">{appText(language, "settings.roomsSelected")}</option>
-                    </select>
-                    {draftRole !== "manager" && draftRoomAccess === "selected" && (
-                      <div className="room-check-grid code-room-check-grid">
-                        {rooms.length === 0 ? (
-                          <p className="empty-line">{appText(language, "settings.noItems")}</p>
-                        ) : (
-                          rooms.map((room) => (
-                            <label className="toggle-row compact-toggle" key={room.id}>
-                              <input
-                                type="checkbox"
-                                checked={draftAllowedRoomIds.includes(room.id)}
-                                onChange={(event) => {
-                                  const allowedRoomIds = event.target.checked
-                                    ? [...draftAllowedRoomIds, room.id]
-                                    : draftAllowedRoomIds.filter((roomId) => roomId !== room.id);
-                                  setCodeDraft(item, { ...codeDraft, roomAccess: "selected", allowedRoomIds });
-                                }}
-                                disabled={editDisabled}
-                              />
-                              {room.name}
-                            </label>
-                          ))
+                            if (nextRoomAccess === "all") {
+                              setCodeDraft(item, {
+                                ...codeDraft,
+                                roomAccess: "all",
+                                allowedRoomIds: [],
+                              });
+                              return;
+                            }
+
+                            setCodeDraft(item, {
+                              ...codeDraft,
+                              roomAccess: "selected",
+                              allowedRoomIds: item.allowedRoomIds,
+                            });
+                          }}
+                          disabled={draftRole === "manager"}
+                        >
+                          <option value="all">{appText(language, "settings.roomsAll")}</option>
+                          <option value="selected">{appText(language, "settings.roomsSelected")}</option>
+                        </select>
+                        {draftRole !== "manager" && draftRoomAccess === "selected" && (
+                          <div className="room-check-grid code-room-check-grid">
+                            {rooms.length === 0 ? (
+                              <p className="empty-line">{appText(language, "settings.noItems")}</p>
+                            ) : (
+                              rooms.map((room) => (
+                                <label className="toggle-row compact-toggle" key={room.id}>
+                                  <input
+                                    type="checkbox"
+                                    checked={draftAllowedRoomIds.includes(room.id)}
+                                    onChange={(event) => {
+                                      const allowedRoomIds = event.target.checked
+                                        ? [...draftAllowedRoomIds, room.id]
+                                        : draftAllowedRoomIds.filter((roomId) => roomId !== room.id);
+                                      setCodeDraft(item, { ...codeDraft, roomAccess: "selected", allowedRoomIds });
+                                    }}
+                                    disabled={codesWorking}
+                                  />
+                                  {room.name}
+                                </label>
+                              ))
+                            )}
+                          </div>
                         )}
+                        <small>{roomAccessLabel({ ...item, roomAccess: draftRoomAccess, allowedRoomIds: draftAllowedRoomIds }, rooms)}</small>
                       </div>
-                    )}
-                    <small>{roomAccessLabel({ ...item, roomAccess: draftRoomAccess, allowedRoomIds: draftAllowedRoomIds }, rooms)}</small>
-                  </div>
+                    </>
+                  ) : (
+                    <>
+                      <span className="code-role-label">{roleLabel(item.role)}</span>
+                      <span className="code-group-label">{item.role === "manager" ? appText(language, "access.noGroup") : item.groupName || appText(language, "booking.selectGroup")}</span>
+                      <span className="code-room-access-label">
+                        <small>{roomAccessLabel(item, rooms)}</small>
+                      </span>
+                    </>
+                  )}
                   <span className="code-usage">
                     {accessCodeUsageLabel(item)}
                     {accessCodeExpiryLabel(item) && (
@@ -466,7 +508,7 @@ export function AccessCodesModal({
                       </>
                     ) : (
                       <button className="secondary-button compact" disabled={codesWorking} onClick={() => openCodeEditor(item)} type="button">
-                        {appText(language, "settings.edit")}
+                        {appText(language, "access.modifyCode")}
                       </button>
                     )}
                     <button onClick={() => onToggleActive(item)} type="button">

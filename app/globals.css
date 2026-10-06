@@ -1761,6 +1761,30 @@ img {
   font-weight: 750;
 }
 
+.code-role-label,
+.code-group-label {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 800;
+}
+
+.code-group-label {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.code-room-access-label {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  min-width: 0;
+}
+
 .code-usage {
   color: var(--muted);
   font-size: 0.86rem;
