@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { UserRole } from "@/context/AuthContext";
 import type { AccessInviteDraft, CodeGeneratorState } from "@/features/access-codes/hooks/useAccessCodes";
 import { appText, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
@@ -81,6 +81,7 @@ export function AccessCodesModal({
 }: AccessCodesModalProps) {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [groupFilter, setGroupFilter] = useState("all");
+  const [view, setView] = useState<"active" | "history">("active");
   const [editingCodeIds, setEditingCodeIds] = useState<Record<string, boolean>>({});
   const [codeDrafts, setCodeDrafts] = useState<Record<string, AccessCodeDraft>>({});
 
@@ -88,26 +89,36 @@ export function AccessCodesModal({
     if (!open) {
       setShowCreateForm(false);
       setGroupFilter("all");
+      setView("active");
       setEditingCodeIds({});
       setCodeDrafts({});
     }
   }, [open]);
 
+  const isUsableCode = useCallback(
+    (item: LocationCode) => item.active !== false && !isAccessCodeFull(item) && !isAccessCodeExpired(item),
+    [isAccessCodeFull, isAccessCodeExpired]
+  );
+
+  const activeCodes = useMemo(() => accessCodes.filter(isUsableCode), [accessCodes, isUsableCode]);
+  const historyCodes = useMemo(() => accessCodes.filter((item) => !isUsableCode(item)), [accessCodes, isUsableCode]);
+  const tabCodes = view === "active" ? activeCodes : historyCodes;
+
   const visibleAccessCodes = useMemo(() => {
     if (groupFilter === "all") {
-      return accessCodes;
+      return tabCodes;
     }
 
     if (groupFilter === "__manager__") {
-      return accessCodes.filter((item) => item.role === "manager");
+      return tabCodes.filter((item) => item.role === "manager");
     }
 
     if (groupFilter === "__without_group__") {
-      return accessCodes.filter((item) => item.role !== "manager" && !item.groupName.trim());
+      return tabCodes.filter((item) => item.role !== "manager" && !item.groupName.trim());
     }
 
-    return accessCodes.filter((item) => item.groupName === groupFilter);
-  }, [accessCodes, groupFilter]);
+    return tabCodes.filter((item) => item.groupName === groupFilter);
+  }, [tabCodes, groupFilter]);
 
   function codeDraftFor(item: LocationCode): AccessCodeDraft {
     return codeDrafts[item.id] ?? {
@@ -187,6 +198,15 @@ export function AccessCodesModal({
           </div>
           <button className="secondary-button compact" onClick={onClose} type="button">
             {appText(language, "booking.close")}
+          </button>
+        </div>
+
+        <div className="segmented-control code-view-tabs" role="group" aria-label={appText(language, "access.activeCodes")}>
+          <button className={view === "active" ? "active" : ""} onClick={() => setView("active")} type="button">
+            {appText(language, "access.activeCodes")} ({activeCodes.length})
+          </button>
+          <button className={view === "history" ? "active" : ""} onClick={() => setView("history")} type="button">
+            {appText(language, "access.historyCodes")} ({historyCodes.length})
           </button>
         </div>
 
@@ -308,6 +328,8 @@ export function AccessCodesModal({
         <div className="mini-list">
           {accessCodes.length === 0 ? (
             <p className="empty-line">{appText(language, "access.noCodes")}</p>
+          ) : tabCodes.length === 0 ? (
+            <p className="empty-line">{appText(language, view === "active" ? "access.noActiveCodes" : "access.noHistoryCodes")}</p>
           ) : visibleAccessCodes.length === 0 ? (
             <p className="empty-line">{appText(language, "access.noFilterCodes")}</p>
           ) : (
