@@ -179,6 +179,33 @@ test("closing a location needs the name typed and can be cancelled", async ({ pa
   await expect(dialog).toHaveCount(0);
 });
 
+test("the list page can be hidden but the calendar always stays", async ({ page }) => {
+  await loginAsAdmin(page);
+
+  const configuration = await openSettingsSection(page, "Configurare");
+  await blockOf(configuration, "Pagini").getByRole("button", { name: "Modifică" }).click();
+  const editor = page.locator('[aria-labelledby="pages-settings-title"]');
+
+  // The calendar checkbox is checked and cannot be changed.
+  const calendarToggle = editor.getByLabel("Afișează pagina Calendar");
+  await expect(calendarToggle).toBeChecked();
+  await expect(calendarToggle).toBeDisabled();
+
+  const listToggle = editor.getByLabel("Afișează pagina Listă programări");
+  await listToggle.uncheck();
+  await editor.getByRole("button", { name: "Salvează" }).click();
+  await expect(page.locator(".toast", { hasText: "Paginile au fost salvate." })).toBeVisible();
+
+  await expect(page.getByRole("button", { name: "Listă programări" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Calendar" }).first()).toBeVisible();
+
+  // Put it back so the other specs see the seeded navigation.
+  await blockOf(configuration, "Pagini").getByRole("button", { name: "Modifică" }).click();
+  await editor.getByLabel("Afișează pagina Listă programări").check();
+  await editor.getByRole("button", { name: "Salvează" }).click();
+  await expect(page.getByRole("button", { name: "Listă programări" })).toHaveCount(1);
+});
+
 // Runs last: it switches the seeded admin to English.
 test("messages follow the chosen language", async ({ page }) => {
   await loginAsAdmin(page);

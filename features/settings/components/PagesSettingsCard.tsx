@@ -11,6 +11,8 @@ type PagesSettingsCardProps = {
   language: AppLanguage;
   canEditCurrentLocation: boolean;
   fixedPageEnabledDraft: boolean;
+  listPageEnabledDraft: boolean;
+  setListPageEnabledDraft: (value: boolean) => void;
   setFixedPageEnabledDraft: (value: boolean) => void;
   fixedSectionDraft: string;
   setFixedSectionDraft: (value: string) => void;
@@ -35,6 +37,7 @@ export function PagesSettingsCard(props: PagesSettingsCardProps) {
     language,
     canEditCurrentLocation,
     fixedPageEnabledDraft,
+    listPageEnabledDraft,
     fixedSectionDraft,
     defaultFixedSectionTitle,
     listViewDraft,
@@ -70,8 +73,16 @@ export function PagesSettingsCard(props: PagesSettingsCardProps) {
 
         <div className="settings-summary-list">
           <div>
-            <span>{t("settings.blockVisibility")}</span>
-            <strong>{fixedName}: {fixedPageEnabledDraft ? t("settings.active") : t("settings.inactive")}</strong>
+            <span>{t("nav.calendar")}</span>
+            <strong>{t("settings.alwaysVisible")}</strong>
+          </div>
+          <div>
+            <span>{listName}</span>
+            <strong>{listPageEnabledDraft ? t("settings.active") : t("settings.inactive")}</strong>
+          </div>
+          <div>
+            <span>{fixedName}</span>
+            <strong>{fixedPageEnabledDraft ? t("settings.active") : t("settings.inactive")}</strong>
           </div>
           <div>
             <span>{t("settings.blockSectionNames")}</span>
@@ -89,6 +100,8 @@ export function PagesSettingsCard(props: PagesSettingsCardProps) {
           language={language}
           fixedPageEnabledDraft={props.fixedPageEnabledDraft}
           setFixedPageEnabledDraft={props.setFixedPageEnabledDraft}
+          listPageEnabledDraft={props.listPageEnabledDraft}
+          setListPageEnabledDraft={props.setListPageEnabledDraft}
           fixedSectionDraft={props.fixedSectionDraft}
           setFixedSectionDraft={props.setFixedSectionDraft}
           defaultFixedSectionTitle={props.defaultFixedSectionTitle}

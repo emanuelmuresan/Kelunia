@@ -16,6 +16,7 @@ type UseDashboardViewSyncParams = {
   activeView: AppView;
   setActiveView: Dispatch<SetStateAction<AppView>>;
   fixedPageEnabled: boolean;
+  listPageEnabled: boolean;
   currentLocationId: string;
 };
 
@@ -35,6 +36,7 @@ export function useDashboardViewSync({
   activeView,
   setActiveView,
   fixedPageEnabled,
+  listPageEnabled,
   currentLocationId,
 }: UseDashboardViewSyncParams) {
   useEffect(() => {
@@ -70,6 +72,13 @@ export function useDashboardViewSync({
       setActiveView("calendar");
     }
   }, [activeView, fixedPageEnabled, setActiveView]);
+
+  // The calendar is always there; a hidden list page falls back to it.
+  useEffect(() => {
+    if (!listPageEnabled && activeView === "list") {
+      setActiveView("calendar");
+    }
+  }, [activeView, listPageEnabled, setActiveView]);
 
   useEffect(() => {
     if (isOwner && !currentLocationId && activeView !== "settings") {

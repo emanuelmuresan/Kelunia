@@ -44,6 +44,8 @@ export function useCalendarSettings({
   const [fixedSectionDraft, setFixedSectionDraft] = useState(defaultFixedSectionTitle);
   const [fixedPageEnabled, setFixedPageEnabled] = useState(true);
   const [fixedPageEnabledDraft, setFixedPageEnabledDraft] = useState(true);
+  const [listPageEnabled, setListPageEnabled] = useState(true);
+  const [listPageEnabledDraft, setListPageEnabledDraft] = useState(true);
   const [listViewTitle, setListViewTitle] = useState(defaultListViewTitle);
   const [listViewDraft, setListViewDraft] = useState(defaultListViewTitle);
   const [resourcesSectionTitle, setResourcesSectionTitle] = useState(defaultResourcesSectionTitle);
@@ -59,6 +61,8 @@ export function useCalendarSettings({
       setFixedSectionDraft(defaultFixedSectionTitle);
       setFixedPageEnabled(true);
       setFixedPageEnabledDraft(true);
+      setListPageEnabled(true);
+      setListPageEnabledDraft(true);
       setListViewTitle(defaultListViewTitle);
       setListViewDraft(defaultListViewTitle);
       setResourcesSectionTitle(defaultResourcesSectionTitle);
@@ -80,11 +84,14 @@ export function useCalendarSettings({
         const nextRoomsLabel = String(data.roomsLabel ?? defaultRoomsLabel).trim() || defaultRoomsLabel;
         const nextGroupsLabel = String(data.groupsLabel ?? defaultGroupsLabel).trim() || defaultGroupsLabel;
         const enabled = data.fixedPageEnabled !== false;
+        const listEnabled = data.listPageEnabled !== false;
 
         setFixedSectionTitle(title);
         setFixedSectionDraft(title);
         setFixedPageEnabled(enabled);
         setFixedPageEnabledDraft(enabled);
+        setListPageEnabled(listEnabled);
+        setListPageEnabledDraft(listEnabled);
         setListViewTitle(listTitle);
         setListViewDraft(listTitle);
         setResourcesSectionTitle(resourcesTitle);
@@ -100,6 +107,8 @@ export function useCalendarSettings({
         setFixedSectionDraft(defaultFixedSectionTitle);
         setFixedPageEnabled(true);
         setFixedPageEnabledDraft(true);
+        setListPageEnabled(true);
+        setListPageEnabledDraft(true);
         setListViewTitle(defaultListViewTitle);
         setListViewDraft(defaultListViewTitle);
         setResourcesSectionTitle(defaultResourcesSectionTitle);
@@ -149,6 +158,7 @@ export function useCalendarSettings({
       const beforeSettings = {
         fixedSectionTitle,
         fixedPageEnabled,
+        listPageEnabled,
         listViewTitle,
         resourcesSectionTitle,
         roomsLabel,
@@ -159,6 +169,7 @@ export function useCalendarSettings({
       const afterSettings = {
         fixedSectionTitle: title,
         fixedPageEnabled: fixedPageEnabledDraft,
+        listPageEnabled: listPageEnabledDraft,
         listViewTitle: listTitle,
         resourcesSectionTitle: resourcesTitle,
         roomsLabel: nextRoomsLabel,
@@ -184,6 +195,8 @@ export function useCalendarSettings({
     fixedSectionTitle,
     groupsLabel,
     groupsLabelDraft,
+    listPageEnabled,
+    listPageEnabledDraft,
     listViewDraft,
     listViewTitle,
     resourcesSectionDraft,
@@ -193,6 +206,7 @@ export function useCalendarSettings({
     setFixedPageEnabledDraft,
     setFixedSectionDraft,
     setGroupsLabelDraft,
+    setListPageEnabledDraft,
     setListViewDraft,
     setResourcesSectionDraft,
     setRoomsLabelDraft,

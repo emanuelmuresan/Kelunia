@@ -322,6 +322,9 @@ export default function KeluniaPage() {
   const {
     fixedPageEnabled,
     fixedPageEnabledDraft,
+    listPageEnabled,
+    listPageEnabledDraft,
+    setListPageEnabledDraft,
     fixedSectionDraft,
     fixedSectionTitle,
     groupsLabel,
@@ -532,10 +535,8 @@ export default function KeluniaPage() {
 
   const navigationItems: Array<[AppView, string]> = [
     ...(currentLocationId && fixedPageEnabled ? [["fixed", fixedSectionTitle] as [AppView, string]] : []),
-    ...(currentLocationId ? [
-      ["calendar", appText(language, "nav.calendar")] as [AppView, string],
-      ["list", listViewTitle] as [AppView, string],
-    ] : []),
+    ...(currentLocationId ? [["calendar", appText(language, "nav.calendar")] as [AppView, string]] : []),
+    ...(currentLocationId && listPageEnabled ? [["list", listViewTitle] as [AppView, string]] : []),
     ["settings", appText(language, "nav.settings")],
   ];
   const swipeViews = navigationItems.map(([view]) => view);
@@ -556,6 +557,7 @@ export default function KeluniaPage() {
     activeView,
     setActiveView,
     fixedPageEnabled,
+    listPageEnabled,
     currentLocationId,
   });
 
@@ -1318,6 +1320,8 @@ export default function KeluniaPage() {
         groups={groups}
         fixedPageEnabledDraft={fixedPageEnabledDraft}
         setFixedPageEnabledDraft={setFixedPageEnabledDraft}
+        listPageEnabledDraft={listPageEnabledDraft}
+        setListPageEnabledDraft={setListPageEnabledDraft}
         fixedSectionDraft={fixedSectionDraft}
         setFixedSectionDraft={setFixedSectionDraft}
         defaultFixedSectionTitle={defaultFixedSectionTitle}

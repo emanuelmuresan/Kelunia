@@ -10,6 +10,8 @@ import { appText, type UiCopyKey } from "@/lib/i18n/app-copy-catalog";
 type PagesEditorModalProps = {
   language: AppLanguage;
   fixedPageEnabledDraft: boolean;
+  listPageEnabledDraft: boolean;
+  setListPageEnabledDraft: (value: boolean) => void;
   setFixedPageEnabledDraft: (value: boolean) => void;
   fixedSectionDraft: string;
   setFixedSectionDraft: (value: string) => void;
@@ -33,6 +35,8 @@ type PagesEditorModalProps = {
 export function PagesEditorModal({
   language,
   fixedPageEnabledDraft,
+  listPageEnabledDraft,
+  setListPageEnabledDraft,
   setFixedPageEnabledDraft,
   fixedSectionDraft,
   setFixedSectionDraft,
@@ -54,6 +58,7 @@ export function PagesEditorModal({
   const t = (key: UiCopyKey) => appText(language, key);
   const [baseline] = useState(() => ({
     fixedPageEnabled: fixedPageEnabledDraft,
+    listPageEnabled: listPageEnabledDraft,
     fixedSection: fixedSectionDraft,
     listView: listViewDraft,
     resourcesSection: resourcesSectionDraft,
@@ -62,6 +67,7 @@ export function PagesEditorModal({
   }));
   const dirty =
     baseline.fixedPageEnabled !== fixedPageEnabledDraft ||
+    baseline.listPageEnabled !== listPageEnabledDraft ||
     baseline.fixedSection !== fixedSectionDraft ||
     baseline.listView !== listViewDraft ||
     baseline.resourcesSection !== resourcesSectionDraft ||
@@ -70,6 +76,7 @@ export function PagesEditorModal({
 
   function handleClose() {
     setFixedPageEnabledDraft(baseline.fixedPageEnabled);
+    setListPageEnabledDraft(baseline.listPageEnabled);
     setFixedSectionDraft(baseline.fixedSection);
     setListViewDraft(baseline.listView);
     setResourcesSectionDraft(baseline.resourcesSection);
@@ -106,7 +113,19 @@ export function PagesEditorModal({
         </div>
 
         <div className="settings-form">
-          <SettingsBlock title={t("settings.blockVisibility")}>
+          <SettingsBlock title={t("settings.blockVisibility")} hint={t("settings.calendarAlwaysOn")}>
+            <label className="toggle-row">
+              <input type="checkbox" checked disabled />
+              {t("settings.showPage").replace("{{page}}", t("nav.calendar"))}
+            </label>
+            <label className="toggle-row">
+              <input
+                type="checkbox"
+                checked={listPageEnabledDraft}
+                onChange={(event) => setListPageEnabledDraft(event.target.checked)}
+              />
+              {t("settings.showPage").replace("{{page}}", listViewDraft.trim() || t("nav.list"))}
+            </label>
             <label className="toggle-row">
               <input
                 type="checkbox"

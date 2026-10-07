@@ -120,6 +120,8 @@ await chk("location: manager cannot change plan", "DENY", () => updateDoc(doc(db
 
 console.log("\n--- settings (calendar_<loc>) ---");
 await chk("settings: manager update (setDoc)", "ALLOW", () => setDoc(doc(dbMgr(), "settings", `calendar_${LOC}`), settingsDoc({ fixedSectionTitle: "Nou" })));
+await chk("settings: the list page can be hidden (listPageEnabled=false)", "ALLOW", () => setDoc(doc(dbMgr(), "settings", `calendar_${LOC}`), settingsDoc({ listPageEnabled: false })));
+await chk("settings: a non-boolean listPageEnabled is denied", "DENY", () => setDoc(doc(dbMgr(), "settings", `calendar_${LOC}`), settingsDoc({ listPageEnabled: "no" })));
 await chk("settings: member cannot update", "DENY", () => setDoc(doc(dbMember(), "settings", `calendar_${LOC}`), settingsDoc({ fixedSectionTitle: "Hax" })));
 await chk("settings: member reads own-location settings", "ALLOW", () => getDoc(doc(dbMember(), "settings", `calendar_${LOC}`)));
 await chk("settings: member reads own-location settings when doc is absent", "ALLOW", async () => {

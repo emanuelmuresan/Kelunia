@@ -983,6 +983,7 @@ service cloud.firestore {
       return data.keys().hasOnly([
           "fixedSectionTitle",
           "fixedPageEnabled",
+          "listPageEnabled",
           "listViewTitle",
           "resourcesSectionTitle",
           "roomsLabel",
@@ -994,6 +995,8 @@ service cloud.firestore {
         ])
         && validText(data.fixedSectionTitle, 80)
         && data.fixedPageEnabled is bool
+        // Optional: settings saved before the list page could be hidden have none (= shown).
+        && (!hasKey(data, "listPageEnabled") || data.listPageEnabled is bool)
         && validText(data.listViewTitle, 80)
         && validText(data.resourcesSectionTitle, 80)
         && validText(data.roomsLabel, 60)

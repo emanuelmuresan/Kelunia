@@ -56,6 +56,8 @@ type SettingsViewProps = {
   groups: GroupItem[];
 
   fixedPageEnabledDraft: boolean;
+  listPageEnabledDraft: boolean;
+  setListPageEnabledDraft: (value: boolean) => void;
   setFixedPageEnabledDraft: (value: boolean) => void;
   fixedSectionDraft: string;
   setFixedSectionDraft: (value: string) => void;
@@ -129,6 +131,8 @@ export function SettingsView({
   setPersonalDraft,
   groups,
   fixedPageEnabledDraft,
+  listPageEnabledDraft,
+  setListPageEnabledDraft,
   setFixedPageEnabledDraft,
   fixedSectionDraft,
   setFixedSectionDraft,
@@ -333,6 +337,8 @@ export function SettingsView({
             canEditCurrentLocation={canEditCurrentLocation}
             fixedPageEnabledDraft={fixedPageEnabledDraft}
             setFixedPageEnabledDraft={setFixedPageEnabledDraft}
+            listPageEnabledDraft={listPageEnabledDraft}
+            setListPageEnabledDraft={setListPageEnabledDraft}
             fixedSectionDraft={fixedSectionDraft}
             setFixedSectionDraft={setFixedSectionDraft}
             defaultFixedSectionTitle={defaultFixedSectionTitle}
