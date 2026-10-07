@@ -1,5 +1,7 @@
 "use client";
 
+// Editorul programelor fixe: fereastra de administrare, formularul (adăugare/modificare), salvarea și ștergerea logică cu „Anulează”.
+// Fiecare modificare actualizează contorul locației și jurnalul de audit.
 import { useAppText } from "@/features/shell/hooks/useAppText";
 import { useState } from "react";
 import type { User } from "firebase/auth";
@@ -11,6 +13,7 @@ import { timeToMinutes } from "@/lib/scheduling";
 import { updateLocationCounterSafely } from "@/lib/usage-counters";
 import type { FixedSchedule, FixedScheduleDraft, WriteTarget } from "@/lib/types/domain";
 
+// Parametrii: datele locației, permisiunile și funcțiile din dashboard.
 type UseFixedScheduleEditorParams = {
   db: Firestore;
   user: User | null;
@@ -30,6 +33,7 @@ type UseFixedScheduleEditorParams = {
  * save and soft-delete a schedule. Extracted verbatim from
  * app/dashboard/page.tsx — behaviour unchanged.
  */
+// Hook-ul editorului de programe fixe.
 export function useFixedScheduleEditor({
   db,
   user,
@@ -43,6 +47,7 @@ export function useFixedScheduleEditor({
   pushToast,
   setSettingsMessage,
 }: UseFixedScheduleEditorParams) {
+  // Starea: fereastra de administrare, formularul, programul în editare, ciorna și eroarea.
   const msg = useAppText();
   const [showFixedManager, setShowFixedManager] = useState(false);
   const [showFixedForm, setShowFixedForm] = useState(false);
@@ -50,6 +55,7 @@ export function useFixedScheduleEditor({
   const [fixedDraft, setFixedDraft] = useState<FixedScheduleDraft>(emptyFixedDraft);
   const [fixedError, setFixedError] = useState("");
 
+  // Deschide fereastra de administrare (doar cine poate edita locația) cu formularul închis.
   function openFixedManager() {
     if (!canEditCurrentLocation) {
       return;
@@ -62,6 +68,7 @@ export function useFixedScheduleEditor({
     setShowFixedManager(true);
   }
 
+  // Pornește formularul pentru un program nou sau pentru modificarea unuia existent; îl închide cu ciorna golită.
   function startFixedAdd() {
     if (!canEditCurrentLocation) {
       return;
@@ -98,6 +105,7 @@ export function useFixedScheduleEditor({
     setFixedError("");
   }
 
+  // Salvează: toate câmpurile sunt obligatorii, iar ora de sfârșit trebuie să fie după cea de început.
   async function saveFixedSchedule() {
     if (!canEditCurrentLocation) {
       return;
@@ -126,6 +134,7 @@ export function useFixedScheduleEditor({
       return;
     }
 
+    // Modifică programul existent sau creează unul nou (nesters, cu contor și audit).
     try {
       const previousSchedule = fixedEditingId ? fixedSchedules.find((item) => item.id === fixedEditingId) ?? null : null;
       const payload = {
@@ -162,6 +171,7 @@ export function useFixedScheduleEditor({
     }
   }
 
+  // Șterge logic un program (rămâne în Firestore), scade contorul și oferă „Anulează”.
   async function removeFixedSchedule(itemId: string) {
     if (!canEditCurrentLocation || !requireOnline("fixed")) {
       return;
@@ -186,6 +196,7 @@ export function useFixedScheduleEditor({
     }
   }
 
+  // Anulează ștergerea unui program și readuce contorul.
   async function restoreFixedSchedule(itemId: string) {
     try {
       await updateDoc(doc(db, "fixedSchedules", itemId), {
@@ -203,6 +214,7 @@ export function useFixedScheduleEditor({
     }
   }
 
+  // Starea și acțiunile expuse dashboard-ului.
   return {
     showFixedManager,
     showFixedForm,

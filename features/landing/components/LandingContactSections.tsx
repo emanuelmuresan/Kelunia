@@ -1,11 +1,14 @@
 "use client";
 
+// Secțiunile de contact ale paginii publice: abonarea la newsletter, apelul final la acțiune și fereastra „Trimite o întrebare”.
+// Mesajele de contact se scriu în communityApplications (sursa „landing-contact”), abonații în newsletterSubscribers.
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { addDoc, collection, doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { normalizeNewsletterEmail, newsletterSubscriberId } from "@/lib/newsletter";
 
+// Ciorna formularului de contact.
 type ContactDraft = {
   email: string;
   name: string;
@@ -18,10 +21,12 @@ const emptyContactDraft: ContactDraft = {
   message: "",
 };
 
+// Verificare simplă a formatului de email.
 function validEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
+// Scrie un mesaj din pagina publică în communityApplications, cu starea „new”.
 async function saveLandingMessage(params: {
   email: string;
   organizationName: string;
@@ -38,12 +43,14 @@ async function saveLandingMessage(params: {
   });
 }
 
+// Secțiunea „Rămâi la curent”: abonare la newsletter cu emailul normalizat ca id al documentului.
 export function LandingNewsletterSection() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [working, setWorking] = useState(false);
 
+  // Validează emailul și scrie abonatul activ.
   async function submitNewsletter(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
@@ -82,6 +89,7 @@ export function LandingNewsletterSection() {
     }
   }
 
+  // Structura secțiunii.
   return (
     <section className="landing-newsletter">
       <div>
@@ -116,6 +124,7 @@ export function LandingNewsletterSection() {
   );
 }
 
+// Apelul final: creare de cont de probă și fereastra de contact.
 export function LandingFinalCta() {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(emptyContactDraft);
@@ -123,6 +132,7 @@ export function LandingFinalCta() {
   const [message, setMessage] = useState("");
   const [working, setWorking] = useState(false);
 
+  // Închide fereastra de contact, dar nu cât timp se trimite mesajul.
   function closeModal() {
     if (working) {
       return;
@@ -132,6 +142,7 @@ export function LandingFinalCta() {
     setError("");
   }
 
+  // Trimite mesajul: validează emailul și lungimea mesajului (minimum 10 caractere), apoi îl scrie.
   async function submitContact(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
@@ -172,8 +183,10 @@ export function LandingFinalCta() {
     }
   }
 
+  // Structura secțiunii.
   return (
     <>
+      {/* Mesajul final cu linkul către contul de probă (14 zile) și butonul „Contactează-ne”. */}
       <section className="landing-final">
         <span className="eyebrow">Kelunia</span>
         <h2>Pregătit să aduci liniștea în calendarul tău?</h2>
@@ -191,6 +204,7 @@ export function LandingFinalCta() {
         </div>
       </section>
 
+      {/* Fereastra cu formularul de contact. */}
       {open && (
         <div className="modal-backdrop" role="presentation" onMouseDown={closeModal}>
           <section

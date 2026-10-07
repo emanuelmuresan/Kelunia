@@ -1,10 +1,12 @@
 "use client";
 
+// Fereastra „Administrează programele fixe”: lista tuturor programelor, cu butoane de adăugare, modificare și ștergere.
 import { dayLabels } from "@/lib/config/app";
 import { groupColorForName, groupColorStyle } from "@/lib/group-colors";
 import { appText, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 import type { FixedSchedule, GroupItem } from "@/lib/types/domain";
 
+// Proprietățile ferestrei: programele, grupurile (pentru culori) și acțiunile.
 type FixedSchedulesManagerModalProps = {
   open: boolean;
   fixedSectionTitle: string;
@@ -20,6 +22,7 @@ type FixedSchedulesManagerModalProps = {
   onRemove: (itemId: string) => void;
 };
 
+// Componenta ferestrei.
 export function FixedSchedulesManagerModal({
   open,
   fixedSectionTitle,
@@ -32,10 +35,12 @@ export function FixedSchedulesManagerModal({
   onEdit,
   onRemove,
 }: FixedSchedulesManagerModalProps) {
+  // Fereastra închisă nu se randează.
   if (!open) {
     return null;
   }
 
+  // Structura ferestrei.
   return (
     <div className="modal-backdrop" role="presentation">
       <div
@@ -44,6 +49,7 @@ export function FixedSchedulesManagerModal({
         aria-modal="true"
         aria-label={appText(language, "fixed.manage")}
       >
+        {/* Antetul ferestrei. */}
         <div className="modal-head">
           <div>
             <span className="eyebrow">{appText(language, "nav.calendar")}</span>
@@ -59,6 +65,7 @@ export function FixedSchedulesManagerModal({
           </button>
         </div>
 
+        {/* Titlul listei și butonul „Adaugă”. */}
         <div className="mini-section-head">
           <h3>{appText(language, "fixed.scheduleList")}</h3>
 
@@ -71,12 +78,14 @@ export function FixedSchedulesManagerModal({
           </button>
         </div>
 
+        {/* Eroarea ultimei acțiuni. */}
         {fixedError && (
           <p className="error-line manager-alert">
             {fixedError}
           </p>
         )}
 
+        {/* Programele, colorate după grup, sau mesajul că lista e goală. */}
         <div className="mini-list">
           {fixedSchedules.length === 0 ? (
             <p className="empty-line">

@@ -1,5 +1,7 @@
 "use client";
 
+// Newsletter-ul, pentru proprietar: abonații (cei mai noi 200) și campaniile (ultimele 20) în timp real, plus crearea unei campanii.
+// Campania se scrie cu starea „pending”; trimiterea emailurilor o face o funcție cloud care actualizează starea.
 import { useEffect, useState } from "react";
 import {
   addDoc,
@@ -18,12 +20,14 @@ import type {
   NewsletterSubscriber,
 } from "@/lib/types/domain";
 
+// Parametrii: baza de date, dacă hook-ul este activ (proprietar) și utilizatorul.
 type UseNewsletterParams = {
   db: Firestore;
   enabled: boolean;
   user: User | null;
 };
 
+// Stările posibile ale unei campanii; o valoare necunoscută devine „pending”.
 const campaignStatuses: NewsletterCampaignStatus[] = [
   "pending",
   "sending",
@@ -38,6 +42,7 @@ function normalizeCampaignStatus(value: unknown): NewsletterCampaignStatus {
     : "pending";
 }
 
+// Normalizează documentele de abonat și de campanie din Firestore.
 function normalizeSubscriber(id: string, data: Record<string, unknown>): NewsletterSubscriber {
   return {
     id,
@@ -69,11 +74,13 @@ function normalizeCampaign(id: string, data: Record<string, unknown>): Newslette
   };
 }
 
+// Hook-ul newsletter-ului.
 export function useNewsletter({ db, enabled, user }: UseNewsletterParams) {
   const [subscribers, setSubscribers] = useState<NewsletterSubscriber[]>([]);
   const [campaigns, setCampaigns] = useState<NewsletterCampaign[]>([]);
   const [error, setError] = useState("");
 
+  // Abonare în timp real la abonați, doar când hook-ul este activ.
   useEffect(() => {
     if (!enabled) {
       setSubscribers([]);
@@ -99,6 +106,7 @@ export function useNewsletter({ db, enabled, user }: UseNewsletterParams) {
     );
   }, [db, enabled]);
 
+  // Abonare în timp real la campanii.
   useEffect(() => {
     if (!enabled) {
       setCampaigns([]);
@@ -124,6 +132,7 @@ export function useNewsletter({ db, enabled, user }: UseNewsletterParams) {
     );
   }, [db, enabled]);
 
+  // Creează o campanie nouă (subiect, text și, opțional, un singur destinatar pentru test).
   async function sendNewsletterCampaign(subject: string, body: string, recipientEmail = "") {
     if (!user) {
       return;

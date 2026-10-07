@@ -1,5 +1,7 @@
 "use client";
 
+// Mesajele primite din pagina publică (cereri „Community”, contact, newsletter), pentru proprietar: listă în timp real, schimbarea stării,
+// marcarea ca citite și răspunsul pe email (un document în subcolecția messages, trimis de o funcție cloud).
 import { useEffect, useState } from "react";
 import {
   addDoc,
@@ -20,6 +22,7 @@ import type {
   CommunityApplicationStatus,
 } from "@/lib/types/domain";
 
+// Parametrii hook-urilor.
 type UseCommunityApplicationsParams = {
   db: Firestore;
   enabled: boolean;
@@ -32,6 +35,7 @@ type UseCommunityApplicationMessagesParams = {
   enabled: boolean;
 };
 
+// Stările unei cereri; o valoare necunoscută devine „new”.
 const communityStatuses: CommunityApplicationStatus[] = [
   "new",
   "reviewed",
@@ -46,6 +50,7 @@ function normalizeStatus(value: unknown): CommunityApplicationStatus {
     : "new";
 }
 
+// Normalizează documentele de cerere și de mesaj din Firestore.
 function normalizeApplication(id: string, data: Record<string, unknown>): CommunityApplication {
   return {
     id,
@@ -86,6 +91,7 @@ function normalizeMessage(id: string, data: Record<string, unknown>): CommunityA
   };
 }
 
+// Hook-ul cererilor: ultimele 50, în timp real, doar când este activ (proprietar).
 export function useCommunityApplications({ db, enabled, user }: UseCommunityApplicationsParams) {
   const [applications, setApplications] = useState<CommunityApplication[]>([]);
   const [error, setError] = useState("");
@@ -115,6 +121,7 @@ export function useCommunityApplications({ db, enabled, user }: UseCommunityAppl
     );
   }, [db, enabled]);
 
+  // Marchează cererea ca citită, cu autorul și momentul.
   async function markReviewed(applicationId: string) {
     if (!user) {
       return;
@@ -131,6 +138,7 @@ export function useCommunityApplications({ db, enabled, user }: UseCommunityAppl
     });
   }
 
+  // Schimbă starea cererii (citită, răspunsată, aprobată, respinsă).
   async function updateCommunityApplicationStatus(
     applicationId: string,
     status: CommunityApplicationStatus
@@ -147,6 +155,7 @@ export function useCommunityApplications({ db, enabled, user }: UseCommunityAppl
     });
   }
 
+  // Trimite un răspuns: creează mesajul în așteptare (îl trimite funcția cloud) și marchează cererea ca „replied”.
   async function sendCommunityApplicationReply(application: CommunityApplication, body: string) {
     if (!user) {
       return;
@@ -183,6 +192,7 @@ export function useCommunityApplications({ db, enabled, user }: UseCommunityAppl
   };
 }
 
+// Conversația unei cereri: mesajele ei (maximum 100), în ordine cronologică.
 export function useCommunityApplicationMessages({
   db,
   applicationId,

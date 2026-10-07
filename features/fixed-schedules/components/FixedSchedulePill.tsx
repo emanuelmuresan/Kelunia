@@ -1,5 +1,6 @@
 "use client";
 
+// Eticheta unui program fix: ora, grupul, camera și titlul, colorată cu culoarea grupului.
 import { groupColorForName, groupColorStyle } from "@/lib/group-colors";
 import type { FixedSchedule, GroupItem } from "@/lib/types/domain";
 

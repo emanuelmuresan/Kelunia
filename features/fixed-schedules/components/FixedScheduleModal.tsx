@@ -1,10 +1,13 @@
 "use client";
 
+// Fereastra cu formularul unui program fix (zi, grup, cameră, nume, oră de început și de sfârșit), pentru adăugare sau modificare.
+// Starea ciornei și salvarea sunt în useFixedScheduleEditor.
 import { appText, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 import type { FixedScheduleDraft, GroupItem, RoomItem } from "@/lib/types/domain";
 
 export type FixedScheduleDraftState = FixedScheduleDraft;
 
+// Proprietățile ferestrei: ciorna, listele de alegere, eroarea și acțiunile.
 interface FixedScheduleModalProps {
   open: boolean;
   editingId: string | null;
@@ -21,6 +24,7 @@ interface FixedScheduleModalProps {
   onSave: () => void;
 }
 
+// Componenta ferestrei.
 export function FixedScheduleModal({
   open,
   editingId,
@@ -36,13 +40,16 @@ export function FixedScheduleModal({
   onClose,
   onSave,
 }: FixedScheduleModalProps) {
+  // Fereastra închisă nu se randează.
   if (!open) {
     return null;
   }
 
+  // Structura ferestrei.
   return (
     <div className="modal-backdrop" role="presentation">
       <div className="modal-card manager-card" role="dialog" aria-modal="true" aria-label={appText(language, "fixed.new")}>
+        {/* Antetul: „Program fix nou” sau „Modifică programul”. */}
         <div className="modal-head">
           <div>
             <span className="eyebrow">{editingId ? appText(language, "booking.editing") : appText(language, "fixed.new")}</span>
@@ -51,6 +58,7 @@ export function FixedScheduleModal({
           <button onClick={onClose} type="button" aria-label={appText(language, "booking.close")}>×</button>
         </div>
 
+        {/* Câmpurile formularului. */}
         <div className="booking-form">
           <label>
             {appText(language, "fixed.day")}
@@ -93,7 +101,9 @@ export function FixedScheduleModal({
             {appText(language, "booking.endTime")}
             <input type="time" value={draft.endTime} onChange={(event) => onChange({ ...draft, endTime: event.target.value })} />
           </label>
+          {/* Eroarea de validare sau de salvare. */}
           {error && <p className="error-line full-field">{error}</p>}
+          {/* Butoanele de anulare și salvare. */}
           <div className="modal-actions full-field">
             <button className="secondary-button" onClick={onClose} type="button">
               {appText(language, "action.cancel")}

@@ -1,9 +1,11 @@
 "use client";
 
+// Secțiunea „Pentru comunități” din pagina publică: o fereastră prin care o organizație non-profit cere sprijin; cererea se scrie în communityApplications.
 import { useState, type FormEvent } from "react";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
+// Ciorna formularului.
 type Draft = {
   email: string;
   organizationName: string;
@@ -16,6 +18,7 @@ const emptyDraft: Draft = {
   details: "",
 };
 
+// Componenta secțiunii.
 export function CommunityApplicationSection() {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(emptyDraft);
@@ -23,6 +26,7 @@ export function CommunityApplicationSection() {
   const [message, setMessage] = useState("");
   const [working, setWorking] = useState(false);
 
+  // Închide fereastra, dar nu cât timp se trimite cererea.
   function closeModal() {
     if (working) {
       return;
@@ -32,6 +36,7 @@ export function CommunityApplicationSection() {
     setError("");
   }
 
+  // Trimite cererea: validează emailul, numele organizației și detaliile (minimum 20 de caractere), apoi o scrie cu starea „new”.
   async function submitApplication(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
@@ -79,8 +84,10 @@ export function CommunityApplicationSection() {
     }
   }
 
+  // Structura secțiunii.
   return (
     <>
+      {/* Conținutul secțiunii, cu mesajul de succes și butonul „Aplică”. */}
       <section className="landing-community">
         <div>
           <span className="eyebrow">Pentru comunități</span>
@@ -98,6 +105,7 @@ export function CommunityApplicationSection() {
         </button>
       </section>
 
+      {/* Fereastra cu formularul de cerere. */}
       {open && (
         <div className="modal-backdrop" role="presentation" onMouseDown={closeModal}>
           <section className="modal-card small-card" role="dialog" aria-modal="true" aria-labelledby="community-title" onMouseDown={(event) => event.stopPropagation()}>

@@ -1,5 +1,7 @@
 "use client";
 
+// Blocarea aplicației cu PIN sau biometrie: starea de blocare, deblocarea, blocarea la ascunderea aplicației și configurarea PIN-ului.
+// PIN-ul se verifică și se stochează (hash) în funcțiile cloud; biometria deblochează doar local. Marcajul de deblocare e în sessionStorage.
 import { useAppText } from "@/features/shell/hooks/useAppText";
 import { useConfirm } from "@/features/shell/components/ConfirmDialog";
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
@@ -14,6 +16,7 @@ import { auth, cloudFunctions } from "@/lib/firebase";
 import { clearBiometricCredential, verifyBiometricCredential } from "@/lib/security";
 import type { PersonalDraft, PinIntent } from "@/lib/types/domain";
 
+// Pluginul Capacitor care anunță când aplicația nativă trece în fundal.
 type CapacitorAppPlugin = {
   addListener: (
     eventName: "appStateChange",
@@ -23,6 +26,7 @@ type CapacitorAppPlugin = {
 
 const CapacitorApp = registerPlugin<CapacitorAppPlugin>("App");
 
+// Parametrii: baza de date, utilizatorul, profilul și funcțiile din dashboard.
 type UseAppLockParams = {
   db: Firestore;
   user: User | null;
@@ -38,6 +42,7 @@ type UseAppLockParams = {
  * and the PIN/biometrics toggles. confirmPinSetup stays in the page because it
  * bridges to savePersonalSettings.
  */
+// Hook-ul blocării.
 export function useAppLock({
   db,
   user,
@@ -47,6 +52,7 @@ export function useAppLock({
 }: UseAppLockParams) {
   const confirmAction = useConfirm();
   const msg = useAppText();
+  // Starea: blocată sau nu, PIN-ul scris, erorile, biometria în lucru și configurarea PIN-ului.
   const [appLocked, setAppLocked] = useState(false);
   const [unlockPin, setUnlockPin] = useState("");
   const [unlockError, setUnlockError] = useState("");
@@ -59,9 +65,11 @@ export function useAppLock({
   const [pinConfiguredLocally, setPinConfiguredLocally] = useState(false);
   const biometricPromptedRef = useRef("");
 
+  // Blocarea e activă doar dacă profilul are PIN activ și configurat pe server; deblocarea ține cât sesiunea (cheie în sessionStorage).
   const lockSessionKey = user ? `kelunia-unlocked:${user.uid}` : "";
   const pinLockEnabled = Boolean(user && profile?.usePin && profile.hasPin);
 
+  // Marchează aplicația ca deblocată sau blocată.
   const markAppUnlocked = useCallback(() => {
     if (lockSessionKey && typeof window !== "undefined") {
       window.sessionStorage.setItem(lockSessionKey, "1");
@@ -84,6 +92,7 @@ export function useAppLock({
     biometricPromptedRef.current = "";
   }, [lockSessionKey, pinLockEnabled]);
 
+  // Ieșirea din cont, după confirmare; șterge și marcajul de deblocare.
   async function confirmSignOut() {
     const confirmed = await confirmAction({ message: msg("msg.confirmSignOut"), confirmLabel: msg("msg.signOutAction") });
 
@@ -99,6 +108,7 @@ export function useAppLock({
     await signOut(auth);
   }
 
+  // Recuperare: dacă profilul cere PIN dar serverul nu are unul, utilizatorul intră și blocarea se oprește.
   // Recovery: the profile says the app is PIN-locked but the server has no PIN on
   // file (legacy pre-migration PIN, or migration hasn't run). Let the user in and
   // turn the lock flag off instead of trapping them out.
@@ -116,6 +126,7 @@ export function useAppLock({
     setSettingsError(msg("msg.pinReset"));
   }
 
+  // Deblocare cu PIN: formatul (4-8 cifre) se verifică local, restul în funcția cloud verifyPin, care limitează încercările.
   async function unlockWithPin() {
     if (!user) {
       return;
@@ -166,6 +177,7 @@ export function useAppLock({
     }
   }
 
+  // Deblocare cu biometrie (nativă sau WebAuthn).
   const unlockWithBiometrics = useCallback(async () => {
     if (!user || biometricWorking) {
       return;
@@ -188,6 +200,7 @@ export function useAppLock({
     }
   }, [biometricWorking, markAppUnlocked, user]);
 
+  // La schimbarea profilului se stabilește dacă aplicația pornește blocată.
   useEffect(() => {
     if (!pinLockEnabled || !lockSessionKey || typeof window === "undefined") {
       setAppLocked(false);
@@ -199,6 +212,7 @@ export function useAppLock({
     setAppLocked(window.sessionStorage.getItem(lockSessionKey) !== "1");
   }, [lockSessionKey, pinLockEnabled]);
 
+  // Dacă „blochează la ascundere” e activ, aplicația se blochează când pagina sau aplicația trece în fundal.
   useEffect(() => {
     if (!pinLockEnabled || !profile?.lockOnHide || typeof document === "undefined") {
       return;
@@ -232,6 +246,7 @@ export function useAppLock({
     };
   }, [lockSessionKey, markAppLocked, pinLockEnabled, profile?.lockOnHide]);
 
+  // La pornire blocată, cu biometrie activă, se cere automat biometria (o singură dată).
   useEffect(() => {
     if (!appLocked || !profile?.useBiometrics || !user) {
       return;
@@ -251,6 +266,7 @@ export function useAppLock({
     return () => window.clearTimeout(timer);
   }, [appLocked, lockSessionKey, profile?.useBiometrics, unlockWithBiometrics, user]);
 
+  // Configurarea PIN-ului: deschide și închide fereastra; întrerupătoarele pentru PIN și biometrie.
   function openPinSetup(intent: PinIntent) {
     setPinIntent(intent);
     setPinDraft({ pin: "", confirm: "" });
@@ -296,6 +312,7 @@ export function useAppLock({
     openPinSetup("biometrics");
   }
 
+  // Starea și acțiunile expuse dashboard-ului.
   return {
     appLocked,
     unlockPin,

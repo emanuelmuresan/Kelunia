@@ -1,5 +1,7 @@
 "use client";
 
+// Acțiuni asupra utilizatorilor locației din Setări: schimbarea rolului, accesul la camere și ștergerea profilului.
+// Proprietarul și propriul cont nu pot fi modificate de aici; fiecare acțiune cere drepturi și rețea, iar cele riscante cer confirmare.
 import { useAuth } from "@/context/AuthContext";
 import { useAppText } from "@/features/shell/hooks/useAppText";
 import { useConfirm } from "@/features/shell/components/ConfirmDialog";
@@ -10,6 +12,7 @@ import type { RecordAuditLog } from "@/lib/audit";
 import { normalizeAllowedRoomIds, normalizeRoomAccessMode } from "@/lib/room-access";
 import type { ManagedUser, RoomAccessMode, RoomItem, WriteTarget } from "@/lib/types/domain";
 
+// Parametrii: utilizatorii, camerele, limita de manageri și funcțiile din dashboard.
 type UseManagedUserActionsParams = {
   db: Firestore;
   managedUsers: ManagedUser[];
@@ -29,6 +32,7 @@ type UseManagedUserActionsParams = {
  * access, remove account. Extracted verbatim from app/dashboard/page.tsx —
  * behaviour unchanged.
  */
+// Hook-ul acțiunilor.
 export function useManagedUserActions({
   db,
   managedUsers,
@@ -46,6 +50,7 @@ export function useManagedUserActions({
   const msg = useAppText();
   const { user } = useAuth();
 
+  // Schimbă rolul unui utilizator: blochează auto-retrogradarea, cere confirmare la retrogradarea unui manager și respectă limita de manageri a planului.
   async function updateManagedUserRole(managedUser: ManagedUser, nextRole: UserRole) {
     if (!canManageMembers || managedUser.isOwner || managedUser.locationId !== currentLocationId) {
       return;
@@ -114,6 +119,7 @@ export function useManagedUserActions({
     }
   }
 
+  // Schimbă accesul la camere: toate sau doar cele alese; managerii au mereu acces la toate.
   async function updateManagedUserRoomAccess(managedUser: ManagedUser, nextRoomAccess: RoomAccessMode, nextAllowedRoomIds: string[]) {
     if (!canManageMembers || managedUser.isOwner || managedUser.locationId !== currentLocationId) {
       return;
@@ -159,6 +165,7 @@ export function useManagedUserActions({
     }
   }
 
+  // Șterge documentul de profil al utilizatorului (deleteDoc), după confirmare; nu poate șterge propriul cont. Nu șterge contul Firebase Auth.
   async function removeManagedUser(managedUser: ManagedUser) {
     if (
       !canManageMembers ||
@@ -194,5 +201,6 @@ export function useManagedUserActions({
     }
   }
 
+  // Acțiunile expuse dashboard-ului.
   return { updateManagedUserRole, updateManagedUserRoomAccess, removeManagedUser };
 }

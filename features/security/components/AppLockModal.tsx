@@ -1,5 +1,8 @@
 "use client";
 
+// Ecranul de blocare: cere PIN-ul (sau biometria, dacă e activată) pentru a deschide aplicația; permite și ieșirea din cont.
+// Verificarea PIN-ului se face în useAppLock, prin funcția cloud verifyPin.
+// Proprietățile ecranului: starea biometriei, eroarea, PIN-ul scris și acțiunile.
 type AppLockModalProps = {
   biometricEnabled: boolean;
   biometricWorking: boolean;
@@ -11,6 +14,7 @@ type AppLockModalProps = {
   onUnlock: () => void;
 };
 
+// Componenta ecranului.
 export function AppLockModal({
   biometricEnabled,
   biometricWorking,
@@ -21,6 +25,7 @@ export function AppLockModal({
   onSignOut,
   onUnlock,
 }: AppLockModalProps) {
+  // Formularul de deblocare; trimiterea lui verifică PIN-ul.
   return (
     <div className="modal-backdrop app-lock-backdrop" role="presentation">
       <form
@@ -33,6 +38,7 @@ export function AppLockModal({
           onUnlock();
         }}
       >
+        {/* Titlul ecranului. */}
         <div className="modal-head">
           <div>
             <span className="eyebrow">Kelunia</span>
@@ -40,6 +46,7 @@ export function AppLockModal({
           </div>
         </div>
 
+        {/* Biometria (dacă e activată), câmpul PIN (doar cifre, maximum 8), eroarea și butoanele. */}
         <div className="settings-form">
           {biometricEnabled && (
             <button

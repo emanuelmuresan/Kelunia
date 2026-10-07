@@ -1,5 +1,6 @@
 "use client";
 
+// Fereastra „Istoric modificări” (doar proprietar și manageri): ultimele modificări ale locației, cu autorul și momentul.
 import { formatAuditTimestamp } from "@/lib/dates";
 
 import {
@@ -10,6 +11,7 @@ import { appText, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 
 import type { AuditLogItem } from "@/lib/types/domain";
 
+// Proprietățile ferestrei: înregistrările, starea de încărcare și acțiunile.
 type AuditHistoryModalProps = {
   open: boolean;
 
@@ -22,6 +24,7 @@ type AuditHistoryModalProps = {
   language?: SupportedLocale;
 };
 
+// Componenta ferestrei.
 export function AuditHistoryModal({
   open,
   auditLogs,
@@ -31,10 +34,12 @@ export function AuditHistoryModal({
   onReload,
   language = "ro",
 }: AuditHistoryModalProps) {
+  // Fereastra închisă nu se randează.
   if (!open) {
     return null;
   }
 
+  // Autorul afișat: nume și email, sau doar unul dintre ele.
   function actorLabel(log: AuditLogItem) {
     const name = log.actorName.trim();
     const email = log.actorEmail.trim();
@@ -46,6 +51,7 @@ export function AuditHistoryModal({
     return name || email || appText(language, "audit.user");
   }
 
+  // Structura ferestrei.
   return (
     <div className="modal-backdrop" role="presentation">
       <div
@@ -54,6 +60,7 @@ export function AuditHistoryModal({
         aria-modal="true"
         aria-label={appText(language, "audit.title")}
       >
+        {/* Antetul ferestrei. */}
         <div className="modal-head">
           <div>
             <span className="eyebrow">
@@ -74,6 +81,7 @@ export function AuditHistoryModal({
           </button>
         </div>
 
+        {/* Nota despre limită și butonul „Reîncarcă”. */}
         <div className="audit-toolbar">
           <p className="muted-note">
             {appText(language, "audit.limitNote")}
@@ -91,12 +99,14 @@ export function AuditHistoryModal({
           </button>
         </div>
 
+        {/* Eroarea de citire. */}
         {auditError && (
           <p className="warning-line">
             {auditError}
           </p>
         )}
 
+        {/* Se încarcă, nu există modificări sau lista modificărilor. */}
         {auditLoading && auditLogs.length === 0 ? (
           <p className="empty-line">
             {appText(language, "audit.loading")}

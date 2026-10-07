@@ -1,5 +1,8 @@
 "use client";
 
+// Notificări locale ale utilizatorului pentru rezervările grupului lui, rezervările la care a cerut notificare personală
+// și programele fixe ale grupului: pe dispozitive native se programează la sistem, în browser cu cronometre cât pagina e deschisă.
+// Momentele (cu cât timp înainte) vin din profil sau din rezervare; fiecare notificare afișată se reține în localStorage ca să nu se repete.
 import { useEffect } from "react";
 import type { User } from "firebase/auth";
 
@@ -23,6 +26,7 @@ import {
 } from "@/lib/scheduling";
 import type { Booking, FixedSchedule } from "@/lib/types/domain";
 
+// Parametrii: rezervările, programele fixe, profilul și utilizatorul.
 type UseGroupBookingNotificationsParams = {
   bookings: Booking[];
   fixedSchedules: FixedSchedule[];
@@ -30,6 +34,7 @@ type UseGroupBookingNotificationsParams = {
   user: User | null;
 };
 
+// Forma unei notificări native programate.
 type NativeGroupBookingNotification = {
   id: number;
   title: string;
@@ -41,10 +46,12 @@ type NativeGroupBookingNotification = {
   extra: { bookingId: string; url: string };
 };
 
+// Adresa deschisă la atingerea notificării (rezervarea în dashboard).
 function bookingUrl(bookingId: string) {
   return `/dashboard?booking=${encodeURIComponent(bookingId)}`;
 }
 
+// Notificarea din browser deschide rezervarea la clic.
 function openBookingFromWebNotification(notification: Notification, bookingId: string) {
   notification.onclick = () => {
     window.focus();
@@ -53,10 +60,12 @@ function openBookingFromWebNotification(notification: Notification, bookingId: s
   };
 }
 
+// Textul notificării: grupul, data, ora și camera.
 function notificationBody(booking: Booking) {
   return `${booking.group}, ${formatDateLabel(booking.startDate, { year: "numeric" })}, ${booking.startTime}-${booking.endTime}, ${booking.room}`;
 }
 
+// Construiește o notificare nativă pentru o rezervare.
 function nativeBookingNotification(
   id: number,
   title: string,
@@ -76,6 +85,7 @@ function nativeBookingNotification(
   };
 }
 
+// Transformă un Timestamp Firestore sau un Date în Date.
 function timestampToDate(value: unknown) {
   if (!value) {
     return null;
@@ -92,17 +102,20 @@ function timestampToDate(value: unknown) {
   return null;
 }
 
+// Hook-ul notificărilor de rezervări.
 export function useGroupBookingNotifications({
   bookings,
   fixedSchedules,
   profile,
   user,
 }: UseGroupBookingNotificationsParams) {
+  // Se reface la orice schimbare a rezervărilor, programelor fixe, profilului sau utilizatorului.
   useEffect(() => {
     if (!user || !profile || typeof window === "undefined") {
       return;
     }
 
+    // Momentele de notificare ale utilizatorului (formatul curent sau cel vechi, cu zile).
     const offsets = normalizeNotificationOffsetRules(profile.notifyOffsets).length > 0
       ? normalizeNotificationOffsetRules(profile.notifyOffsets)
       : normalizeNotificationOffsets(profile.notifyOffsetsDays).map((value) => ({ value, unit: "days" as const }));
@@ -113,6 +126,7 @@ export function useGroupBookingNotifications({
         ...(profile.notifyDayBefore ? [{ value: 1, unit: "days" as const }] : []),
       ];
 
+    // Rezervările grupului propriu și cele la care utilizatorul este destinatar (grup întreg sau persoane alese).
     const groupBookings = profile.notifyGroupBookings && profile.groupName.trim()
       ? bookings.filter((booking) => isGroupBooking(booking, profile.groupName))
       : [];
@@ -127,6 +141,7 @@ export function useGroupBookingNotifications({
 
       return booking.notifyGroupRecipients?.some((email) => email.trim().toLowerCase() === user.email?.trim().toLowerCase());
     };
+    // Reamintirile de grup: din setările utilizatorului și din cele alese pe rezervare, fără dubluri.
     const groupBookingReminders = Array.from(
       [
         ...groupBookings.flatMap((booking) => legacyOffsets.map((offset) => ({ booking, offset }))),
@@ -140,6 +155,7 @@ export function useGroupBookingNotifications({
         }, new Map<string, { booking: Booking; offset: { value: number; unit: "minutes" | "hours" | "days" } }>())
         .values()
     );
+    // Notificările personale cerute pe rezervări de utilizator.
     const personalBookingNotifications = bookings.flatMap((booking) => {
       if (!booking.notifyOnThisBooking || booking.notifyForUid !== user.uid) {
         return [];
@@ -148,6 +164,7 @@ export function useGroupBookingNotifications({
       const bookingOffsets = normalizeNotificationOffsetRules(booking.notifyOffsets);
       return bookingOffsets.map((offset) => ({ booking, offset }));
     });
+    // Programele fixe ale grupului: următoarele (maximum 5) apariții din următoarele 35 de zile.
     const recurringNotifications = profile.notifyGroupBookings && profile.notifyFixedGroupSchedules && profile.groupName.trim()
       ? fixedSchedules
         .filter((schedule) => schedule.group.trim().toLowerCase() === profile.groupName.trim().toLowerCase())
@@ -163,6 +180,7 @@ export function useGroupBookingNotifications({
             .flatMap((date) => legacyOffsets.map((offset) => ({ schedule, date, offset })));
         })
       : [];
+    // Reamintirile trimise „acum” de un manager, care trebuie afișate o singură dată.
     const instantGroupReminders = bookings
       .filter((booking) => booking.notifyGroupNowAt && isTargetedGroupBooking(booking))
       .map((booking) => {
@@ -171,6 +189,7 @@ export function useGroupBookingNotifications({
       })
       .filter((item): item is { booking: Booking; sentAt: Date } => item !== null);
 
+    // Dispozitiv nativ: programează notificările la sistem, doar pe cele din viitor.
     if (canUseNativeNotifications()) {
       void (async () => {
         const groupNotifications = groupBookingReminders.flatMap(({ booking, offset }) => {
@@ -193,6 +212,7 @@ export function useGroupBookingNotifications({
               },
             ];
         });
+        // Notificările personale, ale programelor fixe și cele trimise acum; cele „acum” se afișează o singură dată (reținut în localStorage).
         const personalNotifications = personalBookingNotifications.flatMap(({ booking, offset }) => {
           const notifyAt = new Date(bookingStartDateTime(booking).getTime() - notificationOffsetToMs(offset));
 
@@ -264,6 +284,7 @@ export function useGroupBookingNotifications({
       return;
     }
 
+    // Browser: fără permisiune nu se afișează nimic; reamintirile „acum” apar imediat, o singură dată.
     if (!("Notification" in window) || Notification.permission !== "granted") {
       return;
     }
@@ -285,6 +306,7 @@ export function useGroupBookingNotifications({
       openBookingFromWebNotification(notification, booking.id);
     });
 
+    // Browser: cronometre pentru reamintirile viitoare, doar dacă nu au fost afișate și intră în limita unui setTimeout.
     const groupTimers = groupBookingReminders
       .map(({ booking, offset }) => {
           const notifyAt = new Date(bookingStartDateTime(booking).getTime() - notificationOffsetToMs(offset));
@@ -325,6 +347,7 @@ export function useGroupBookingNotifications({
             }
           }, delay);
       });
+    // Cronometre pentru notificările personale și pentru programele fixe.
     const personalTimers = personalBookingNotifications.map(({ booking, offset }) => {
       const notifyAt = new Date(bookingStartDateTime(booking).getTime() - notificationOffsetToMs(offset));
       const delay = notifyAt.getTime() - Date.now();
@@ -358,6 +381,7 @@ export function useGroupBookingNotifications({
         new Notification(notificationTitle(offset), { body, icon: "/icon-192.png", tag: notificationOffsetToKey(offset), requireInteraction: true });
       }, delay);
     });
+    // La reîncărcarea efectului sau la ieșire cronometrele se opresc.
     const timers = [...groupTimers, ...personalTimers, ...recurringTimers].filter((timer): timer is number => timer !== null);
 
     return () => timers.forEach((timer) => window.clearTimeout(timer));

@@ -1,5 +1,7 @@
 "use client";
 
+// Jurnalul de audit în interfață: scrie înregistrări la fiecare modificare (recordAuditLog) și citește ultimele 50 pentru fereastra de istoric.
+// Doar proprietarul și managerii pot citi istoricul; scrierea merge doar online, iar o eroare de audit nu oprește acțiunea principală.
 import { useState } from "react";
 import {
   collection,
@@ -14,6 +16,7 @@ import type { User } from "firebase/auth";
 import { writeAuditLog, type AuditAction, type AuditEntityType } from "@/lib/audit";
 import type { AuditLogItem } from "@/lib/types/domain";
 
+// Datele minime ale profilului folosite ca autor și parametrii hook-ului.
 type ProfileLike = {
   displayName: string;
   email: string;
@@ -31,6 +34,7 @@ interface UseAuditLogsParams {
   setIsOnline: (value: boolean) => void;
 }
 
+// Hook-ul auditului.
 export function useAuditLogs({
   db,
   user,
@@ -42,11 +46,13 @@ export function useAuditLogs({
   isOnline,
   setIsOnline,
 }: UseAuditLogsParams) {
+  // Starea: înregistrările, încărcarea, eroarea și fereastra de istoric.
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([]);
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditError, setAuditError] = useState("");
   const [showAuditModal, setShowAuditModal] = useState(false);
 
+  // Scrie o înregistrare: cine, ce entitate, ce acțiune, starea de dinainte și de după; fără rețea nu face nimic.
   async function recordAuditLog(
     entityType: AuditEntityType,
     action: AuditAction,
@@ -87,6 +93,7 @@ export function useAuditLogs({
     }
   }
 
+  // Încarcă ultimele 50 de înregistrări ale locației curente, cele mai noi primele.
   async function loadAuditLogs() {
     if (!user || (!isOwner && !isSuperAdmin) || !currentLocationId) {
       setAuditLogs([]);
@@ -132,6 +139,7 @@ export function useAuditLogs({
     }
   }
 
+  // Deschide fereastra de istoric și încarcă înregistrările.
   function openAuditHistory() {
     setShowAuditModal(true);
     void loadAuditLogs();
