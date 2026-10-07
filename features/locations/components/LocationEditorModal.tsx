@@ -1,6 +1,7 @@
 "use client";
 
 import { billingStatusLabel, planLabel } from "@/lib/licensing";
+import { SettingsBlock } from "@/features/settings/components/SettingsBlock";
 import { appText, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 import type { LocationEditor } from "@/lib/types/domain";
 import type { BillingStatus, LocationPlan } from "@/lib/types/domain";
@@ -89,7 +90,7 @@ export function LocationEditorModal({
           </label>
 
           {isOwner && locationEditor.id && (
-            <>
+            <SettingsBlock title={appText(language, "settings.blockLicense")}>
               <label>
                 {appText(language, "settings.licenseType")}
                 <select
@@ -150,7 +151,7 @@ export function LocationEditorModal({
               <p className="muted-note">
                 {appText(language, "settings.durationHint")}
               </p>
-            </>
+            </SettingsBlock>
           )}
 
           {locationError && (

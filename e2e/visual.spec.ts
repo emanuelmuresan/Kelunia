@@ -85,3 +85,34 @@ test("capture notification settings in the profile modal", async ({ page }) => {
   await page.waitForTimeout(200);
   await page.locator('[aria-labelledby="profile-settings-title"]').screenshot({ path: "test-results/notification-settings.png" });
 });
+
+test("capture ticker settings editing + empty-state band", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => {
+    try {
+      localStorage.setItem("kelunia.upcomingTicker", JSON.stringify({ enabled: true, color: "#1787ff", leadDays: 1 }));
+    } catch {
+      /* ignore */
+    }
+  });
+  await page.goto("/login");
+  await page.locator('input[type="email"]').fill(USER.email);
+  await page.locator('input[type="password"]').first().fill(USER.password);
+  await page.locator('form button[type="submit"]').click();
+  await page.locator("main.kelunia-shell").waitFor({ timeout: 30_000 });
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: "test-results/ticker-band.png" });
+
+  await page.getByRole("button", { name: /Setări/ }).first().click();
+  await page.waitForTimeout(500);
+  await page.getByRole("button", { name: "Modifică" }).nth(0).scrollIntoViewIfNeeded();
+  const tickerCard = page.locator("article.settings-panel", { hasText: "Bandă evenimente viitoare" });
+  await tickerCard.getByRole("button", { name: "Modifică" }).click();
+  const days = tickerCard.locator('input[inputmode="numeric"]');
+  await days.fill("");
+  await days.pressSequentially("014");
+  await page.screenshot({ path: "test-results/ticker-settings.png", fullPage: true });
+  if ((await days.inputValue()) !== "14") {
+    throw new Error(`days field shows "${await days.inputValue()}" instead of 14`);
+  }
+});

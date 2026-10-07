@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import type { AppLanguage } from "@/context/AuthContext";
+import { SettingsBlock } from "@/features/settings/components/SettingsBlock";
 import { appText, type UiCopyKey } from "@/lib/i18n/app-copy-catalog";
 
 type PagesSettingsCardProps = {
@@ -67,6 +68,7 @@ export function PagesSettingsCard({
       </div>
 
       <div className="settings-form">
+        <SettingsBlock title={t("settings.blockVisibility")}>
         <label className="toggle-row">
           <input
             type="checkbox"
@@ -76,7 +78,9 @@ export function PagesSettingsCard({
           />
           Afișează pagina {fixedSectionDraft.trim() || defaultFixedSectionTitle}
         </label>
+        </SettingsBlock>
 
+        <SettingsBlock title={t("settings.blockSectionNames")}>
         <label>
           {t("nav.fixed")}
           <input
@@ -104,7 +108,9 @@ export function PagesSettingsCard({
             onChange={(event) => setResourcesSectionDraft(event.target.value)}
           />
         </label>
+        </SettingsBlock>
 
+        <SettingsBlock title={t("settings.blockItemNames")}>
         <label>
           {defaultRoomsLabel}
           <input
@@ -124,6 +130,7 @@ export function PagesSettingsCard({
             onChange={(event) => setGroupsLabelDraft(event.target.value)}
           />
         </label>
+        </SettingsBlock>
 
         {canEditCurrentLocation && pagesEditing && (
           <div className="modal-actions inline-actions">

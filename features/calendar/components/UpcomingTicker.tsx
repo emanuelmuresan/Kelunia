@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 
 import { addDays, dateKey, formatDateLabel } from "@/lib/dates";
+import { appText, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 import type { Booking } from "@/lib/types/domain";
 import type { UpcomingTickerSettings } from "@/features/calendar/hooks/useUpcomingTickerSettings";
 
@@ -10,6 +11,7 @@ type UpcomingTickerProps = {
   bookings: Booking[];
   today: string;
   settings: UpcomingTickerSettings;
+  language?: SupportedLocale;
   onSelectBooking: (booking: Booking) => void;
 };
 
@@ -21,14 +23,24 @@ export function upcomingForTicker(bookings: Booking[], today: string, leadDays: 
     .sort((a, b) => (a.startDate + a.startTime).localeCompare(b.startDate + b.startTime));
 }
 
-export function UpcomingTicker({ bookings, today, settings, onSelectBooking }: UpcomingTickerProps) {
+export function UpcomingTicker({ bookings, today, settings, language = "ro", onSelectBooking }: UpcomingTickerProps) {
   const upcoming = useMemo(
     () => upcomingForTicker(bookings, today, settings.leadDays),
     [bookings, today, settings.leadDays]
   );
 
-  if (!settings.enabled || upcoming.length === 0) {
+  if (!settings.enabled) {
     return null;
+  }
+
+  if (upcoming.length === 0) {
+    const emptyKey = settings.leadDays === 1 ? "calendar.tickerEmptyOne" : "calendar.tickerEmpty";
+
+    return (
+      <div className="upcoming-ticker upcoming-ticker-empty" style={{ ["--ticker-accent" as string]: settings.color }}>
+        <span>{appText(language, emptyKey).replace("{{days}}", String(settings.leadDays))}</span>
+      </div>
+    );
   }
 
   // Duplicate the run so the marquee can loop seamlessly.

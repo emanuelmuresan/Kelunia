@@ -4760,6 +4760,12 @@ img {
   overflow: hidden;
 }
 
+.upcoming-ticker-empty {
+  padding: 8px 12px;
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+
 .upcoming-ticker-track {
   display: inline-flex;
   gap: 10px;
@@ -4918,7 +4924,7 @@ img {
   gap: 14px;
 }
 
-.notif-block {
+.settings-block {
   display: grid;
   gap: 8px;
   padding: 12px 14px;
@@ -4927,7 +4933,7 @@ img {
   background: var(--surface);
 }
 
-.notif-block h4 {
+.settings-block h4 {
   margin: 0;
   font-size: 0.82rem;
   letter-spacing: 0.04em;

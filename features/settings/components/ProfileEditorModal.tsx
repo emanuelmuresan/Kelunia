@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import type { AppLanguage } from "@/context/AuthContext";
 import { appText, supportedLocales, type UiCopyKey } from "@/lib/i18n/app-copy-catalog";
+import { SettingsBlock } from "@/features/settings/components/SettingsBlock";
 import { NotificationSettingsSection } from "@/features/settings/components/NotificationSettingsSection";
 import { getNewBookingPushPreference, setNewBookingPushPreference } from "@/lib/push-notifications";
 import type { GroupItem, PersonalDraft } from "@/lib/types/domain";
@@ -102,6 +103,7 @@ export function ProfileEditorModal({
         </div>
 
         <div className="settings-form">
+          <SettingsBlock title={t("settings.blockIdentity")}>
           <label>
             {appText(personalDraft.language, "common.language")}
             <select
@@ -153,7 +155,9 @@ export function ProfileEditorModal({
               </select>
             </label>
           )}
+          </SettingsBlock>
 
+          <SettingsBlock title={t("settings.security")}>
           <div className="settings-toggle-stack">
             <label className="toggle-row">
               <input
@@ -187,6 +191,7 @@ export function ProfileEditorModal({
               {t("settings.blockOnExit")}
             </label>
           </div>
+          </SettingsBlock>
 
           {!isOwner && (
             <NotificationSettingsSection

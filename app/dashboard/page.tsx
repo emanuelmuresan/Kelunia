@@ -34,7 +34,7 @@ import {
   offlineReadOnlyMessage,
   shortDayLabels,
 } from "@/lib/config/app";
-import { dateKey, parseDateKey } from "@/lib/dates";
+import { addDays, dateKey, parseDateKey } from "@/lib/dates";
 import {
   normalizeNotificationOffsetRules,
   normalizeNotificationOffsets,
@@ -57,7 +57,7 @@ import type {
 import { MonthView } from "@/features/calendar/views/MonthView";
 import { WeekView } from "@/features/calendar/views/WeekView";
 import { YearView } from "@/features/calendar/views/YearView";
-import { UpcomingTicker, upcomingForTicker } from "@/features/calendar/components/UpcomingTicker";
+import { UpcomingTicker } from "@/features/calendar/components/UpcomingTicker";
 import { useUpcomingTickerSettings } from "@/features/calendar/hooks/useUpcomingTickerSettings";
 import { DayView } from "@/features/calendar/views/DayView";
 import { CalendarToolbar } from "@/features/calendar/components/CalendarToolbar";
@@ -243,12 +243,20 @@ export default function KeluniaPage() {
     () => bookings.filter((booking) => bookingMatchesRoomAccess(booking, rooms, profile, hasFullRoomAccess)),
     [bookings, hasFullRoomAccess, profile, rooms]
   );
-  const tickerActive = useMemo(
-    () =>
-      tickerSettings.enabled &&
-      upcomingForTicker(visibleBookingsByRoomAccess, today, tickerSettings.leadDays).length > 0,
-    [tickerSettings.enabled, tickerSettings.leadDays, visibleBookingsByRoomAccess, today]
+  // The band looks ahead from today regardless of which month/week the calendar
+  // is showing, so it needs its own bookings window.
+  const tickerEndDate = dateKey(addDays(new Date(), tickerSettings.leadDays));
+  const { bookings: tickerWindowBookings } = useBookings({
+    userExists: Boolean(user) && tickerSettings.enabled,
+    locationId: currentLocationId,
+    startDate: today,
+    endDate: tickerEndDate,
+  });
+  const tickerBookings = useMemo(
+    () => tickerWindowBookings.filter((booking) => bookingMatchesRoomAccess(booking, rooms, profile, hasFullRoomAccess)),
+    [hasFullRoomAccess, profile, rooms, tickerWindowBookings]
   );
+  const tickerActive = tickerSettings.enabled;
   const visibleFixedSchedulesByRoomAccess = useMemo(() => {
     if (hasFullRoomAccess) {
       return fixedSchedules;
@@ -1130,9 +1138,10 @@ export default function KeluniaPage() {
       />
 
       <UpcomingTicker
-        bookings={visibleBookingsByRoomAccess}
+        bookings={tickerBookings}
         today={today}
         settings={tickerSettings}
+        language={language}
         onSelectBooking={setSelectedBooking}
       />
 

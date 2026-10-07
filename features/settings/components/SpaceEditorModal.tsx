@@ -1,6 +1,7 @@
 "use client";
 
 import type { SpaceEditor } from "@/lib/types/domain";
+import { SettingsBlock } from "@/features/settings/components/SettingsBlock";
 import { dateKey } from "@/lib/dates";
 import { groupColorPalette, normalizeGroupColor } from "@/lib/group-colors";
 import { appText, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
@@ -101,6 +102,7 @@ export function SpaceEditorModal({
             </label>
           )}
 
+          <SettingsBlock title={appText(language, "settings.blockPeriod")}>
           <label className="toggle-row compact-toggle">
             <input
               type="checkbox"
@@ -127,6 +129,7 @@ export function SpaceEditorModal({
               <small className="muted-note">{appText(language, "settings.temporaryHint")}</small>
             </label>
           ) : null}
+          </SettingsBlock>
 
           {spaceError && <p className="error-line">{spaceError}</p>}
 

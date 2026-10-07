@@ -9,6 +9,7 @@ import {
   requestKeluniaNotificationPermission,
   type KeluniaNotificationPermission,
 } from "@/lib/notifications";
+import { SettingsBlock } from "@/features/settings/components/SettingsBlock";
 import type { PersonalDraft } from "@/lib/types/domain";
 
 type NotificationSettingsSectionProps = {
@@ -108,8 +109,7 @@ export function NotificationSettingsSection({
 
   return (
     <div className="notif-settings">
-      <section className="notif-block">
-        <h4>{t("settings.notifDevice")}</h4>
+      <SettingsBlock title={t("settings.notifDevice")}>
         <div className="notif-status-row">
           <span className={`notif-status notif-status-${permission}`}>{t(statusKeys[permission])}</span>
           {permission === "default" && (
@@ -124,10 +124,9 @@ export function NotificationSettingsSection({
           {t("settings.notifNewBookings")}
         </label>
         <small className="muted-note">{t("settings.notifNewBookingsHint")}</small>
-      </section>
+      </SettingsBlock>
 
-      <section className="notif-block">
-        <h4>{t("settings.notifReminders")}</h4>
+      <SettingsBlock title={t("settings.notifReminders")}>
         <label className="toggle-row">
           <input
             type="checkbox"
@@ -191,7 +190,7 @@ export function NotificationSettingsSection({
             </label>
           </div>
         )}
-      </section>
+      </SettingsBlock>
 
       <small className="muted-note">{t("settings.notifFootnote")}</small>
     </div>
