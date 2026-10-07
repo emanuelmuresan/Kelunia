@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import type { AppLanguage } from "@/context/AuthContext";
+import { SettingsBlock } from "@/features/settings/components/SettingsBlock";
 import { useLocationClosure } from "@/features/locations/hooks/useLocationClosure";
 import { useConfirm } from "@/features/shell/components/ConfirmDialog";
 import { locationClosureGraceDays } from "@/lib/config/app";
@@ -68,13 +69,7 @@ export function LocationClosureCard({ language, locationId, locationName, closur
 
   return (
     <>
-      <article className="settings-panel">
-        <div className="section-heading">
-          <div>
-            <span className="eyebrow">{t("settings.location")}</span>
-            <h2>{t("closure.title")}</h2>
-          </div>
-        </div>
+      <SettingsBlock title={t("closure.title")}>
 
         <div className="settings-summary-list">
           <div>
@@ -109,7 +104,7 @@ export function LocationClosureCard({ language, locationId, locationName, closur
             </button>
           )}
         </div>
-      </article>
+      </SettingsBlock>
 
       {modalOpen && (
         <div className="modal-backdrop" role="presentation" onMouseDown={closeModal}>

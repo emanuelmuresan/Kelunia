@@ -1,5 +1,6 @@
 "use client";
 
+import { SettingsBlock } from "@/features/settings/components/SettingsBlock";
 import type { AppLanguage } from "@/context/AuthContext";
 import { appText, type UiCopyKey } from "@/lib/i18n/app-copy-catalog";
 import type { ManagedUser } from "@/lib/types/domain";
@@ -16,13 +17,7 @@ export function UsersSummaryCard({ language, managedUsers, onOpenUsersManager }:
   const managerCount = managedUsers.filter((item) => item.role === "manager").length;
 
   return (
-    <article className="settings-panel wide">
-      <div className="section-heading">
-        <div>
-          <span className="eyebrow">{t("settings.users")}</span>
-          <h2>{t("settings.users")}</h2>
-        </div>
-      </div>
+    <SettingsBlock title={t("settings.users")} action={<button className="secondary-button compact" onClick={onOpenUsersManager} type="button">{t("settings.edit")}</button>}>
 
       <div className="settings-summary-list">
         <div>
@@ -38,12 +33,6 @@ export function UsersSummaryCard({ language, managedUsers, onOpenUsersManager }:
           <strong>{managedUsers.length - managerCount}</strong>
         </div>
       </div>
-
-      <div className="settings-card-actions">
-        <button className="primary-button compact" onClick={onOpenUsersManager} type="button">
-          {t("settings.edit")}
-        </button>
-      </div>
-    </article>
+    </SettingsBlock>
   );
 }

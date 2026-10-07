@@ -10,7 +10,10 @@ import { UsersManagerModal } from "@/features/settings/components/UsersManagerMo
 import { LocationClosureCard } from "@/features/locations/components/LocationClosureCard";
 import { ProfileEditorModal, type ProfileSection } from "@/features/settings/components/ProfileEditorModal";
 import { ProfileSettingsModal } from "@/features/settings/components/ProfileSettingsModal";
-import { ProfileSummaryCard } from "@/features/settings/components/ProfileSummaryCard";
+import Link from "next/link";
+
+import { SettingsBlock } from "@/features/settings/components/SettingsBlock";
+import { SettingsSectionCard, SettingsSectionModal } from "@/features/settings/components/SettingsSection";
 import { ReportProblemModal } from "@/features/shell/components/ReportProblemModal";
 import { ErrorReportsModal } from "@/features/settings/components/ErrorReportsModal";
 import type { ErrorReport } from "@/features/settings/hooks/useErrorReports";
@@ -183,6 +186,7 @@ export function SettingsView({
   const { user, profile } = useAuth();
   const language: AppLanguage = personalDraft.language;
   const showLocationSettings = !isOwner || Boolean(currentLocationId);
+  const hasAdminSections = isSuperAdmin || isOwner;
   const resourcesTitle = resourcesSectionDraft.trim() || defaultResourcesSectionTitle;
   const roomsLabel = roomsLabelDraft.trim() || defaultRoomsLabel;
   const groupsLabel = groupsLabelDraft.trim() || defaultGroupsLabel;
@@ -192,6 +196,7 @@ export function SettingsView({
   const [usersManagerOpen, setUsersManagerOpen] = useState(false);
   const [inboxOpen, setInboxOpen] = useState(false);
   const [profileViewOpen, setProfileViewOpen] = useState(false);
+  const [openSection, setOpenSection] = useState<"config" | "access" | "support" | null>(null);
   const [profileEditorSection, setProfileEditorSection] = useState<ProfileSection | null>(null);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
   const [reportProblemOpen, setReportProblemOpen] = useState(false);
@@ -250,60 +255,48 @@ export function SettingsView({
       )}
       {settingsError && <p className="error-line settings-alert">{settingsError}</p>}
 
-      <ProfileSummaryCard
-        userExists={userExists}
-        isOwner={isOwner}
-        isSuperAdmin={isSuperAdmin}
-        personalDraft={personalDraft}
-        groupsLabel={groupsLabel}
-        onOpenProfile={() => setProfileViewOpen(true)}
-      />
-
-      {userExists && (
-        <TickerSettingsCard
-          language={language}
-          settings={tickerSettings}
-          onChange={onTickerSettingsChange}
-        />
+      {!userExists && (
+        <article className="settings-panel">
+          <div className="empty-state">
+            <p>{appText(language, "auth.signIn")}</p>
+            <Link className="primary-link" href="/login">
+              {appText(language, "auth.signIn")}
+            </Link>
+          </div>
+        </article>
       )}
 
-      {(isSuperAdmin || isOwner) && (
+      {userExists && (
         <>
-          {showLocationSettings && (
-            <PagesSettingsCard
+          <SettingsSectionCard
+            language={language}
+            title={appText(language, "settings.sectionProfile")}
+            description={appText(language, "settings.sectionProfileDesc")}
+            onOpen={() => setProfileViewOpen(true)}
+          />
+
+          <SettingsSectionCard
+            language={language}
+            title={appText(language, "settings.sectionConfig")}
+            description={appText(language, "settings.sectionConfigDesc")}
+            onOpen={() => setOpenSection("config")}
+          />
+
+          {hasAdminSections && (
+            <SettingsSectionCard
               language={language}
-              canEditCurrentLocation={canEditCurrentLocation}
-              fixedPageEnabledDraft={fixedPageEnabledDraft}
-              setFixedPageEnabledDraft={setFixedPageEnabledDraft}
-              fixedSectionDraft={fixedSectionDraft}
-              setFixedSectionDraft={setFixedSectionDraft}
-              defaultFixedSectionTitle={defaultFixedSectionTitle}
-              listViewDraft={listViewDraft}
-              setListViewDraft={setListViewDraft}
-              resourcesSectionDraft={resourcesSectionDraft}
-              setResourcesSectionDraft={setResourcesSectionDraft}
-              defaultResourcesSectionTitle={defaultResourcesSectionTitle}
-              roomsLabelDraft={roomsLabelDraft}
-              setRoomsLabelDraft={setRoomsLabelDraft}
-              defaultRoomsLabel={defaultRoomsLabel}
-              groupsLabelDraft={groupsLabelDraft}
-              setGroupsLabelDraft={setGroupsLabelDraft}
-              defaultGroupsLabel={defaultGroupsLabel}
-              onSaveNavigationSettings={onSaveNavigationSettings}
+              title={appText(language, "settings.sectionAccess")}
+              description={appText(language, "settings.sectionAccessDesc")}
+              onOpen={() => setOpenSection("access")}
             />
           )}
 
-          {showLocationSettings && (
-            <LicenseSummaryCard
-              language={language}
-              licenseAccess={licenseAccess}
-              currentLocationCodeCount={currentLocationCodeCount}
-              currentLocationManagerAccountCount={currentLocationManagerAccountCount}
-              currentLocationManagerLimit={currentLocationManagerLimit}
-              canManageAccessCodes={canManageAccessCodes}
-              onOpenCodesEditor={onOpenCodesEditor}
-            />
-          )}
+          <SettingsSectionCard
+            language={language}
+            title={appText(language, "settings.support")}
+            description={appText(language, isOwner ? "settings.sectionSupportOwnerDesc" : "settings.sectionSupportDesc")}
+            onOpen={() => setOpenSection("support")}
+          />
 
           {isOwner && (
             <OwnerLocationsCard
@@ -323,77 +316,138 @@ export function SettingsView({
               onEnableOwnerNotifications={onEnableOwnerNotifications}
             />
           )}
+        </>
+      )}
+    </section>
 
-          {isOwner && (
-            <article className="settings-panel">
-              <div className="section-heading">
-                <div>
-                  <span className="eyebrow">{appText(language, "settings.support")}</span>
-                  <h2>{appText(language, "settings.errorReportsTitle")}</h2>
-                </div>
-              </div>
-              <div className="settings-summary-list">
-                <div>
-                  <span>{appText(language, "settings.errorReportsTotal")}</span>
-                  <strong>{errorReports.length}</strong>
-                </div>
-                <div>
-                  <span>{appText(language, "settings.errorReportsUnresolved")}</span>
-                  <strong>{errorReports.filter((report) => report.status === "new").length}</strong>
-                </div>
-              </div>
-              <div className="settings-card-actions">
-                <button className="primary-button compact" onClick={() => setErrorReportsOpen(true)} type="button">
-                  {appText(language, "settings.openAction")}
-                </button>
-              </div>
-            </article>
-          )}
+    {openSection === "config" && (
+      <SettingsSectionModal
+        language={language}
+        title={appText(language, "settings.sectionConfig")}
+        description={appText(language, "settings.sectionConfigDesc")}
+        onClose={() => setOpenSection(null)}
+      >
+        {hasAdminSections && showLocationSettings && (
+          <PagesSettingsCard
+            language={language}
+            canEditCurrentLocation={canEditCurrentLocation}
+            fixedPageEnabledDraft={fixedPageEnabledDraft}
+            setFixedPageEnabledDraft={setFixedPageEnabledDraft}
+            fixedSectionDraft={fixedSectionDraft}
+            setFixedSectionDraft={setFixedSectionDraft}
+            defaultFixedSectionTitle={defaultFixedSectionTitle}
+            listViewDraft={listViewDraft}
+            setListViewDraft={setListViewDraft}
+            resourcesSectionDraft={resourcesSectionDraft}
+            setResourcesSectionDraft={setResourcesSectionDraft}
+            defaultResourcesSectionTitle={defaultResourcesSectionTitle}
+            roomsLabelDraft={roomsLabelDraft}
+            setRoomsLabelDraft={setRoomsLabelDraft}
+            defaultRoomsLabel={defaultRoomsLabel}
+            groupsLabelDraft={groupsLabelDraft}
+            setGroupsLabelDraft={setGroupsLabelDraft}
+            defaultGroupsLabel={defaultGroupsLabel}
+            onSaveNavigationSettings={onSaveNavigationSettings}
+          />
+        )}
 
-          {showLocationSettings && (
-            <ResourcesSummaryCard
+        <TickerSettingsCard language={language} settings={tickerSettings} onChange={onTickerSettingsChange} />
+
+        {hasAdminSections && showLocationSettings && (
+          <ResourcesSummaryCard
+            language={language}
+            title={resourcesTitle}
+            roomsLabel={roomsLabel}
+            groupsLabel={groupsLabel}
+            rooms={rooms}
+            groups={groups}
+            onOpenResourcesManager={() => setResourcesManagerOpen(true)}
+          />
+        )}
+      </SettingsSectionModal>
+    )}
+
+    {openSection === "access" && hasAdminSections && (
+      <SettingsSectionModal
+        language={language}
+        title={appText(language, "settings.sectionAccess")}
+        description={appText(language, "settings.sectionAccessDesc")}
+        onClose={() => setOpenSection(null)}
+      >
+        {showLocationSettings && (
+          <>
+            <LicenseSummaryCard
               language={language}
-              title={resourcesTitle}
-              roomsLabel={roomsLabel}
-              groupsLabel={groupsLabel}
-              rooms={rooms}
-              groups={groups}
-              onOpenResourcesManager={() => setResourcesManagerOpen(true)}
+              licenseAccess={licenseAccess}
+              currentLocationCodeCount={currentLocationCodeCount}
+              currentLocationManagerAccountCount={currentLocationManagerAccountCount}
+              currentLocationManagerLimit={currentLocationManagerLimit}
+              canManageAccessCodes={canManageAccessCodes}
+              onOpenCodesEditor={onOpenCodesEditor}
             />
-          )}
 
-          {showLocationSettings && (
             <UsersSummaryCard
               language={language}
               managedUsers={visibleManagedUsers}
               onOpenUsersManager={() => setUsersManagerOpen(true)}
             />
-          )}
 
-          {showLocationSettings && currentLocationId && (
-            <LocationClosureCard
-              language={language}
-              locationId={currentLocationId}
-              locationName={currentLocation?.name ?? ""}
-              closureScheduledFor={currentLocation?.closureScheduledFor}
-              onMessage={onSettingsMessage}
-            />
-          )}
-        </>
-      )}
+            {currentLocationId && (
+              <LocationClosureCard
+                language={language}
+                locationId={currentLocationId}
+                locationName={currentLocation?.name ?? ""}
+                closureScheduledFor={currentLocation?.closureScheduledFor}
+                onMessage={onSettingsMessage}
+              />
+            )}
+          </>
+        )}
+      </SettingsSectionModal>
+    )}
 
-      {userExists && (
-        <article className="settings-panel report-problem-panel">
-          <div>
-            <h2>{appText(language, "settings.support")}</h2>
-            <p className="muted-note">{appText(language, "settings.reportProblemHint")}</p>
-          </div>
-          <button className="secondary-button compact" onClick={() => setReportProblemOpen(true)} type="button">
-            {appText(language, "settings.reportProblem")}
-          </button>
-        </article>
-      )}
-    </section>
+    {openSection === "support" && (
+      <SettingsSectionModal
+        language={language}
+        title={appText(language, "settings.support")}
+        description={appText(language, isOwner ? "settings.sectionSupportOwnerDesc" : "settings.sectionSupportDesc")}
+        onClose={() => setOpenSection(null)}
+      >
+        <SettingsBlock
+          title={appText(language, "settings.reportProblem")}
+          hint={appText(language, "settings.reportProblemHint")}
+          action={
+            <button className="secondary-button compact" onClick={() => setReportProblemOpen(true)} type="button">
+              {appText(language, "settings.reportProblem")}
+            </button>
+          }
+        >
+          {null}
+        </SettingsBlock>
+
+        {isOwner && (
+          <SettingsBlock
+            title={appText(language, "settings.errorReportsTitle")}
+            action={
+              <button className="secondary-button compact" onClick={() => setErrorReportsOpen(true)} type="button">
+                {appText(language, "settings.openAction")}
+              </button>
+            }
+          >
+            <div className="settings-summary-list">
+              <div>
+                <span>{appText(language, "settings.errorReportsTotal")}</span>
+                <strong>{errorReports.length}</strong>
+              </div>
+              <div>
+                <span>{appText(language, "settings.errorReportsUnresolved")}</span>
+                <strong>{errorReports.filter((report) => report.status === "new").length}</strong>
+              </div>
+            </div>
+          </SettingsBlock>
+        )}
+      </SettingsSectionModal>
+    )}
 
     {resourcesManagerOpen && (
       <ResourcesManagerModal

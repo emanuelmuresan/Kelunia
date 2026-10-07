@@ -1,5 +1,6 @@
 "use client";
 
+import { SettingsBlock } from "@/features/settings/components/SettingsBlock";
 import type { AppLanguage } from "@/context/AuthContext";
 import { appText, type UiCopyKey } from "@/lib/i18n/app-copy-catalog";
 import type { GroupItem, RoomItem } from "@/lib/types/domain";
@@ -27,13 +28,7 @@ export function ResourcesSummaryCard({
   const t = (key: UiCopyKey) => appText(language, key);
 
   return (
-    <article className="settings-panel">
-      <div className="section-heading">
-        <div>
-          <span className="eyebrow">{t("settings.organization")}</span>
-          <h2>{title}</h2>
-        </div>
-      </div>
+    <SettingsBlock title={title} action={<button className="secondary-button compact" onClick={onOpenResourcesManager} type="button">{t("settings.edit")}</button>}>
 
       <div className="settings-summary-list">
         <div>
@@ -49,12 +44,6 @@ export function ResourcesSummaryCard({
           </strong>
         </div>
       </div>
-
-      <div className="settings-card-actions">
-        <button className="primary-button compact" onClick={onOpenResourcesManager} type="button">
-          {t("settings.edit")}
-        </button>
-      </div>
-    </article>
+    </SettingsBlock>
   );
 }

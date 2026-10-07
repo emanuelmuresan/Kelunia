@@ -1,5 +1,6 @@
 "use client";
 
+import { SettingsBlock } from "@/features/settings/components/SettingsBlock";
 import type { AppLanguage } from "@/context/AuthContext";
 import { appText, type UiCopyKey } from "@/lib/i18n/app-copy-catalog";
 
@@ -55,49 +56,41 @@ export function LicenseSummaryCard({
   const t = (key: UiCopyKey) => appText(language, key);
 
   return (
-    <article className="settings-panel">
-      <div className="section-heading">
-        <div>
-          <span className="eyebrow">{t("settings.access")}</span>
-          <h2>{t("settings.codes")}</h2>
+    <>
+      <SettingsBlock title={t("settings.blockLicense")}>
+        <div className="settings-summary-list">
+          <div>
+            <span>{t("settings.plan")}</span>
+            <strong>{licenseAccess.planLabel}</strong>
+          </div>
+          <div>
+            <span>{t("settings.licenseStatus")}</span>
+            <strong>{licenseAccess.statusLabel}</strong>
+          </div>
+          <div>
+            <span>{t("settings.validity")}</span>
+            <strong>{licenseRemainingLabel(licenseAccess, t)}</strong>
+          </div>
         </div>
-      </div>
+      </SettingsBlock>
 
-      <div className="settings-summary-list">
-        <div>
-          <span>{t("settings.plan")}</span>
-          <strong>{licenseAccess.planLabel}</strong>
+      <SettingsBlock
+        title={t("settings.blockCodes")}
+        action={canManageAccessCodes ? <button className="secondary-button compact" onClick={onOpenCodesEditor} type="button">{t("settings.edit")}</button> : undefined}
+      >
+        <div className="settings-summary-list">
+          <div>
+            <span>{t("settings.currentLocation")}</span>
+            <strong>{t("settings.codesCount").replace("{{count}}", String(currentLocationCodeCount))}</strong>
+          </div>
+          <div>
+            <span>{t("settings.administrators")}</span>
+            <strong>
+              {currentLocationManagerAccountCount}/{currentLocationManagerLimit}
+            </strong>
+          </div>
         </div>
-        <div>
-          <span>{t("settings.licenseStatus")}</span>
-          <strong>{licenseAccess.statusLabel}</strong>
-        </div>
-
-        <div>
-          <span>{t("settings.validity")}</span>
-          <strong>{licenseRemainingLabel(licenseAccess, t)}</strong>
-        </div>
-
-        <div>
-          <span>{t("settings.currentLocation")}</span>
-          <strong>{t("settings.codesCount").replace("{{count}}", String(currentLocationCodeCount))}</strong>
-        </div>
-
-        <div>
-          <span>{t("settings.administrators")}</span>
-          <strong>
-            {currentLocationManagerAccountCount}/{currentLocationManagerLimit}
-          </strong>
-        </div>
-      </div>
-
-      {canManageAccessCodes && (
-        <div className="settings-card-actions">
-          <button className="primary-button compact" onClick={onOpenCodesEditor} type="button">
-            {t("settings.edit")}
-          </button>
-        </div>
-      )}
-    </article>
+      </SettingsBlock>
+    </>
   );
 }

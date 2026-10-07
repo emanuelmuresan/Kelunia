@@ -1,5 +1,6 @@
 "use client";
 
+import { SettingsBlock } from "@/features/settings/components/SettingsBlock";
 import { useState } from "react";
 
 import type { AppLanguage } from "@/context/AuthContext";
@@ -25,13 +26,14 @@ export function TickerSettingsCard({ language, settings, onChange }: TickerSetti
 
   return (
     <>
-      <article className="settings-panel">
-        <div className="section-heading">
-          <div>
-            <span className="eyebrow">{t("nav.calendar")}</span>
-            <h2>{t("settings.tickerTitle")}</h2>
-          </div>
-        </div>
+      <SettingsBlock
+        title={t("settings.tickerTitle")}
+        action={
+          <button className="secondary-button compact" onClick={() => setEditorOpen(true)} type="button">
+            {t("settings.edit")}
+          </button>
+        }
+      >
 
         <div className="settings-summary-list">
           <div>
@@ -63,13 +65,7 @@ export function TickerSettingsCard({ language, settings, onChange }: TickerSetti
             </>
           )}
         </div>
-
-        <div className="settings-card-actions">
-          <button className="primary-button compact" onClick={() => setEditorOpen(true)} type="button">
-            {t("settings.edit")}
-          </button>
-        </div>
-      </article>
+      </SettingsBlock>
 
       {editorOpen && (
         <TickerEditorModal language={language} settings={settings} onSave={save} onClose={() => setEditorOpen(false)} />

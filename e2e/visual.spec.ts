@@ -216,3 +216,23 @@ test("capture profile card, opened view and standalone report row", async ({ pag
   await view.waitFor();
   await view.screenshot({ path: "test-results/profile-view.png" });
 });
+
+test("capture the four settings cards and opened sections", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/login");
+  await page.locator('input[type="email"]').fill("admin@e2e.test");
+  await page.locator('input[type="password"]').first().fill("Test123456");
+  await page.locator('form button[type="submit"]').click();
+  await page.locator("main.kelunia-shell").waitFor({ timeout: 30_000 });
+  await page.getByRole("button", { name: /Setări/ }).first().click();
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: "test-results/settings-cards.png" });
+
+  for (const [title, file] of [["Configurare", "section-config"], ["Acces", "section-access"], ["Suport", "section-support"]]) {
+    await page.locator("article.settings-section-card").filter({ has: page.getByRole("heading", { name: title, exact: true }) }).getByRole("button", { name: "Deschide" }).click();
+    const section = page.getByRole("dialog", { name: title, exact: true });
+    await section.waitFor();
+    await section.screenshot({ path: `test-results/${file}.png` });
+    await section.getByRole("button", { name: "Gata" }).click();
+  }
+});

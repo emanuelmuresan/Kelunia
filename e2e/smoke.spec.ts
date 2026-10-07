@@ -18,7 +18,7 @@ test.describe("dashboard smoke", () => {
 
   test("navigates between the main views", async ({ page }) => {
     await page.getByRole("button", { name: "Setări", exact: true }).click();
-    await expect(page.getByRole("heading", { name: "Setări personale" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Profil", exact: true })).toBeVisible();
 
     await page.getByRole("button", { name: "Calendar", exact: true }).click();
     await expect(page.getByRole("button", { name: /Rezervare nouă/ })).toBeVisible();

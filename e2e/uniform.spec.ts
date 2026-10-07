@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { blockOf, openSettingsSection } from "./helpers";
+
 async function loginAsAdmin(page: Page) {
   await page.goto("/login");
   await page.locator('input[type="email"]').fill("admin@e2e.test");
@@ -9,13 +11,9 @@ async function loginAsAdmin(page: Page) {
   await page.getByRole("button", { name: /Setări/ }).first().click();
 }
 
-// Settings -> "Setări personale" card -> Deschide -> the block's own Modifică.
+// Settings -> "Profil" card -> Deschide -> the block's own Modifică.
 async function openProfileView(page: Page) {
-  await page
-    .locator("article.settings-panel")
-    .filter({ has: page.getByRole("heading", { name: "Setări personale" }) })
-    .getByRole("button", { name: "Deschide" })
-    .click();
+  await openSettingsSection(page, "Profil");
 
   return page.locator('[aria-labelledby="profile-view-title"]');
 }
@@ -28,11 +26,8 @@ async function editProfileBlock(page: Page, block: string) {
 test("deleting a group is undoable from the toast", async ({ page }) => {
   await loginAsAdmin(page);
 
-  await page
-    .locator("article.settings-panel")
-    .filter({ has: page.getByRole("heading", { name: "Spații și grupuri" }) })
-    .getByRole("button", { name: "Modifică" })
-    .click();
+  const configuration = await openSettingsSection(page, "Configurare");
+  await blockOf(configuration, "Spații și grupuri").getByRole("button", { name: "Modifică" }).click();
   const dialog = page.locator('[aria-labelledby="resources-manager-title"]');
   const row = dialog.locator(".mini-row", { hasText: "Grupa B" });
   await expect(row).toBeVisible();
@@ -81,11 +76,8 @@ test("clicking outside an untouched profile just closes it", async ({ page }) =>
 test("the invitation language can be picked in the codes modal", async ({ page }) => {
   await loginAsAdmin(page);
 
-  await page
-    .locator("article.settings-panel")
-    .filter({ has: page.getByRole("heading", { name: "Coduri" }) })
-    .getByRole("button", { name: "Modifică" })
-    .click();
+  const access = await openSettingsSection(page, "Acces");
+  await blockOf(access, "Coduri de acces").getByRole("button", { name: "Modifică" }).click();
 
   const dialog = page.locator('[aria-label="Coduri de acces"]');
   const languagePicker = dialog.locator(".invite-language-field select");
@@ -99,11 +91,8 @@ test("the invitation language can be picked in the codes modal", async ({ page }
 test("an administrator cannot change their own role", async ({ page }) => {
   await loginAsAdmin(page);
 
-  await page
-    .locator("article.settings-panel")
-    .filter({ has: page.getByRole("heading", { name: "Utilizatori" }) })
-    .getByRole("button", { name: "Modifică" })
-    .click();
+  const access = await openSettingsSection(page, "Acces");
+  await blockOf(access, "Utilizatori").getByRole("button", { name: "Modifică" }).click();
 
   const dialog = page.locator('[aria-labelledby="users-manager-title"]');
   const ownRow = dialog.locator(".user-row", { hasText: "admin@e2e.test" });
@@ -170,9 +159,8 @@ test("the empty-state message flows on one line instead of wrapping", async ({ p
 test("closing a location needs the name typed and can be cancelled", async ({ page }) => {
   await loginAsAdmin(page);
 
-  const card = page
-    .locator("article.settings-panel")
-    .filter({ has: page.getByRole("heading", { name: "Închidere locație" }) });
+  const access = await openSettingsSection(page, "Acces");
+  const card = blockOf(access, "Închidere locație");
   await expect(card.getByText("Deschisă")).toBeVisible();
   await card.getByRole("button", { name: "Închide locația" }).click();
 
@@ -208,10 +196,8 @@ test("messages follow the chosen language", async ({ page }) => {
   // The profile view is still open behind the editor that just closed.
   await page.locator('[aria-labelledby="profile-view-title"]').getByRole("button", { name: "Done" }).click();
 
-  await page
-    .locator("article.settings-panel", { hasText: "Grupa B" })
-    .getByRole("button", { name: "Edit" })
-    .click();
+  const configuration = await openSettingsSection(page, "Setup");
+  await blockOf(configuration, "Spații și grupuri").getByRole("button", { name: "Edit" }).click();
   const dialog = page.locator('[aria-labelledby="resources-manager-title"]');
   await dialog.locator(".mini-row", { hasText: "Grupa B" }).getByRole("button", { name: "Delete" }).click();
 

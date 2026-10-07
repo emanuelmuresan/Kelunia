@@ -1,6 +1,7 @@
 // Named z-* so it runs after the other specs: registering adds users to the seeded location.
 import { expect, test, type Page } from "@playwright/test";
 import { getApps, initializeApp } from "firebase-admin/app";
+import { openSettingsSection } from "./helpers";
 import { getAuth } from "firebase-admin/auth";
 
 // The real login page + the real Firestore rules (emulator): a brand-new, still
@@ -95,12 +96,14 @@ journeys.forEach(({ role, label, code, entry }, index) => {
     await expect(page.locator(".fab-add")).toHaveCount(canBook ? 1 : 0);
 
     await page.getByRole("button", { name: /Setări/ }).first().click();
-    const adminCard = page.getByRole("heading", { name: "Închidere locație" });
-    await expect(adminCard).toHaveCount(role === "administrator" ? 1 : 0);
+    // The Acces section (licence, codes, users, closing the location) is admin-only.
+    const accessCard = page.locator("article.settings-section-card").filter({ has: page.getByRole("heading", { name: "Acces", exact: true }) });
+    await expect(accessCard).toHaveCount(role === "administrator" ? 1 : 0);
 
     if (role !== "administrator") {
       // Collaborators and guests carry the group the code assigned.
-      await expect(page.getByText("Grupa E2E").first()).toBeVisible();
+      await openSettingsSection(page, "Profil");
+      await expect(page.locator('[aria-labelledby="profile-view-title"]').getByText("Grupa E2E")).toBeVisible();
     }
   });
 });
