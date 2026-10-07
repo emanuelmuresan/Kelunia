@@ -1,6 +1,7 @@
 "use client";
 
 import type { SpaceEditor } from "@/lib/types/domain";
+import { dateKey } from "@/lib/dates";
 import { groupColorPalette, normalizeGroupColor } from "@/lib/group-colors";
 import { appText, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 
@@ -99,6 +100,33 @@ export function SpaceEditorModal({
               </div>
             </label>
           )}
+
+          <label className="toggle-row compact-toggle">
+            <input
+              type="checkbox"
+              checked={Boolean(spaceEditor.activeUntil)}
+              onChange={(event) =>
+                onChange({
+                  ...spaceEditor,
+                  activeUntil: event.target.checked ? dateKey(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)) : "",
+                })
+              }
+            />
+            {appText(language, "settings.temporary")}
+          </label>
+
+          {spaceEditor.activeUntil ? (
+            <label>
+              {appText(language, "settings.activeUntil")}
+              <input
+                type="date"
+                value={spaceEditor.activeUntil}
+                min={dateKey(new Date())}
+                onChange={(event) => onChange({ ...spaceEditor, activeUntil: event.target.value })}
+              />
+              <small className="muted-note">{appText(language, "settings.temporaryHint")}</small>
+            </label>
+          ) : null}
 
           {spaceError && <p className="error-line">{spaceError}</p>}
 

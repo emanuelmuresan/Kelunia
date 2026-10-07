@@ -1,7 +1,9 @@
 "use client";
 
 import type { AppLanguage } from "@/context/AuthContext";
+import { dateKey } from "@/lib/dates";
 import { appText, type UiCopyKey } from "@/lib/i18n/app-copy-catalog";
+import { isSpaceExpired } from "@/lib/space-expiry";
 import type { GroupItem, RoomItem, SpaceKind } from "@/lib/types/domain";
 
 type ResourcesManagerModalProps = {
@@ -31,6 +33,15 @@ export function ResourcesManagerModal({
   onRemoveSpaceItem,
 }: ResourcesManagerModalProps) {
   const t = (key: UiCopyKey) => appText(language, key);
+  const todayKey = dateKey(new Date());
+  const expiryNote = (item: { activeUntil?: string }) =>
+    item.activeUntil ? (
+      <small className={isSpaceExpired(item, todayKey) ? "code-expiry-expired" : "code-expiry"}>
+        {" "}· {isSpaceExpired(item, todayKey)
+          ? t("settings.expired")
+          : t("settings.untilDate").replace("{{date}}", item.activeUntil)}
+      </small>
+    ) : null;
 
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
@@ -65,7 +76,7 @@ export function ResourcesManagerModal({
               ) : (
                 rooms.map((room) => (
                   <div className="mini-row" key={room.id}>
-                    <span>{room.name}</span>
+                    <span>{room.name}{expiryNote(room)}</span>
                     {canEditCurrentLocation && (
                       <div className="row-actions">
                         <button onClick={() => onOpenSpaceEditor("room", room)} type="button" aria-label={t("settings.edit")}>
@@ -101,6 +112,7 @@ export function ResourcesManagerModal({
                     <span className="group-name-with-swatch">
                       {group.color && <i aria-hidden="true" style={{ backgroundColor: group.color }} />}
                       {group.name}
+                      {expiryNote(group)}
                     </span>
                     {canEditCurrentLocation && (
                       <div className="row-actions">

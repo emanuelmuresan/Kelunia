@@ -183,6 +183,7 @@ export interface SpaceEditor {
   id: string | null;
   name: string;
   color?: string;
+  activeUntil?: string;
 }
 
 export interface LocationEditor {
@@ -235,17 +236,20 @@ export interface BookingForm {
   notifyGroupOffsets: string[];
   notifyGroupAudience: "all" | "selected";
   notifyGroupRecipients: string[];
+  notifyNowScope: "group" | "location";
 }
 
 export interface RoomItem {
   id: string;
   name: string;
+  activeUntil?: string;
 }
 
 export interface GroupItem {
   id: string;
   name: string;
   color?: string;
+  activeUntil?: string;
 }
 
 export interface FixedSchedule {

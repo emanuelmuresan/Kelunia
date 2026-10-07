@@ -97,6 +97,10 @@ await chk("room: soft-delete (updateDoc softDeletePayload)", "ALLOW", () => upda
 await chk("room: create (addDoc)", "ALLOW", () => addDoc(collection(dbMgr(), "rooms"), roomDoc({ name: "Noua" })));
 await chk("group: edit name+color (updateDoc)", "ALLOW", () => updateDoc(doc(dbMgr(), "groups", "group1"), { name: "Gr X", color: "#112233", locationId: LOC, locationName: "L", updatedBy: "m@x.com", updatedAt: ts() }));
 await chk("group: soft-delete (updateDoc softDeletePayload)", "ALLOW", () => updateDoc(doc(dbMgr(), "groups", "group1"), softDelete()));
+await chk("group: set temporary activeUntil (valid date key)", "ALLOW", () => updateDoc(doc(dbMgr(), "groups", "group1"), { name: "Gr T", color: "#112233", activeUntil: "2026-12-31", locationId: LOC, locationName: "L", updatedBy: "m@x.com", updatedAt: ts() }));
+await chk("room: create temporary (activeUntil)", "ALLOW", () => addDoc(collection(dbMgr(), "rooms"), roomDoc({ name: "Temp", activeUntil: "2026-12-31" })));
+await chk("group: malformed activeUntil denied", "DENY", () => updateDoc(doc(dbMgr(), "groups", "group1"), { name: "Gr T", color: "#112233", activeUntil: "31/12/2026", locationId: LOC, locationName: "L", updatedBy: "m@x.com", updatedAt: ts() }));
+await chk("group: non-string activeUntil denied", "DENY", () => updateDoc(doc(dbMgr(), "groups", "group1"), { name: "Gr T", color: "#112233", activeUntil: 20261231, locationId: LOC, locationName: "L", updatedBy: "m@x.com", updatedAt: ts() }));
 await chk("room: manager of OTHER location cannot edit", "DENY", () => updateDoc(doc(dbMgr2(), "rooms", "room1"), { name: "Hax", locationId: LOC, locationName: "L", updatedBy: "x", updatedAt: ts() }));
 await chk("room: member cannot soft-delete", "DENY", () => updateDoc(doc(dbMember(), "rooms", "room1"), softDelete()));
 

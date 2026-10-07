@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { onSnapshot } from "firebase/firestore";
 
 import {
@@ -19,6 +19,8 @@ import {
 } from "@/lib/queries/resources";
 import { compareFixedSchedules } from "@/lib/scheduling";
 import { normalizeGroupColor } from "@/lib/group-colors";
+import { dateKey } from "@/lib/dates";
+import { isSpaceExpired, readActiveUntil } from "@/lib/space-expiry";
 import { isSoftDeleted } from "@/lib/soft-delete";
 import type { FixedSchedule, GroupItem, RoomItem } from "@/lib/types/domain";
 
@@ -65,7 +67,11 @@ export function useLocationResources({
         setRooms(
           snapshot.docs
             .filter((item) => !isSoftDeleted(item.data()))
-            .map((item) => ({ id: item.id, name: String(item.data().name ?? "") }))
+            .map((item) => ({
+              id: item.id,
+              name: String(item.data().name ?? ""),
+              activeUntil: readActiveUntil(item.data().activeUntil),
+            }))
         );
 
         if (snapshot.docs.length >= roomsQueryLimit) {
@@ -90,6 +96,7 @@ export function useLocationResources({
                 id: item.id,
                 name: String(data.name ?? ""),
                 color: normalizeGroupColor(data.color),
+                activeUntil: readActiveUntil(data.activeUntil),
               };
             })
         );
@@ -146,11 +153,17 @@ export function useLocationResources({
     };
   }, [locationId, userExists]);
 
+  const todayKey = dateKey(new Date());
+  const selectableGroups = useMemo(() => groups.filter((item) => !isSpaceExpired(item, todayKey)), [groups, todayKey]);
+  const selectableRooms = useMemo(() => rooms.filter((item) => !isSpaceExpired(item, todayKey)), [rooms, todayKey]);
+
   return {
     fixedSchedules,
     groups,
     groupsLoaded,
     groupsReadError,
     rooms,
+    selectableGroups,
+    selectableRooms,
   };
 }

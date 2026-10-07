@@ -854,6 +854,7 @@ service cloud.firestore {
           "name",
           "floorLabel",
           "color",
+          "activeUntil",
           "locationId",
           "locationName",
           "createdBy",
@@ -868,6 +869,7 @@ service cloud.firestore {
         && validText(data.name, 120)
         && validOptionalText(data, "floorLabel", 80)
         && validOptionalColor(data, "color")
+        && (!("activeUntil" in data) || (data.activeUntil is string && data.activeUntil.matches("^[0-9]{4}-[0-9]{2}-[0-9]{2}$")))
         && validText(data.locationId, 160)
         && validTextOrEmpty(data.locationName, 180)
         && validOptionalText(data, "createdBy", 180)

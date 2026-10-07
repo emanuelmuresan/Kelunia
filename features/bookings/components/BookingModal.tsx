@@ -18,6 +18,7 @@ interface BookingModalProps {
   fixedSchedules: FixedSchedule[];
   groupsLabel?: string;
   roomsLabel?: string;
+  canNotifyWholeLocation?: boolean;
   language?: SupportedLocale;
   error: string;
   onChange: (nextForm: BookingForm) => void;
@@ -36,6 +37,7 @@ export function BookingModal({
   fixedSchedules,
   groupsLabel = "Grup",
   roomsLabel = "Sala",
+  canNotifyWholeLocation = false,
   language = "ro",
   error,
   onChange,
@@ -182,7 +184,21 @@ export function BookingModal({
           </label>
           <div className="full-field notification-options booking-notification-options">
             <div className="notification-quick-actions">
-              {!notifyNowOpen ? (
+              {!canNotifyWholeLocation ? (
+                <>
+                  <button
+                    className="primary-button compact"
+                    disabled={!formData.group}
+                    type="submit"
+                    name="bookingAction"
+                    value="notify-group-now"
+                    onClick={() => onChange({ ...formData, notifyGroupAudience: "all", notifyGroupRecipients: [], notifyNowScope: "group" })}
+                  >
+                    {appText(language, "booking.notifyToGroup").replace("{{label}}", groupsLabel.toLowerCase())}
+                  </button>
+                  <span>{formData.group ? appText(language, "booking.groupNowHelp") : appText(language, "booking.groupRequired")}</span>
+                </>
+              ) : !notifyNowOpen ? (
                 <>
                   <button
                     className="primary-button compact"
@@ -202,8 +218,8 @@ export function BookingModal({
                     <input
                       type="radio"
                       name="notifyNowAudience"
-                      checked={formData.notifyGroupAudience !== "selected"}
-                      onChange={() => onChange({ ...formData, notifyGroupAudience: "all", notifyGroupRecipients: [] })}
+                      checked={formData.notifyNowScope === "group" && formData.notifyGroupAudience !== "selected"}
+                      onChange={() => onChange({ ...formData, notifyGroupAudience: "all", notifyGroupRecipients: [], notifyNowScope: "group" })}
                     />
                     {appText(language, "booking.audienceAll")}
                   </label>
@@ -211,13 +227,22 @@ export function BookingModal({
                     <input
                       type="radio"
                       name="notifyNowAudience"
-                      checked={formData.notifyGroupAudience === "selected"}
-                      onChange={() => onChange({ ...formData, notifyGroupAudience: "selected" })}
+                      checked={formData.notifyNowScope === "location"}
+                      onChange={() => onChange({ ...formData, notifyGroupAudience: "all", notifyGroupRecipients: [], notifyNowScope: "location" })}
+                    />
+                    {appText(language, "booking.audienceLocation")}
+                  </label>
+                  <label className="toggle-row compact-toggle">
+                    <input
+                      type="radio"
+                      name="notifyNowAudience"
+                      checked={formData.notifyNowScope === "group" && formData.notifyGroupAudience === "selected"}
+                      onChange={() => onChange({ ...formData, notifyGroupAudience: "selected", notifyNowScope: "group" })}
                     />
                     {appText(language, "booking.audienceSelected")}
                   </label>
 
-                  {formData.notifyGroupAudience === "selected" && (
+                  {formData.notifyNowScope === "group" && formData.notifyGroupAudience === "selected" && (
                     <div className="recipient-check-grid">
                       {selectedGroupMembers.length === 0 ? (
                         <p className="empty-line">{appText(language, "booking.noActiveUsers")}</p>

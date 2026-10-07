@@ -16,7 +16,9 @@ type BookingDetailsModalProps = {
   onClose: () => void;
   onEdit: () => void;
   onDelete: () => void;
-  onNotify?: () => void;
+  onNotify?: (scope: "group" | "location") => void;
+  canNotifyWholeLocation?: boolean;
+  groupsLabel?: string;
   notificationBusy?: boolean;
   notificationMessage?: string;
   language?: SupportedLocale;
@@ -33,6 +35,8 @@ export function BookingDetailsModal({
   onEdit,
   onDelete,
   onNotify,
+  canNotifyWholeLocation = false,
+  groupsLabel = "Grup",
   notificationBusy = false,
   notificationMessage = "",
   language = "ro",
@@ -110,11 +114,24 @@ export function BookingDetailsModal({
               {onNotify && (
                 <button
                   className="secondary-button"
-                  onClick={onNotify}
+                  onClick={() => onNotify("group")}
                   disabled={notificationBusy}
                   type="button"
                 >
-                  {notificationBusy ? appText(language, "booking.sending") : appText(language, "booking.notifications")}
+                  {notificationBusy
+                    ? appText(language, "booking.sending")
+                    : appText(language, "booking.notifyToGroup").replace("{{label}}", groupsLabel.toLowerCase())}
+                </button>
+              )}
+
+              {onNotify && canNotifyWholeLocation && (
+                <button
+                  className="secondary-button"
+                  onClick={() => onNotify("location")}
+                  disabled={notificationBusy}
+                  type="button"
+                >
+                  {appText(language, "booking.notifyToLocation")}
                 </button>
               )}
 

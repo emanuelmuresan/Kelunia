@@ -224,6 +224,8 @@ export default function KeluniaPage() {
     groupsLoaded,
     groupsReadError,
     rooms,
+    selectableGroups,
+    selectableRooms,
   } = useLocationResources({
     userExists: Boolean(user),
     locationId: currentLocationId,
@@ -232,6 +234,10 @@ export default function KeluniaPage() {
   const accessibleRooms = useMemo(
     () => filterRoomsByAccess(rooms, profile, hasFullRoomAccess),
     [hasFullRoomAccess, profile, rooms]
+  );
+  const selectableAccessibleRooms = useMemo(
+    () => filterRoomsByAccess(selectableRooms, profile, hasFullRoomAccess),
+    [hasFullRoomAccess, profile, selectableRooms]
   );
   const visibleBookingsByRoomAccess = useMemo(
     () => bookings.filter((booking) => bookingMatchesRoomAccess(booking, rooms, profile, hasFullRoomAccess)),
@@ -404,7 +410,7 @@ export default function KeluniaPage() {
     profile,
     role,
     isSuperAdmin,
-    groups,
+    groups: selectableGroups,
     currentLocationId,
     locationName,
     requireOnline,
@@ -715,7 +721,7 @@ export default function KeluniaPage() {
     currentLocationId,
     db,
     fixedSchedules: visibleFixedSchedulesByRoomAccess,
-    groups,
+    groups: selectableGroups,
     isOnline,
     licenseAccess,
     locationName,
@@ -724,7 +730,7 @@ export default function KeluniaPage() {
     profile,
     recordAuditLog,
     role,
-    rooms: accessibleRooms,
+    rooms: selectableAccessibleRooms,
     setIsOnline,
     setSelectedBooking,
     setSettingsError,
@@ -772,7 +778,7 @@ export default function KeluniaPage() {
     openCreateForm(date, { defaultStartTime: "12:00" });
   }
 
-  async function notifySelectedBookingNow() {
+  async function notifySelectedBookingNow(scope: "group" | "location" = "group") {
     if (!selectedBooking || notifyingSelectedBooking) {
       return;
     }
@@ -800,6 +806,7 @@ export default function KeluniaPage() {
         notifyGroupAudience: "all",
         notifyGroupRecipients: [],
         notifyGroupNow: true,
+        notifyNowScope: scope,
       });
       const pushSent = Number((result.data as { pushSent?: unknown } | undefined)?.pushSent ?? 0);
 
@@ -1072,7 +1079,7 @@ export default function KeluniaPage() {
       <>
         <RequiredGroupSetupView
           error={groupSetupError}
-          groups={groups}
+          groups={selectableGroups}
           groupsLoaded={groupsLoaded}
           groupsReadError={groupsReadError}
           isOnline={isOnline}
@@ -1351,8 +1358,8 @@ export default function KeluniaPage() {
       <AccessCodesModal
         open={showCodesModal}
         codeGenerator={codeGenerator}
-        groups={groups}
-        rooms={rooms}
+        groups={selectableGroups}
+        rooms={selectableRooms}
         editableCodeLocations={editableCodeLocations}
         accessCodes={accessCodes}
         codesWorking={codesWorking}
@@ -1448,8 +1455,8 @@ export default function KeluniaPage() {
         editingId={fixedEditingId}
         draft={fixedDraft}
         dayLabels={dayLabels}
-        groups={groups}
-        rooms={rooms}
+        groups={selectableGroups}
+        rooms={selectableRooms}
         groupsLabel={groupsLabel}
         roomsLabel={roomsLabel}
         language={language}
@@ -1463,10 +1470,11 @@ export default function KeluniaPage() {
         open={showBookingModal}
         editingId={editingId}
         formData={formData}
-        groups={groups}
+        groups={selectableGroups}
         managedUsers={visibleManagedUsers}
-        rooms={accessibleRooms}
+        rooms={selectableAccessibleRooms}
         bookings={visibleBookingsByRoomAccess}
+        canNotifyWholeLocation={hasFullRoomAccess}
         fixedSchedules={visibleFixedSchedulesByRoomAccess}
         groupsLabel={groupsLabel}
         roomsLabel={roomsLabel}
@@ -1495,6 +1503,8 @@ export default function KeluniaPage() {
         profileGroupName={profile?.groupName}
         language={language}
         canEdit={selectedBooking ? canEditBooking(selectedBooking) : false}
+        canNotifyWholeLocation={hasFullRoomAccess}
+        groupsLabel={groupsLabel}
         canCreate={canManageBookings && isOnline}
         onAdd={createBookingFromSelectedBooking}
         onDuplicate={() => {

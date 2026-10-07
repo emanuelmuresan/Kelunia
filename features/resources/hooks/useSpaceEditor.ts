@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import type { User } from "firebase/auth";
-import { addDoc, collection, doc, Timestamp, updateDoc, type Firestore } from "firebase/firestore";
+import { addDoc, collection, deleteField, doc, Timestamp, updateDoc, type Firestore } from "firebase/firestore";
 
 import type { RecordAuditLog } from "@/lib/audit";
+import { dateKey } from "@/lib/dates";
 import { normalizeGroupColor } from "@/lib/group-colors";
+import { readActiveUntil } from "@/lib/space-expiry";
 import { updateLocationCounterSafely } from "@/lib/usage-counters";
 import type { GroupItem, RoomItem, SpaceEditor, SpaceKind, WriteTarget } from "@/lib/types/domain";
 
@@ -55,6 +57,7 @@ export function useSpaceEditor({
       id: item?.id ?? null,
       name: item?.name ?? "",
       color: kind === "group" ? normalizeGroupColor((item as GroupItem | undefined)?.color) : "",
+      activeUntil: readActiveUntil(item?.activeUntil) ?? "",
     });
     setSpaceError("");
     setSettingsError("");
@@ -79,6 +82,22 @@ export function useSpaceEditor({
       return;
     }
 
+    const activeUntil = spaceEditor.activeUntil?.trim() ?? "";
+
+    if (activeUntil && !readActiveUntil(activeUntil)) {
+      setSpaceError("Alege o dată validă pentru perioada provizorie.");
+      return;
+    }
+
+    const unchangedActiveUntil = spaceEditor.id
+      ? (spaceEditor.kind === "room" ? rooms : groups).find((item) => item.id === spaceEditor.id)?.activeUntil === activeUntil
+      : false;
+
+    if (activeUntil && !unchangedActiveUntil && activeUntil < dateKey(new Date())) {
+      setSpaceError("Data limită nu poate fi în trecut.");
+      return;
+    }
+
     setSettingsError("");
     setSpaceError("");
 
@@ -96,11 +115,15 @@ export function useSpaceEditor({
       };
 
       if (spaceEditor.id) {
-        await updateDoc(doc(db, collectionName, spaceEditor.id), payload);
-        await recordAuditLog(spaceEditor.kind, "update", spaceEditor.id, previousItem, payload);
+        await updateDoc(doc(db, collectionName, spaceEditor.id), {
+          ...payload,
+          activeUntil: activeUntil || deleteField(),
+        });
+        await recordAuditLog(spaceEditor.kind, "update", spaceEditor.id, previousItem, { ...payload, activeUntil: activeUntil || null });
       } else {
         const createdPayload = {
           ...payload,
+          ...(activeUntil ? { activeUntil } : {}),
           createdBy: user?.email ?? "",
           createdAt: Timestamp.now(),
           deleted: false,

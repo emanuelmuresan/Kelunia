@@ -168,6 +168,7 @@ export function useBookingEditor({
       notifyGroupOffsets: booking.notifyGroupOffsets?.length ? booking.notifyGroupOffsets : ["15m"],
       notifyGroupAudience: booking.notifyGroupAudience === "selected" ? "selected" : "all",
       notifyGroupRecipients: booking.notifyGroupRecipients?.length ? booking.notifyGroupRecipients : [],
+      notifyNowScope: "group",
     });
     setShowBookingModal(true);
   }
@@ -195,6 +196,7 @@ export function useBookingEditor({
       notifyGroupOffsets: ["15m"],
       notifyGroupAudience: "all",
       notifyGroupRecipients: [],
+      notifyNowScope: "group",
     });
     setShowBookingModal(true);
   }
@@ -350,6 +352,7 @@ export function useBookingEditor({
         notifyGroupAudience: payload.notifyGroupAudience ?? "all",
         notifyGroupRecipients: payload.notifyGroupRecipients ?? [],
         notifyGroupNow: shouldNotifyGroupNow,
+        notifyNowScope: formData.notifyNowScope,
       };
 
       if (editingId) {

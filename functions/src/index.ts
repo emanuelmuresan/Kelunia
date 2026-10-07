@@ -7,6 +7,7 @@ import { defineSecret, defineString } from "firebase-functions/params";
 import { setGlobalOptions } from "firebase-functions/v2";
 import { onDocumentCreated, onDocumentWritten } from "firebase-functions/v2/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
+import { onSchedule } from "firebase-functions/v2/scheduler";
 import { Resend } from "resend";
 import { createHash } from "node:crypto";
 import { connect } from "node:http2";
@@ -107,6 +108,7 @@ type SaveBookingRequest = {
   notifyGroupAudience?: "all" | "selected";
   notifyGroupRecipients?: string[];
   notifyGroupNow?: boolean;
+  notifyNowScope?: "group" | "location";
 };
 
 type UserRole = "manager" | "member" | "guest";
@@ -325,7 +327,7 @@ function sendApnsRequest(host: string, token: string, jwt: string, payload: Reco
   });
 }
 
-async function sendApnsPush(tokens: string[], bookingId: string, body: string, url: string) {
+async function sendApnsPush(tokens: string[], bookingId: string, title: string, body: string, url: string) {
   const jwt = await apnsJwt();
 
   if (!jwt || tokens.length === 0) {
@@ -335,7 +337,7 @@ async function sendApnsPush(tokens: string[], bookingId: string, body: string, u
   const payload = {
     aps: {
       alert: {
-        title: "Reminder grup",
+        title,
         body,
       },
       sound: "default",
@@ -365,42 +367,25 @@ async function sendApnsPush(tokens: string[], bookingId: string, body: string, u
   return { invalidTokens, sent };
 }
 
-async function sendInstantBookingPush(
-  bookingId: string,
-  bookingPayload: Record<string, unknown>,
-  locationId: string,
-  group: string,
-  audience: "all" | "selected",
-  recipients: string[]
-) {
-  const locationTokensSnapshot = await db
-    .collection("notificationTokens")
-    .where("locationId", "==", locationId)
-    .get();
-  const groupKey = group.trim().toLowerCase();
-  const recipientSet = new Set(recipients.map((email) => email.trim().toLowerCase()).filter(Boolean));
-  const tokenDocs = locationTokensSnapshot.docs.filter((tokenDoc) => {
-    const tokenData = tokenDoc.data() as NotificationTokenDocument;
-    const sameGroup = cleanText(tokenData.groupName, 120).toLowerCase() === groupKey;
-    const selectedRecipient = audience !== "selected" || recipientSet.has(cleanEmail(tokenData.email));
+type PushMessage = {
+  bookingId: string;
+  body: string;
+  tag: string;
+  title: string;
+  url: string;
+};
 
-    return Boolean(tokenData.token) && sameGroup && selectedRecipient;
-  });
-  const fcmTokens = [...new Set(tokenDocs
-    .map((tokenDoc) => tokenDoc.data() as NotificationTokenDocument)
-    .filter((tokenData) => tokenData.tokenType !== "apns")
-    .map((tokenData) => String(tokenData.token)))];
-  const apnsTokens = [...new Set(tokenDocs
-    .map((tokenDoc) => tokenDoc.data() as NotificationTokenDocument)
-    .filter((tokenData) => tokenData.tokenType === "apns")
-    .map((tokenData) => String(tokenData.token)))];
+async function deliverPush(recipients: NotificationTokenDocument[], message: PushMessage) {
+  const tokenDatas = [...new Map(
+    recipients.filter((item) => Boolean(item.token)).map((item) => [String(item.token), item])
+  ).values()];
+  const fcmTokens = tokenDatas.filter((item) => item.tokenType !== "apns").map((item) => String(item.token));
+  const apnsTokens = tokenDatas.filter((item) => item.tokenType === "apns").map((item) => String(item.token));
 
   if (fcmTokens.length === 0 && apnsTokens.length === 0) {
     return { sent: 0 };
   }
 
-  const url = `/dashboard?booking=${encodeURIComponent(bookingId)}`;
-  const body = bookingNotificationBody(bookingPayload);
   let sent = 0;
 
   for (let index = 0; index < fcmTokens.length; index += 500) {
@@ -410,26 +395,26 @@ async function sendInstantBookingPush(
       android: {
         priority: "high",
         notification: {
-          body,
+          body: message.body,
           clickAction: "OPEN_BOOKING",
           sound: "default",
-          tag: `booking-now-${bookingId}`,
-          title: "Reminder grup",
+          tag: message.tag,
+          title: message.title,
         },
       },
       data: {
-        bookingId,
-        body,
-        tag: `booking-now-${bookingId}`,
-        title: "Reminder grup",
-        url,
+        bookingId: message.bookingId,
+        body: message.body,
+        tag: message.tag,
+        title: message.title,
+        url: message.url,
       },
       webpush: {
         headers: {
           Urgency: "high",
         },
         fcmOptions: {
-          link: `${appBaseUrl.value()}${url}`,
+          link: `${appBaseUrl.value()}${message.url}`,
         },
       },
     });
@@ -453,7 +438,7 @@ async function sendInstantBookingPush(
     }
   }
 
-  const apnsResult = await sendApnsPush(apnsTokens, bookingId, body, url);
+  const apnsResult = await sendApnsPush(apnsTokens, message.bookingId, message.title, message.body, message.url);
   sent += apnsResult.sent;
 
   if (apnsResult.invalidTokens.length > 0) {
@@ -463,6 +448,96 @@ async function sendInstantBookingPush(
   }
 
   return { sent };
+}
+
+const ownerAccountEmail = "emanuelmuresan@gmail.com";
+
+async function loadLocationPushTokens(locationId: string) {
+  const snapshot = await db.collection("notificationTokens").where("locationId", "==", locationId).get();
+  return snapshot.docs.map((tokenDoc) => tokenDoc.data() as NotificationTokenDocument).filter((item) => Boolean(item.token));
+}
+
+// Administrators of a location: users whose role normalizes to manager, plus the
+// platform owner (whose profile is not tied to a single location).
+async function loadLocationAdminUids(locationId: string) {
+  const snapshot = await db.collection("users").where("locationId", "==", locationId).get();
+  return new Set(
+    snapshot.docs
+      .filter((userDoc) => normalizeRole((userDoc.data() as UserProfile).role) === "manager")
+      .map((userDoc) => userDoc.id)
+  );
+}
+
+function isAdminToken(item: NotificationTokenDocument, adminUids: Set<string>) {
+  return adminUids.has(String(item.uid ?? "")) || cleanEmail(item.email) === ownerAccountEmail;
+}
+
+function isGroupToken(item: NotificationTokenDocument, group: string) {
+  const groupKey = group.trim().toLowerCase();
+  return Boolean(groupKey) && cleanText(item.groupName, 120).toLowerCase() === groupKey;
+}
+
+type NowPushAudience = {
+  audience: "all" | "selected";
+  recipients: string[];
+  scope: "group" | "location";
+};
+
+function nowPushCovers(item: NotificationTokenDocument, group: string, nowPush: NowPushAudience) {
+  if (nowPush.scope === "location") {
+    return true;
+  }
+
+  return isGroupToken(item, group)
+    && (nowPush.audience !== "selected" || nowPush.recipients.includes(cleanEmail(item.email)));
+}
+
+async function sendInstantBookingPush(
+  bookingId: string,
+  bookingPayload: Record<string, unknown>,
+  locationId: string,
+  group: string,
+  nowPush: NowPushAudience
+) {
+  const locationTokens = await loadLocationPushTokens(locationId);
+  const recipients = locationTokens.filter((item) => nowPushCovers(item, group, nowPush));
+
+  return deliverPush(recipients, {
+    bookingId,
+    body: bookingNotificationBody(bookingPayload),
+    tag: `booking-now-${bookingId}`,
+    title: "Reminder grup",
+    url: `/dashboard?booking=${encodeURIComponent(bookingId)}`,
+  });
+}
+
+// Every new booking pings the location's administrators and the booking's group,
+// except the author and anyone the explicit "notify now" push already reached.
+async function sendNewBookingPush(
+  bookingId: string,
+  bookingPayload: Record<string, unknown>,
+  locationId: string,
+  group: string,
+  authorEmail: string,
+  nowPush: NowPushAudience | null
+) {
+  const [locationTokens, adminUids] = await Promise.all([
+    loadLocationPushTokens(locationId),
+    loadLocationAdminUids(locationId),
+  ]);
+  const recipients = locationTokens.filter((item) =>
+    cleanEmail(item.email) !== authorEmail
+    && (isAdminToken(item, adminUids) || isGroupToken(item, group))
+    && !(nowPush && nowPushCovers(item, group, nowPush))
+  );
+
+  return deliverPush(recipients, {
+    bookingId,
+    body: bookingNotificationBody(bookingPayload),
+    tag: `booking-new-${bookingId}`,
+    title: "Programare nouă",
+    url: `/dashboard?booking=${encodeURIComponent(bookingId)}`,
+  });
 }
 
 function userClaimsFromProfile(profile: UserProfile) {
@@ -1172,13 +1247,23 @@ export const saveBooking = onCall(
         : [];
     }
 
+    // Collaborators can only ping their own group; the whole-location scope and
+    // hand-picked recipients are administrator features, enforced here.
+    const canNotifyBeyondGroup = isOwner || role === "manager";
+    let nowPush: NowPushAudience | null = null;
+
     if (payload.notifyGroupNow === true) {
-      bookingPayload.notifyGroupNowAt = now;
-      bookingPayload.notifyGroupNowBy = request.auth.token.email || "";
-      bookingPayload.notifyGroupAudience = payload.notifyGroupAudience === "selected" ? "selected" : "all";
-      bookingPayload.notifyGroupRecipients = Array.isArray(payload.notifyGroupRecipients)
+      const scope = canNotifyBeyondGroup && payload.notifyNowScope === "location" ? "location" : "group";
+      const audience = canNotifyBeyondGroup && scope === "group" && payload.notifyGroupAudience === "selected" ? "selected" : "all";
+      const recipients = audience === "selected" && Array.isArray(payload.notifyGroupRecipients)
         ? payload.notifyGroupRecipients.map((item) => cleanEmail(item)).filter(Boolean).slice(0, 200)
         : [];
+
+      bookingPayload.notifyGroupNowAt = now;
+      bookingPayload.notifyGroupNowBy = request.auth.token.email || "";
+      bookingPayload.notifyGroupAudience = audience;
+      bookingPayload.notifyGroupRecipients = recipients;
+      nowPush = { audience, recipients, scope };
     }
 
     let pushResult = { sent: 0 };
@@ -1199,15 +1284,8 @@ export const saveBooking = onCall(
 
       await ref.update(bookingPayload);
 
-      if (payload.notifyGroupNow === true) {
-        pushResult = await sendInstantBookingPush(
-          editingId,
-          { ...before, ...bookingPayload },
-          locationId,
-          group,
-          bookingPayload.notifyGroupAudience === "selected" ? "selected" : "all",
-          Array.isArray(bookingPayload.notifyGroupRecipients) ? bookingPayload.notifyGroupRecipients as string[] : []
-        );
+      if (nowPush) {
+        pushResult = await sendInstantBookingPush(editingId, { ...before, ...bookingPayload }, locationId, group, nowPush);
       }
 
       return { id: editingId, pushSent: pushResult.sent, saved: true };
@@ -1230,15 +1308,21 @@ export const saveBooking = onCall(
       { merge: true }
     );
 
-    if (payload.notifyGroupNow === true) {
-      pushResult = await sendInstantBookingPush(
+    if (nowPush) {
+      pushResult = await sendInstantBookingPush(created.id, bookingPayload, locationId, group, nowPush);
+    }
+
+    try {
+      await sendNewBookingPush(
         created.id,
         bookingPayload,
         locationId,
         group,
-        bookingPayload.notifyGroupAudience === "selected" ? "selected" : "all",
-        Array.isArray(bookingPayload.notifyGroupRecipients) ? bookingPayload.notifyGroupRecipients as string[] : []
+        cleanEmail(request.auth.token.email),
+        nowPush
       );
+    } catch (error) {
+      logger.error("New booking push failed", { bookingId: created.id, error });
     }
 
     return { id: created.id, pushSent: pushResult.sent, saved: true };
@@ -1569,3 +1653,57 @@ export const sendLicenseEmail = onDocumentCreated(
 );
 
 export { setPin, verifyPin, disablePin } from "./pin";
+
+// Temporary groups/rooms carry activeUntil (YYYY-MM-DD) and drop out of the
+// pickers at midnight after that day. At noon on the last day the location's
+// administrators get a push so they can extend it from Settings.
+export const notifySpaceExpiry = onSchedule(
+  {
+    region: "europe-west1",
+    schedule: "0 12 * * *",
+    timeZone: "Europe/Bucharest",
+  },
+  async () => {
+    const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Bucharest" });
+    const expiringByLocation = new Map<string, string[]>();
+
+    for (const [collectionName, label] of [["groups", "Grup"], ["rooms", "Sala"]] as const) {
+      const snapshot = await db.collection(collectionName).where("activeUntil", "==", today).get();
+
+      snapshot.docs.forEach((itemDoc) => {
+        const data = itemDoc.data();
+        const locationId = cleanText(data.locationId, 160);
+
+        if (!locationId || data.deleted === true) {
+          return;
+        }
+
+        const items = expiringByLocation.get(locationId) ?? [];
+        items.push(`${label} ${cleanText(data.name, 120)}`);
+        expiringByLocation.set(locationId, items);
+      });
+    }
+
+    for (const [locationId, items] of expiringByLocation) {
+      try {
+        const [locationTokens, adminUids] = await Promise.all([
+          loadLocationPushTokens(locationId),
+          loadLocationAdminUids(locationId),
+        ]);
+
+        await deliverPush(
+          locationTokens.filter((item) => isAdminToken(item, adminUids)),
+          {
+            bookingId: "",
+            body: `Provizoriu până azi: ${items.join(", ")}. Dispare la miezul nopții - prelungește din Setări dacă mai e nevoie.`,
+            tag: `space-expiry-${locationId}-${today}`,
+            title: "Perioadă provizorie încheiată azi",
+            url: "/dashboard",
+          }
+        );
+      } catch (error) {
+        logger.error("Space expiry push failed", { locationId, error });
+      }
+    }
+  }
+);
