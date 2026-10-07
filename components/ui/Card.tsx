@@ -1,4 +1,5 @@
 
+// Card generic (secțiune cu stilul ui-card); neutilizat în prezent.
 type CardProps = {
   children: React.ReactNode;
 };

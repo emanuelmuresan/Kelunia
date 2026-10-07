@@ -1,5 +1,7 @@
 "use client";
 
+// Context pentru starea generală a interfeței (momentan doar bara laterală deschisă/închisă).
+// Neutilizat în prezent; rămâne ca punct de extindere pentru scheletul de layout din components/layout.
 import {
   createContext,
   useContext,
@@ -7,6 +9,7 @@ import {
   useState,
 } from "react";
 
+// Forma valorii expuse de context.
 type AppContextValue = {
   sidebarOpen: boolean;
 
@@ -15,6 +18,7 @@ type AppContextValue = {
   ) => void;
 };
 
+// Contextul propriu-zis; valoarea implicită null semnalează folosirea în afara providerului.
 const AppContext =
   createContext<AppContextValue | null>(
     null
@@ -24,6 +28,7 @@ type AppProviderProps = {
   children: React.ReactNode;
 };
 
+// Provider care ține starea și o dă copiilor.
 export function AppProvider({
   children,
 }: AppProviderProps) {
@@ -47,6 +52,7 @@ export function AppProvider({
   );
 }
 
+// Hook de acces; aruncă o eroare clară dacă lipsește providerul.
 export function useAppContext() {
   const context =
     useContext(AppContext);

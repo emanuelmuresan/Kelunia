@@ -2,6 +2,7 @@
 
 "use client";
 
+// Fereastră modală generică cu titlu și buton de închidere; neutilizată în prezent.
 type ModalProps = {
   open: boolean;
   title?: string;

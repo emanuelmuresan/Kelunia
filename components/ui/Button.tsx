@@ -1,5 +1,6 @@
 "use client";
 
+// Buton generic cu variantă vizuală (primar, secundar, pericol); neutilizat în prezent.
 type ButtonProps = {
   children: React.ReactNode;
   type?: "button" | "submit" | "reset";

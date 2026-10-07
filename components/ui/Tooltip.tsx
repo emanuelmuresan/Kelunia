@@ -1,5 +1,6 @@
 // components/ui/Tooltip.tsx
 
+// Explicație scurtă afișată la trecerea cursorului (atributul title); neutilizată în prezent.
 type TooltipProps = {
   label: string;
   children: React.ReactNode;

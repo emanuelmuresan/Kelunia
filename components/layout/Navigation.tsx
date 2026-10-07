@@ -1,5 +1,6 @@
 "use client";
 
+// Navigare principală cu două linkuri (Calendar, Setări) care marchează pagina activă; neutilizată în prezent.
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 

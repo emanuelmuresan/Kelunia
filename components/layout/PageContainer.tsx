@@ -1,3 +1,4 @@
+// Container de pagină cu titlu și descriere opționale (neutilizat în prezent).
 import { ReactNode } from "react";
 
 type PageContainerProps = {

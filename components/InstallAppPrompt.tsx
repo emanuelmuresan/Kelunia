@@ -1,15 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
+// Butonul „Instalează” din antet: folosește promptul nativ al browserului când e disponibil, altfel arată pașii manuali.
+// Nu apare în aplicația deja instalată sau în shell-ul nativ.
 import { isInstalledAppShell, isNativeAppShell, isStandaloneShell } from "@/lib/app-shell";
 
+// Rezultatul alegerii utilizatorului la promptul de instalare.
 type InstallOutcome = "accepted" | "dismissed";
 
+// Evenimentul non-standard beforeinstallprompt (Chrome/Edge/Android).
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: InstallOutcome; platform: string }>;
 }
 
+// iOS nu are prompt de instalare; se detectează după user agent.
 function isIosDevice() {
   if (typeof window === "undefined") {
     return false;
@@ -18,6 +23,7 @@ function isIosDevice() {
   return /iphone|ipad|ipod/i.test(window.navigator.userAgent);
 }
 
+// Pașii manuali de instalare, diferiți pe iOS, Android și desktop.
 function installSteps() {
   if (typeof window === "undefined") {
     return [];
@@ -36,11 +42,13 @@ function installSteps() {
   return ["Deschide Kelunia in Chrome sau Edge.", "Apasa iconita de instalare din bara de adrese.", "Daca nu apare, deschide meniul browserului si alege Instaleaza Kelunia."];
 }
 
+// Componenta butonului și a ferestrei cu instrucțiuni.
 export function InstallAppPrompt() {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showHelp, setShowHelp] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
+  // Ascultă evenimentele de instalare: reține promptul amânat și ascunde butonul după instalare.
   useEffect(() => {
     if (isInstalledAppShell()) {
       setDismissed(true);
@@ -68,10 +76,12 @@ export function InstallAppPrompt() {
     };
   }, []);
 
+  // Ascuns când aplicația rulează deja instalată.
   if (dismissed || isStandaloneShell() || isNativeAppShell()) {
     return null;
   }
 
+  // Cu prompt nativ îl afișează; fără el deschide instrucțiunile manuale.
   async function installApp() {
     if (!installPrompt) {
       setShowHelp(true);

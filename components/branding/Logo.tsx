@@ -1,3 +1,5 @@
+// Sigla Kelunia desenată cu stiluri inline (pătrat cu gradient și litera K), opțional cu numele și sloganul.
+// Neutilizată în prezent; aplicația folosește imaginea /icon-192.png.
 type LogoProps = {
   size?: number;
   showText?: boolean;

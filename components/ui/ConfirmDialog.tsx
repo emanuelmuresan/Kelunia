@@ -1,5 +1,7 @@
 "use client";
 
+// Dialog simplu de confirmare cu butoane Anulează / Confirmă; neutilizat în prezent.
+// Aplicația folosește ConfirmDialog din features/shell.
 type ConfirmDialogProps = {
   open: boolean;
   title: string;

@@ -1,5 +1,6 @@
 // components/ui/Select.tsx
 
+// Listă derulantă care adaugă clasa ui-select peste atributele primite; neutilizată în prezent.
 import type {
   SelectHTMLAttributes,
 } from "react";

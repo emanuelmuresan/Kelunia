@@ -1,4 +1,5 @@
 
+// Mesaj pentru liste goale (titlu și descriere opțională); neutilizat în prezent.
 type EmptyStateProps = {
   title: string;
   description?: string;

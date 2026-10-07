@@ -1,5 +1,6 @@
 "use client";
 
+// Placeholder pentru bara laterală din AppShell (neutilizat în prezent).
 import Link from "next/link";
 
 export function Sidebar() {

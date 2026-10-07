@@ -1,5 +1,7 @@
 "use client";
 
+// Schelet de layout (bară laterală, bară de sus, navigare mobilă); neutilizat în prezent.
+// Aplicația folosește KeluniaShellChrome din features/shell.
 import { ReactNode } from "react";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";

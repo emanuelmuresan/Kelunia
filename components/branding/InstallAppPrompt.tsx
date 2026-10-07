@@ -1,15 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
+// Variantă mai veche a butonului de instalare, rămasă în branding/ (neutilizată; se folosește components/InstallAppPrompt.tsx).
+// Apare doar când există prompt nativ sau pe iOS, iar ajutorul arată doar pașii pentru Safari.
 import { isInstalledAppShell, isNativeAppShell, isStandaloneShell } from "@/lib/app-shell";
 
+// Rezultatul alegerii utilizatorului la promptul de instalare.
 type InstallOutcome = "accepted" | "dismissed";
 
+// Evenimentul non-standard beforeinstallprompt (Chrome/Edge/Android).
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: InstallOutcome; platform: string }>;
 }
 
+// iOS nu are prompt de instalare; se detectează după user agent.
 function isIosDevice() {
   if (typeof window === "undefined") {
     return false;
@@ -18,11 +23,13 @@ function isIosDevice() {
   return /iphone|ipad|ipod/i.test(window.navigator.userAgent);
 }
 
+// Componenta butonului și a ferestrei cu instrucțiuni pentru iOS.
 export function InstallAppPrompt() {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showHelp, setShowHelp] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
+  // Ascultă evenimentele de instalare: reține promptul amânat și ascunde butonul după instalare.
   useEffect(() => {
     if (isInstalledAppShell()) {
       setDismissed(true);
@@ -50,10 +57,12 @@ export function InstallAppPrompt() {
     };
   }, []);
 
+  // Ascuns când aplicația rulează deja instalată.
   if (dismissed || isStandaloneShell() || isNativeAppShell()) {
     return null;
   }
 
+  // Se afișează doar dacă există prompt nativ sau pe iOS.
   const canPrompt = Boolean(installPrompt);
   const showIosButton = !canPrompt && isIosDevice();
 
@@ -61,6 +70,7 @@ export function InstallAppPrompt() {
     return null;
   }
 
+  // Cu prompt nativ îl afișează; fără el deschide instrucțiunile.
   async function installApp() {
     if (!installPrompt) {
       setShowHelp(true);

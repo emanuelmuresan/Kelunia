@@ -1,5 +1,7 @@
 "use client";
 
+// Șablonul comun al paginilor legale (confidențialitate, termeni, cookie-uri, contact, rambursări, ștergere cont).
+// Conținutul vine ca text pe șase limbi din lib/i18n/legal-copy; pagina de ștergere cont adaugă și acțiunea efectivă.
 import Link from "next/link";
 import { httpsCallable } from "firebase/functions";
 import { signOut } from "firebase/auth";
@@ -9,6 +11,7 @@ import { auth, cloudFunctions } from "@/lib/firebase";
 import { localeLabel, normalizeSupportedLocale, supportedLocales, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 import type { LegalPageCopy, LegalPageKey } from "@/lib/i18n/legal-copy";
 
+// Cheia în care se reține limba aleasă și etichetele linkurilor legale pe fiecare limbă.
 const languageStorageKey = "kelunia-language";
 const legalLinkLabels: Record<SupportedLocale, { privacy: string; terms: string; cookies: string; deleteAccount: string }> = {
   ro: {
@@ -49,11 +52,13 @@ const legalLinkLabels: Record<SupportedLocale, { privacy: string; terms: string;
   },
 };
 
+// Proprietățile paginii: care document se arată și textele lui pe toate limbile.
 type LegalDocumentProps = {
   pageKey: LegalPageKey;
   copy: Record<SupportedLocale, LegalPageCopy>;
 };
 
+// Bara de linkuri legale, refolosită și în subsolul aplicației; limba trece prin parametrul ?lang.
 export function LegalLinks({ language = "ro" }: { language?: SupportedLocale }) {
   const suffix = `?lang=${language}`;
   const labels = legalLinkLabels[language] ?? legalLinkLabels.ro;
@@ -70,6 +75,7 @@ export function LegalLinks({ language = "ro" }: { language?: SupportedLocale }) 
   );
 }
 
+// Componenta paginii legale: limbă, confirmarea ștergerii contului și conținutul documentului.
 export function LegalDocument({ pageKey, copy }: LegalDocumentProps) {
   const { user, profile, loading } = useAuth();
   const [language, setLanguage] = useState<SupportedLocale>("ro");
@@ -79,6 +85,7 @@ export function LegalDocument({ pageKey, copy }: LegalDocumentProps) {
   const [error, setError] = useState("");
   const text = copy[language] ?? copy.ro;
 
+  // Limba vine din adresă (?lang) sau, dacă lipsește, din localStorage.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const urlLanguage = normalizeSupportedLocale(params.get("lang"));
@@ -88,6 +95,7 @@ export function LegalDocument({ pageKey, copy }: LegalDocumentProps) {
     window.localStorage.setItem(languageStorageKey, nextLanguage);
   }, []);
 
+  // Schimbă limba, o reține și o scrie în adresă fără reîncărcare.
   function changeLanguage(nextLanguage: SupportedLocale) {
     setLanguage(nextLanguage);
     window.localStorage.setItem(languageStorageKey, nextLanguage);
@@ -96,9 +104,11 @@ export function LegalDocument({ pageKey, copy }: LegalDocumentProps) {
     window.history.replaceState(null, "", url.toString());
   }
 
+  // Ștergerea contului se activează doar după ce utilizatorul scrie emailul propriu exact.
   const accountEmail = useMemo(() => user?.email ?? profile?.email ?? "", [profile?.email, user?.email]);
   const canDelete = pageKey === "deleteAccount" && Boolean(user && accountEmail && confirmation.trim().toLowerCase() === accountEmail.toLowerCase());
 
+  // Șterge contul prin funcția cloud deleteMyAccount, apoi deconectează utilizatorul.
   async function deleteAccount() {
     if (!user || !accountEmail) {
       setError(text.deleteAccount?.notSignedIn ?? "");
@@ -128,8 +138,10 @@ export function LegalDocument({ pageKey, copy }: LegalDocumentProps) {
     }
   }
 
+  // Pagina propriu-zisă.
   return (
     <main className="legal-shell">
+      {/* Antetul: sigla, selectorul de limbă și linkurile legale. */}
       <header className="legal-header">
         <Link href="/" className="landing-brand" aria-label="Kelunia">
           <img src="/icon-192.png" alt="" />
@@ -148,12 +160,14 @@ export function LegalDocument({ pageKey, copy }: LegalDocumentProps) {
         </div>
       </header>
 
+      {/* Cardul cu documentul. */}
       <article className="legal-card">
         <p className="eyebrow">{text.eyebrow}</p>
         <h1>{text.title}</h1>
         <p className="legal-lead">{text.description}</p>
         <p className="legal-updated">{text.updatedLabel}: {text.updatedAt}</p>
 
+        {/* Panoul de ștergere a contului, afișat doar pe pagina de ștergere. */}
         {pageKey === "deleteAccount" && text.deleteAccount ? (
           <section className="legal-delete-panel" aria-labelledby="delete-account-action-title">
             <div>
@@ -194,6 +208,7 @@ export function LegalDocument({ pageKey, copy }: LegalDocumentProps) {
           </section>
         ) : null}
 
+        {/* Secțiunile documentului, fiecare cu text și/sau listă. */}
         <div className="legal-section-list">
           {text.sections.map((section) => (
             <section key={section.title} className="legal-section">
@@ -210,6 +225,7 @@ export function LegalDocument({ pageKey, copy }: LegalDocumentProps) {
           ))}
         </div>
 
+        {/* Nota despre limba documentului. */}
         <p className="legal-language-note">{text.languageNote.replace("{{language}}", localeLabel(language))}</p>
       </article>
     </main>

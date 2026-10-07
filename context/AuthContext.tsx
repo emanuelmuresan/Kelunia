@@ -1,5 +1,7 @@
 "use client";
 
+// Contextul de autentificare: ține utilizatorul Firebase și profilul lui din Firestore (users/{uid}) și derivă rolurile.
+// Folosit în toată aplicația prin hook-ul useAuth().
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { appCheckReadyPromise, auth, db } from "@/lib/firebase";
 import { onAuthStateChanged, User } from "firebase/auth";
@@ -9,9 +11,11 @@ import { normalizeAllowedRoomIds, normalizeRoomAccessMode } from "@/lib/room-acc
 import { normalizeNotificationOffsetRules, normalizeNotificationOffsets, notificationOffsetToKey } from "@/lib/notifications";
 import type { RoomAccessMode } from "@/lib/types/domain";
 
+// Rolurile aplicației și limba interfeței.
 export type UserRole = "manager" | "member" | "guest";
 export type AppLanguage = SupportedLocale;
 
+// Profilul utilizatorului așa cum îl folosește interfața (câmpurile brute din Firestore sunt normalizate).
 export interface UserProfile {
   uid: string;
   email: string;
@@ -40,6 +44,7 @@ export interface UserProfile {
   notifyOffsetsDays: number[];
 }
 
+// Valoarea expusă de context: utilizatorul, profilul, rolurile derivate, starea de încărcare și actualizarea locală a profilului.
 interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
@@ -52,6 +57,7 @@ interface AuthContextType {
   updateProfile: (patch: Partial<UserProfile>) => void;
 }
 
+// Proprietarul platformei se recunoaște după emailurile din variabila de mediu și/sau după câmpul isOwner din profil.
 const defaultLocationName = "Kelunia";
 const configuredOwnerEmails = (
   process.env.NEXT_PUBLIC_OWNER_EMAILS ??
@@ -62,6 +68,7 @@ const configuredOwnerEmails = (
   .map((email) => email.trim().toLowerCase())
   .filter(Boolean);
 
+// Valoarea implicită: neconectat, rol de vizitator, în curs de încărcare.
 const AuthContext = createContext<AuthContextType>({
   user: null,
   profile: null,
@@ -74,6 +81,7 @@ const AuthContext = createContext<AuthContextType>({
   updateProfile: () => undefined,
 });
 
+// Acceptă și numele vechi ale rolurilor (superadmin, admin, viewer, user) și le mapează pe cele curente.
 function normalizeRole(role: unknown): UserRole {
   if (role === "manager" || role === "superadmin") {
     return "manager";
@@ -94,6 +102,7 @@ function normalizeLanguage(language: unknown): AppLanguage {
   return normalizeSupportedLocale(language);
 }
 
+// Verificări pentru proprietar.
 function isConfiguredOwner(email: string) {
   return configuredOwnerEmails.includes(email.toLowerCase());
 }
@@ -102,6 +111,7 @@ function isOwnerProfile(data: Record<string, unknown>, email: string) {
   return Boolean(data.isOwner) || isConfiguredOwner(email);
 }
 
+// Profil minimal folosit când documentul din Firestore lipsește sau nu poate fi citit.
 function buildFallbackProfile(userData: User): UserProfile {
   return {
     uid: userData.uid,
@@ -132,6 +142,7 @@ function buildFallbackProfile(userData: User): UserProfile {
   };
 }
 
+// Așteaptă (cel mult ~3 secunde) apariția documentului de profil imediat după înregistrare.
 function wait(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
@@ -149,12 +160,14 @@ async function waitForUserDocument(userDocRef: DocumentReference<DocumentData>) 
   return null;
 }
 
+// Provider: urmărește starea autentificării și încarcă profilul.
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const authStateResolvedRef = useRef(false);
 
+  // Dacă Firebase nu răspunde în 6 secunde, aplicația continuă ca neconectată în loc să rămână blocată.
   useEffect(() => {
     const authTimeout = window.setTimeout(() => {
       if (authStateResolvedRef.current) {
@@ -168,6 +181,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setLoading(false);
     }, 6000);
 
+    // La orice schimbare a autentificării: fără utilizator se golește starea, altfel se încarcă profilul.
     const unsubscribe = onAuthStateChanged(auth, async (userData) => {
       authStateResolvedRef.current = true;
       window.clearTimeout(authTimeout);
@@ -189,10 +203,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // ahead and get hard permission-denied. See lib/firebase.js for details.
         await appCheckReadyPromise;
 
+        // Profilul se citește după ce App Check este gata, altfel Firestore respinge cererea.
         const userDocRef = doc(db, "users", userData.uid);
         let userSnap = await getDoc(userDocRef);
         const fallback = buildFallbackProfile(userData);
 
+        // Profil lipsă: proprietarul configurat este recreat automat; ceilalți așteaptă puțin și apoi primesc profilul minimal.
         if (!userSnap.exists()) {
           if (isConfiguredOwner(fallback.email)) {
             const ownerFallback: UserProfile = {
@@ -252,6 +268,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           userSnap = delayedUserSnap;
         }
 
+        // Profilul existent se normalizează câmp cu câmp (valori implicite, roluri vechi, momente de notificare).
         const data = userSnap.data();
 
         if (!data) {
@@ -266,6 +283,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const locationId = ownerProfile ? "" : String(data.locationId ?? "main-location");
         const role = ownerProfile ? "manager" : rawRole;
 
+        // Dacă documentul proprietarului nu are rolul/câmpurile corecte, se sincronizează în fundal.
         if (
           ownerProfile &&
           (normalizeRole(data.role) !== "manager" ||
@@ -288,6 +306,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           });
         }
 
+        // Profilul final expus aplicației.
         setProfile({
           uid: userData.uid,
           email,
@@ -327,6 +346,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               ...(data.notifyWeekBefore !== false ? [7] : []),
             ],
         });
+      // La eroare de citire se folosește profilul minimal, ca aplicația să rămână utilizabilă.
       } catch (error) {
         console.error("Eroare la citirea profilului:", error);
         setProfile(buildFallbackProfile(userData));
@@ -341,18 +361,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, []);
 
+  // Rolurile derivate din profil.
   const role = profile?.role ?? "guest";
   const isOwner = Boolean(profile?.isOwner);
   const isSuperAdmin = role === "manager";
   const isAdmin = role === "manager" || role === "member";
   const isViewer = role === "guest";
 
+  // Profilul se citește o dată la autentificare; după ce utilizatorul își salvează setările, apelantul îl oglindește aici.
   // The profile is read once at sign-in; after the user saves their own settings
   // the caller mirrors the saved fields here so language/name/group apply at once.
   const updateProfile = useCallback((patch: Partial<UserProfile>) => {
     setProfile((current) => (current ? { ...current, ...patch } : current));
   }, []);
 
+  // Furnizează valorile către întreaga aplicație.
   return (
     <AuthContext.Provider value={{ user, profile, role, isAdmin, isSuperAdmin, isOwner, isViewer, loading, updateProfile }}>
       {children}
@@ -360,4 +383,5 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
+// Hook de acces la contextul de autentificare.
 export const useAuth = () => useContext(AuthContext);

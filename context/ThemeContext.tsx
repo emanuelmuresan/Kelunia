@@ -1,5 +1,7 @@
 "use client";
 
+// Context pentru tema vizuală (luminos/întunecat), salvată în localStorage sub cheia „kelunia-theme”.
+// Neutilizat în prezent; tema este aplicată prin atributul data-theme de pe <html>.
 import {
   createContext,
   useContext,
@@ -8,6 +10,7 @@ import {
   useState,
 } from "react";
 
+// Temele disponibile și forma valorii expuse.
 type Theme = "light" | "dark";
 
 type ThemeContextValue = {
@@ -29,12 +32,14 @@ type ThemeProviderProps = {
   children: React.ReactNode;
 };
 
+// Provider: pornește cu tema întunecată și citește apoi preferința salvată.
 export function ThemeProvider({
   children,
 }: ThemeProviderProps) {
   const [theme, setTheme] =
     useState<Theme>("dark");
 
+  // La încărcare preia tema salvată, dacă este validă.
   useEffect(() => {
     const savedTheme =
       window.localStorage.getItem(
@@ -49,6 +54,7 @@ export function ThemeProvider({
     }
   }, []);
 
+  // La fiecare schimbare scrie tema pe <html> (data-theme) și în localStorage.
   useEffect(() => {
     document.documentElement.setAttribute(
       "data-theme",
@@ -61,6 +67,7 @@ export function ThemeProvider({
     );
   }, [theme]);
 
+  // Comută între întunecat și luminos.
   function toggleTheme() {
     setTheme((current) =>
       current === "dark"
@@ -85,6 +92,7 @@ export function ThemeProvider({
   );
 }
 
+// Hook de acces; aruncă o eroare clară dacă lipsește providerul.
 export function useTheme() {
   const context =
     useContext(ThemeContext);

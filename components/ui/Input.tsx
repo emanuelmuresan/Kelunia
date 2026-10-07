@@ -1,4 +1,5 @@
 
+// Câmp de text care adaugă clasa ui-input peste atributele primite; neutilizat în prezent.
 import type { InputHTMLAttributes } from "react";
 
 type InputProps =
