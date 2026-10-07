@@ -1,8 +1,10 @@
 "use client";
 
+// Ecranul „Alege grupul tău”, arătat unui utilizator fără grup înainte să poată folosi aplicația (vezi useRequiredGroupSetup).
 import { InstallAppPrompt } from "@/components/InstallAppPrompt";
 import type { GroupItem } from "@/lib/types/domain";
 
+// Proprietățile ecranului: grupurile locației, starea de încărcare și erorile, grupul ales și acțiunile.
 type RequiredGroupSetupViewProps = {
   error: string;
   groups: GroupItem[];
@@ -18,6 +20,7 @@ type RequiredGroupSetupViewProps = {
   userLabel: string;
 };
 
+// Componenta ecranului.
 export function RequiredGroupSetupView({
   error,
   groups,
@@ -32,8 +35,10 @@ export function RequiredGroupSetupView({
   selectedGroup,
   userLabel,
 }: RequiredGroupSetupViewProps) {
+  // Structura ecranului.
   return (
     <main className="kelunia-shell">
+      {/* Antetul cu locația, utilizatorul și ieșirea din cont. */}
       <header className="app-topbar">
         <div>
           <span className="eyebrow">Kelunia</span>
@@ -49,8 +54,10 @@ export function RequiredGroupSetupView({
         </div>
       </header>
 
+      {/* Avertisment când nu există internet. */}
       {!isOnline && <p className="offline-banner">{offlineMessage}</p>}
 
+      {/* Panoul de alegere a grupului; lista rămâne dezactivată până se încarcă grupurile. */}
       <section className="group-required-panel">
         <div>
           <span className="eyebrow">Profil incomplet</span>
@@ -70,6 +77,7 @@ export function RequiredGroupSetupView({
             ))}
           </select>
         </label>
+        {/* Mesaje: se încarcă, eroare de citire sau nu există grupuri (administratorul trebuie să le adauge). */}
         {!groupsLoaded && <p className="muted-note">Se incarca grupurile locatiei...</p>}
         {groupsReadError && <p className="error-line">{groupsReadError}</p>}
         {groupsLoaded && groups.length === 0 && !groupsReadError && (

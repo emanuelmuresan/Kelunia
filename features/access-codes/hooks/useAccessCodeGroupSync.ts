@@ -1,5 +1,7 @@
 "use client";
 
+// Dacă utilizatorul s-a înregistrat cu un cod de acces dar profilul nu are încă grup, preia grupul și accesul la camere din cod.
+// Se rulează după conectare, doar online și doar pentru utilizatorii care nu sunt manageri.
 import { useEffect, type Dispatch, type SetStateAction } from "react";
 import type { User } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
@@ -8,6 +10,7 @@ import type { AppLanguage, UserProfile } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
 import { normalizeAllowedRoomIds, normalizeRoomAccessMode } from "@/lib/room-access";
 
+// Ciorna setărilor personale (doar câmpurile folosite aici).
 type PersonalDraft = {
   displayName: string;
   groupName: string;
@@ -23,6 +26,7 @@ type PersonalDraft = {
   usePin: boolean;
 };
 
+// Parametrii: starea conexiunii, profilul și funcțiile care actualizează ciornele.
 type UseAccessCodeGroupSyncParams = {
   isManager: boolean;
   isOnline: boolean;
@@ -33,6 +37,7 @@ type UseAccessCodeGroupSyncParams = {
   user: User | null;
 };
 
+// Hook-ul de sincronizare.
 export function useAccessCodeGroupSync({
   isManager,
   isOnline,
@@ -42,6 +47,7 @@ export function useAccessCodeGroupSync({
   setPersonalDraft,
   user,
 }: UseAccessCodeGroupSyncParams) {
+  // Condiții: online, profil fără grup, cu un cod de acces asociat și utilizator care nu e manager.
   useEffect(() => {
     if (!isOnline || !user || !profile || isManager || profile.groupName.trim() || !profile.accessCodeId) {
       return;
@@ -49,6 +55,7 @@ export function useAccessCodeGroupSync({
 
     let cancelled = false;
 
+    // Citește codul, apoi scrie grupul și accesul la camere în profil (merge); abandonează dacă efectul s-a oprit între timp.
     getDoc(doc(db, "accessCodes", profile.accessCodeId))
       .then(async (snapshot) => {
         const codeData = snapshot.data() ?? {};
@@ -72,6 +79,7 @@ export function useAccessCodeGroupSync({
         console.warn("Grupul din codul de acces nu a putut fi sincronizat:", error);
       });
 
+    // La oprirea efectului răspunsurile întârziate sunt ignorate.
     return () => {
       cancelled = true;
     };

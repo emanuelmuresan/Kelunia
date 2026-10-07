@@ -1,11 +1,14 @@
 "use client";
 
+// Fereastra de adăugare/modificare a unei locații: numele (pentru toți cei care pot edita) și, doar pentru proprietar,
+// blocul de licență (plan, stare de facturare, valabilitate nouă). Starea și salvarea sunt în useLocationEditor.
 import { billingStatusLabel, planLabel } from "@/lib/licensing";
 import { SettingsBlock } from "@/features/settings/components/SettingsBlock";
 import { appText, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 import type { LocationEditor } from "@/lib/types/domain";
 import type { BillingStatus, LocationPlan } from "@/lib/types/domain";
 
+// Proprietățile ferestrei: locația în editare, eroarea și funcțiile de schimbare, salvare și închidere.
 type LocationEditorModalProps = {
   isOwner: boolean;
   locationEditor: LocationEditor | null;
@@ -16,6 +19,7 @@ type LocationEditorModalProps = {
   onSave: () => void;
 };
 
+// Componenta ferestrei.
 export function LocationEditorModal({
   isOwner,
   locationEditor,
@@ -25,10 +29,12 @@ export function LocationEditorModal({
   onChange,
   onSave,
 }: LocationEditorModalProps) {
+  // Fără locație în editare fereastra este închisă.
   if (!locationEditor) {
     return null;
   }
 
+  // Opțiunile pentru plan și stare de facturare.
   const planOptions: Array<{ value: LocationPlan; label: string }> = [
     { value: "trial", label: "Trial" },
     { value: "standard", label: "Standard" },
@@ -44,6 +50,7 @@ export function LocationEditorModal({
     { value: "canceled", label: "Anulat" },
   ];
 
+  // Structura ferestrei.
   return (
     <div className="modal-backdrop" role="presentation">
       <div
@@ -52,6 +59,7 @@ export function LocationEditorModal({
         aria-modal="true"
         aria-label={appText(language, "settings.location")}
       >
+        {/* Antetul: „Adaugă locația” sau „Modifică locația”. */}
         <div className="modal-head">
           <div>
             <span className="eyebrow">{appText(language, "settings.location")}</span>
@@ -72,6 +80,7 @@ export function LocationEditorModal({
           </button>
         </div>
 
+        {/* Formularul locației. */}
         <div className="settings-form">
           <label>
             {appText(language, "settings.locationName")}
@@ -89,6 +98,7 @@ export function LocationEditorModal({
             />
           </label>
 
+          {/* Blocul de licență, doar pentru proprietar și doar la o locație existentă; schimbarea planului ajustează starea implicită. */}
           {isOwner && locationEditor.id && (
             <SettingsBlock title={appText(language, "settings.blockLicense")}>
               <label>
@@ -154,12 +164,14 @@ export function LocationEditorModal({
             </SettingsBlock>
           )}
 
+          {/* Eroarea de la salvare. */}
           {locationError && (
             <p className="error-line">
               {locationError}
             </p>
           )}
 
+          {/* Butoanele de anulare și salvare. */}
           <div className="modal-actions">
             <button
               className="secondary-button"

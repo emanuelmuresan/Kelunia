@@ -1,5 +1,8 @@
 "use client";
 
+// Codurile de acces și invitațiile unei locații: generare, editare, oprire/pornire, prelungire, ștergere cu „Anulează”,
+// copierea textului de invitație și trimiterea invitației pe email prin funcția cloud sendAccessInviteEmail.
+// Folosit în dashboard și afișat în AccessCodesModal; fiecare modificare se scrie în jurnalul de audit.
 import { useAppText } from "@/features/shell/hooks/useAppText";
 import { useState } from "react";
 import type { User } from "firebase/auth";
@@ -33,6 +36,7 @@ import type {
   WriteTarget,
 } from "@/lib/types/domain";
 
+// Starea formularului de generare a unui cod (rol, grup, locație, camere permise, emailul invitatului).
 export type CodeGeneratorState = {
   role: UserRole | "";
   groupName: string;
@@ -42,6 +46,7 @@ export type CodeGeneratorState = {
   inviteEmail: string;
 };
 
+// Ciorna invitației: codul, destinatarul, grupul, locația, mesajul și rolul.
 export type AccessInviteDraft = {
   code: string;
   email: string;
@@ -51,6 +56,7 @@ export type AccessInviteDraft = {
   role: UserRole;
 };
 
+// Forma funcției de audit.
 type RecordAuditLog = (
   entityType: AuditEntityType,
   action: AuditAction,
@@ -61,6 +67,7 @@ type RecordAuditLog = (
   auditLocationName?: string
 ) => Promise<void>;
 
+// Parametrii hook-ului: permisiuni, limita de manageri, listele de locații și camere și funcțiile din dashboard.
 type UseAccessCodesParams = {
   canEditCurrentLocation: boolean;
   currentLocationId: string;
@@ -78,6 +85,7 @@ type UseAccessCodesParams = {
   language?: SupportedLocale;
 };
 
+// Hook-ul codurilor de acces.
 export function useAccessCodes({
   canEditCurrentLocation,
   currentLocationId,
@@ -95,6 +103,7 @@ export function useAccessCodes({
   language = "ro",
 }: UseAccessCodesParams) {
   const msg = useAppText();
+  // Starea ferestrei: deschisă, eroare, lucru în curs, ciorna invitației și formularul de generare.
   const [showCodesModal, setShowCodesModal] = useState(false);
   const [codesError, setCodesError] = useState("");
   // Success confirmations are toasts; only errors stay inline in the modal.
@@ -116,6 +125,7 @@ export function useAccessCodes({
     inviteEmail: "",
   });
 
+  // Linkul de invitație: /login?invite=COD (&email=...), cu adresa publică a aplicației când rulează local.
   function inviteUrlForCode(code: string, recipientEmail = "") {
     const fallbackOrigin = process.env.NEXT_PUBLIC_APP_URL || "https://kelunia.com";
     const browserOrigin = typeof window !== "undefined" ? window.location.origin : "";
@@ -134,6 +144,7 @@ export function useAccessCodes({
     return url.toString();
   }
 
+  // Textul implicit al invitației, în limba aleasă.
   function defaultInviteMessage(
     params: {
       code: string;
@@ -169,6 +180,7 @@ export function useAccessCodes({
     setInviteLanguage(nextLanguage);
   }
 
+  // Deschide editorul de invitație cu textul implicit.
   function openInviteComposer(params: {
     code: string;
     email: string;
@@ -185,6 +197,7 @@ export function useAccessCodes({
     });
   }
 
+  // Deschide fereastra codurilor cu formularul gol.
   function openCodesEditor() {
     if (!canEditCurrentLocation) {
       return;
@@ -205,6 +218,7 @@ export function useAccessCodes({
     setShowCodesModal(true);
   }
 
+  // Copiază codul în clipboard; dacă nu merge, afișează codul pentru copiere manuală.
   async function copyAccessCode(code: string) {
     setCodesError("");
     setCodesMessage("");
@@ -218,6 +232,7 @@ export function useAccessCodes({
     }
   }
 
+  // Copiază textul complet de invitație (cod, link, pași), gata de lipit în WhatsApp sau SMS.
   async function copyInviteLink(item: LocationCode) {
     setCodesError("");
     setCodesMessage("");
@@ -234,6 +249,7 @@ export function useAccessCodes({
     }
   }
 
+  // Deschide editorul de invitație pentru un cod existent.
   function sendAccessInvite(item: LocationCode) {
     if (!canEditCurrentLocation || item.locationId !== currentLocationId) {
       return;
@@ -248,6 +264,7 @@ export function useAccessCodes({
     });
   }
 
+  // Trimite invitația pe email prin funcția cloud, cu mesajul editat și limba aleasă.
   async function sendInviteEmailFromModal() {
     if (!inviteDraft) {
       return;
@@ -286,6 +303,7 @@ export function useAccessCodes({
     }
   }
 
+  // Generează un cod nou: validează rolul, grupul, camerele și limita de manageri, apoi îl scrie într-o tranzacție.
   async function generateLocationCode() {
     const selectedRole = codeGenerator.role;
     const location = locations.find((item) => item.id === codeGenerator.locationId);
@@ -332,6 +350,7 @@ export function useAccessCodes({
       let generatedCode = "";
       let generatedPayload: Record<string, unknown> | null = null;
 
+      // Până la 6 încercări dacă un cod generat există deja (coliziune), apoi se oprește cu eroare.
       for (let attempt = 0; attempt < 6; attempt += 1) {
         const code = generateAccessCode();
         const codeRef = doc(db, "accessCodes", code);
@@ -345,6 +364,7 @@ export function useAccessCodes({
             return;
           }
 
+          // Codul este valabil 7 zile, are număr maxim de utilizări după rol și este activ de la început.
           const codePayload = {
             code,
             role: selectedRole,
@@ -376,6 +396,7 @@ export function useAccessCodes({
         throw new Error("Nu s-a putut genera un cod unic.");
       }
 
+      // După creare: audit, contor și, fără email, textul de invitație se copiază automat; cu email se deschide editorul.
       await recordAuditLog("accessCode", "create", generatedCode, null, generatedPayload, location.id, location.name);
       await updateLocationCounterSafely(db, location.id, "accessCodeCount", 1);
       const inviteEmail = codeGenerator.inviteEmail.trim();
@@ -418,6 +439,7 @@ export function useAccessCodes({
     }
   }
 
+  // Schimbă rolul, grupul sau camerele unui cod; managerii sunt limitați de planul locației.
   async function updateAccessCodeDetails(
     item: LocationCode,
     nextRole: UserRole,
@@ -501,6 +523,7 @@ export function useAccessCodes({
     }
   }
 
+  // Oprește sau pornește un cod (un cod oprit nu mai poate fi folosit la înregistrare).
   async function toggleAccessCodeActive(item: LocationCode) {
     if (!canEditCurrentLocation || item.locationId !== currentLocationId) {
       return;
@@ -541,6 +564,7 @@ export function useAccessCodes({
     }
   }
 
+  // Prelungește valabilitatea codului cu încă 7 zile.
   async function extendAccessCodeExpiry(item: LocationCode) {
     if (!canEditCurrentLocation || item.locationId !== currentLocationId) {
       return;
@@ -579,6 +603,7 @@ export function useAccessCodes({
     }
   }
 
+  // Șterge logic codul (rămâne în Firestore, marcat ca șters), cu posibilitate de „Anulează”.
   async function removeAccessCode(item: LocationCode) {
     if (!canEditCurrentLocation || item.locationId !== currentLocationId || !requireOnline("codes")) {
       return;
@@ -603,6 +628,7 @@ export function useAccessCodes({
     }
   }
 
+  // Anulează ștergerea unui cod.
   async function restoreAccessCode(item: LocationCode) {
     try {
       const restoredPayload = {
@@ -623,6 +649,7 @@ export function useAccessCodes({
     }
   }
 
+  // Starea și acțiunile expuse dashboard-ului.
   return {
     changeInviteLanguage,
     codeGenerator,

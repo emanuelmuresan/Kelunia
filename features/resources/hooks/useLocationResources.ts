@@ -1,5 +1,7 @@
 "use client";
 
+// Citește în timp real resursele unei locații: camere, grupuri și programe fixe (fără cele șterse logic).
+// Returnează și variantele „selectabile” (fără cele expirate), folosite la alegerea din formulare.
 import { useEffect, useMemo, useState } from "react";
 import { onSnapshot } from "firebase/firestore";
 
@@ -24,21 +26,25 @@ import { isSpaceExpired, readActiveUntil } from "@/lib/space-expiry";
 import { isSoftDeleted } from "@/lib/soft-delete";
 import type { FixedSchedule, GroupItem, RoomItem } from "@/lib/types/domain";
 
+// Parametrii: dacă există utilizator și locația curentă.
 type UseLocationResourcesParams = {
   userExists: boolean;
   locationId: string;
 };
 
+// Hook-ul resurselor.
 export function useLocationResources({
   userExists,
   locationId,
 }: UseLocationResourcesParams) {
+  // Starea: camerele, grupurile (cu indicatorii de încărcare/eroare) și programele fixe.
   const [rooms, setRooms] = useState<RoomItem[]>(defaultRooms);
   const [groups, setGroups] = useState<GroupItem[]>(defaultGroups);
   const [groupsLoaded, setGroupsLoaded] = useState(false);
   const [groupsReadError, setGroupsReadError] = useState("");
   const [fixedSchedules, setFixedSchedules] = useState<FixedSchedule[]>(defaultFixedSchedules);
 
+  // Fără utilizator sau fără locație listele se golesc; fără locație se explică în eroare.
   useEffect(() => {
     if (!userExists) {
       setRooms(defaultRooms);
@@ -61,6 +67,7 @@ export function useLocationResources({
     setGroupsLoaded(false);
     setGroupsReadError("");
 
+    // Abonare la camere; la atingerea limitei de citire se scrie un avertisment în consolă.
     const unsubRooms = onSnapshot(
       buildRoomsQuery(db, locationId),
       (snapshot) => {
@@ -84,6 +91,7 @@ export function useLocationResources({
       }
     );
 
+    // Abonare la grupuri, cu culoarea și data-limită; semnalează când au fost încărcate sau nu s-au putut citi.
     const unsubGroups = onSnapshot(
       buildGroupsQuery(db, locationId),
       (snapshot) => {
@@ -115,6 +123,7 @@ export function useLocationResources({
       }
     );
 
+    // Abonare la programele fixe, sortate cronologic.
     const unsubFixed = onSnapshot(
       buildFixedSchedulesQuery(db, locationId),
       (snapshot) => {
@@ -146,6 +155,7 @@ export function useLocationResources({
       }
     );
 
+    // La schimbarea locației sau a utilizatorului abonările se opresc.
     return () => {
       unsubRooms();
       unsubGroups();
@@ -153,6 +163,7 @@ export function useLocationResources({
     };
   }, [locationId, userExists]);
 
+  // Camerele și grupurile încă valabile (cele cu activeUntil depășit nu se mai pot alege).
   const todayKey = dateKey(new Date());
   const selectableGroups = useMemo(() => groups.filter((item) => !isSpaceExpired(item, todayKey)), [groups, todayKey]);
   const selectableRooms = useMemo(() => rooms.filter((item) => !isSpaceExpired(item, todayKey)), [rooms, todayKey]);

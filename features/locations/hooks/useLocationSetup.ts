@@ -1,5 +1,7 @@
 "use client";
 
+// Configurarea primei locații a unui manager nou: nume, adresă oficială (cu Google Maps) și crearea locației într-o tranzacție,
+// care leagă locația de utilizator și, dacă există, revendică licența. La final pagina se reîncarcă.
 import { useRef, useState } from "react";
 import type { User } from "firebase/auth";
 import {
@@ -17,6 +19,7 @@ import { initialLocationBillingFields, locationBillingFieldsFromLicense } from "
 import { locationDocumentId, normalizeLocationIdentity } from "@/lib/locations";
 import { useLocationSetupAutocomplete } from "@/features/locations/hooks/useLocationSetupAutocomplete";
 
+// Forma funcției de audit.
 type RecordAuditLog = (
   entityType: AuditEntityType,
   action: AuditAction,
@@ -27,6 +30,7 @@ type RecordAuditLog = (
   auditLocationName?: string
 ) => Promise<void>;
 
+// Parametrii: baza de date, profilul și funcțiile din dashboard.
 type UseLocationSetupParams = {
   apiKey: string;
   db: Firestore;
@@ -39,6 +43,7 @@ type UseLocationSetupParams = {
   user: User | null;
 };
 
+// Hook-ul configurării locației.
 export function useLocationSetup({
   apiKey,
   db,
@@ -50,6 +55,7 @@ export function useLocationSetup({
   setIsOnline,
   user,
 }: UseLocationSetupParams) {
+  // Starea formularului: numele, adresa, place_id, eroarea și încărcarea.
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [placeId, setPlaceId] = useState("");
@@ -57,6 +63,7 @@ export function useLocationSetup({
   const [loading, setLoading] = useState(false);
   const addressInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Autocompletarea adresei cu Google Maps.
   const mapsStatus = useLocationSetupAutocomplete({
     apiKey,
     enabled,
@@ -67,6 +74,7 @@ export function useLocationSetup({
     setPlaceId,
   });
 
+  // Deschide locația: verifică conexiunea, numele și adresa, apoi scrie totul într-o tranzacție.
   async function openLicensedLocation() {
     if (!user || !profile?.locationSetupRequired) {
       return;
@@ -80,6 +88,7 @@ export function useLocationSetup({
       return;
     }
 
+    // Datele curățate și identificatorul documentului locației (după place_id sau adresă, deci o singură locație pe adresă).
     const cleanAddress = address.trim();
     const cleanName = name.trim() || cleanAddress.split(",")[0]?.trim() || defaultLocationName;
     const pendingLicenseId = profile.pendingLicenseId.trim();
@@ -101,6 +110,7 @@ export function useLocationSetup({
     const locationRef = doc(db, "locations", createdLocationId);
     const userRef = doc(db, "users", user.uid);
     const licenseRef = hasPendingLicense ? doc(db, "licenses", pendingLicenseId) : null;
+    // Datele locației noi, cu planul și starea de facturare inițiale (probă).
     let locationPayload: Record<string, unknown> = {
       name: cleanName,
       address: cleanAddress,
@@ -112,6 +122,7 @@ export function useLocationSetup({
       deleted: false,
       ...initialLocationBillingFields(),
     };
+    // Actualizarea profilului (locația) și a licenței (marcată ca folosită).
     const userLocationPayload = {
       locationId: createdLocationId,
       locationName: cleanName,
@@ -132,6 +143,7 @@ export function useLocationSetup({
     setLoading(true);
 
     try {
+      // Tranzacția: refuză o locație deja existentă la aceeași adresă și validează licența (neutilizată, activă, a acestui cont, pentru adresa corectă).
       await runTransaction(db, async (transaction) => {
         const locationSnap = await transaction.get(locationRef);
 
@@ -167,12 +179,14 @@ export function useLocationSetup({
             throw new Error("Alege adresa pentru care a fost generata licenta.");
           }
 
+          // Cu licență, planul și valabilitatea vin din licență în loc de proba implicită.
           locationPayload = {
             ...locationPayload,
             ...locationBillingFieldsFromLicense(licenseData),
           };
         }
 
+        // Scrie locația, actualizează profilul (scoate licența în așteptare) și licența.
         transaction.set(locationRef, locationPayload);
 
         transaction.update(userRef, {
@@ -186,6 +200,7 @@ export function useLocationSetup({
         }
       });
 
+      // După succes se scriu înregistrările de audit și se reîncarcă pagina ca aplicația să preia noua locație.
       await recordAuditLog("location", "create", createdLocationId, null, locationPayload, createdLocationId, cleanName);
       await recordAuditLog(
         "user",
@@ -208,6 +223,7 @@ export function useLocationSetup({
     }
   }
 
+  // Schimbarea adresei manual anulează place_id-ul ales anterior.
   function handleAddressChange(nextAddress: string) {
     setAddress(nextAddress);
     setPlaceId("");

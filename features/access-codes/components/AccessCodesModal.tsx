@@ -1,5 +1,8 @@
 "use client";
 
+// Fereastra „Coduri de acces”: lista codurilor active și a istoricului, generarea unui cod nou, editarea rolului/grupului/camerelor,
+// copierea invitației, prelungirea, oprirea și ștergerea; plus fereastra de trimitere a invitației pe email.
+// Logica (scrierile în Firestore) este în hook-ul useAccessCodes; aici sunt doar afișarea și ciornele de editare.
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { UserRole } from "@/context/AuthContext";
 import type { AccessInviteDraft, CodeGeneratorState } from "@/features/access-codes/hooks/useAccessCodes";
@@ -7,6 +10,7 @@ import { appText, supportedLocales, type SupportedLocale } from "@/lib/i18n/app-
 import { roomAccessLabel } from "@/lib/room-access";
 import type { GroupItem, LocationCode, LocationItem, RoomAccessMode, RoomItem } from "@/lib/types/domain";
 
+// Proprietățile ferestrei: codurile, listele de grupuri și camere, starea hook-ului și funcțiile de acțiune.
 interface AccessCodesModalProps {
   open: boolean;
   codeGenerator: CodeGeneratorState;
@@ -44,6 +48,7 @@ interface AccessCodesModalProps {
   language?: SupportedLocale;
 }
 
+// Ciorna de editare a unui cod (rol, grup, acces la camere), ținută local până la „Salvează”.
 type AccessCodeDraft = {
   role: UserRole;
   groupName: string;
@@ -51,6 +56,7 @@ type AccessCodeDraft = {
   allowedRoomIds: string[];
 };
 
+// Componenta ferestrei.
 export function AccessCodesModal({
   open,
   codeGenerator,
@@ -81,11 +87,13 @@ export function AccessCodesModal({
   onSendInviteEmail,
   language = "ro",
 }: AccessCodesModalProps) {
+  // Starea locală: formularul de creare, tab-ul (active/istoric), codurile în editare și ciornele lor.
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [view, setView] = useState<"active" | "history">("active");
   const [editingCodeIds, setEditingCodeIds] = useState<Record<string, boolean>>({});
   const [codeDrafts, setCodeDrafts] = useState<Record<string, AccessCodeDraft>>({});
 
+  // La închiderea ferestrei se resetează tot ce era în curs.
   useEffect(() => {
     if (!open) {
       setShowCreateForm(false);
@@ -95,6 +103,7 @@ export function AccessCodesModal({
     }
   }, [open]);
 
+  // Un cod este utilizabil dacă e activ, nu a atins numărul maxim de utilizări și nu a expirat; restul merg în istoric.
   const isUsableCode = useCallback(
     (item: LocationCode) => item.active !== false && !isAccessCodeFull(item) && !isAccessCodeExpired(item),
     [isAccessCodeFull, isAccessCodeExpired]
@@ -106,6 +115,7 @@ export function AccessCodesModal({
 
   const visibleAccessCodes = tabCodes;
 
+  // Ciorna unui cod: cea în editare sau valorile din cod.
   function codeDraftFor(item: LocationCode): AccessCodeDraft {
     return codeDrafts[item.id] ?? {
       role: item.role,
@@ -115,6 +125,7 @@ export function AccessCodesModal({
     };
   }
 
+  // Deschide, închide și modifică ciorna unui cod; sameRoomIds compară listele de camere fără ordine.
   function openCodeEditor(item: LocationCode) {
     setCodeDrafts((current) => ({
       ...current,
@@ -154,6 +165,7 @@ export function AccessCodesModal({
     return second.every((item) => firstSet.has(item));
   }
 
+  // Salvează modificările unui cod prin hook și închide editorul.
   async function saveCodeEditor(item: LocationCode) {
     const draft = codeDraftFor(item);
     const nextRoomAccess = draft.role === "manager" ? "all" : draft.roomAccess;
@@ -169,14 +181,18 @@ export function AccessCodesModal({
     closeCodeEditor(item.id);
   }
 
+  // Fereastra închisă nu se randează.
   if (!open) {
     return null;
   }
 
+  // Fereastra principală și, separat, fereastra de invitație pe email.
   return (
     <>
+    {/* Fereastra codurilor. */}
     <div className="modal-backdrop" role="presentation">
       <div className="modal-card manager-card" role="dialog" aria-modal="true" aria-label={appText(language, "settings.accessCodes")}>
+        {/* Antetul ferestrei. */}
         <div className="modal-head">
           <div>
             <span className="eyebrow">{appText(language, "settings.access")}</span>
@@ -187,6 +203,7 @@ export function AccessCodesModal({
           </button>
         </div>
 
+        {/* Comutator între coduri active și istoric. */}
         <div className="segmented-control code-view-tabs" role="group" aria-label={appText(language, "access.activeCodes")}>
           <button className={view === "active" ? "active" : ""} onClick={() => setView("active")} type="button">
             {appText(language, "access.activeCodes")} ({activeCodes.length})
@@ -196,6 +213,7 @@ export function AccessCodesModal({
           </button>
         </div>
 
+        {/* Limba textului de invitație (email și mesajul copiat). */}
         <label className="invite-language-field">
           {appText(language, "invite.language")}
           <select className="code-filter-select" value={inviteLanguage} onChange={(event) => onInviteLanguageChange(event.target.value as SupportedLocale)}>
@@ -205,6 +223,7 @@ export function AccessCodesModal({
           </select>
         </label>
 
+        {/* Butonul care deschide formularul de generare. */}
         <div className="code-toolbar">
           <button className="primary-button compact" onClick={() => setShowCreateForm((current) => !current)} type="button">
             {showCreateForm ? appText(language, "booking.close") : appText(language, "access.createCode")}
@@ -215,6 +234,7 @@ export function AccessCodesModal({
           {appText(language, "access.closeKeepsHistory")}
         </p>
 
+        {/* Formularul de generare: rolul decide ce câmpuri apar. */}
         {showCreateForm && (
           <div className="code-create-panel">
             <div className="mini-section-head">
@@ -242,6 +262,7 @@ export function AccessCodesModal({
                 <option value="manager">{appText(language, "role.administrator")}</option>
               </select>
 
+              {/* Administrator: doar emailul invitatului (opțional) și generarea. */}
               {codeGenerator.role === "manager" && (
                 <>
                   <input
@@ -256,6 +277,7 @@ export function AccessCodesModal({
                 </>
               )}
 
+              {/* Colaborator/Oaspete: grup, email, acces la camere (toate sau alese) și generarea. */}
               {(codeGenerator.role === "member" || codeGenerator.role === "guest") && codeGenerator.locationId && (
                 <>
                   <select
@@ -316,6 +338,7 @@ export function AccessCodesModal({
           </div>
         )}
 
+        {/* Lista codurilor din tab-ul ales. */}
         <div className="mini-section-head code-list-head">
           <h3>{appText(language, "access.codesShown").replace("{{count}}", String(visibleAccessCodes.length))}</h3>
         </div>
@@ -346,8 +369,10 @@ export function AccessCodesModal({
                     ? appText(language, "role.collaborator")
                     : appText(language, "role.guest");
 
+              // Un rând din listă: codul, rolul și grupul (editabile), utilizările, expirarea și acțiunile.
               return (
                 <div className={`code-row ${!item.active || isAccessCodeFull(item) || isAccessCodeExpired(item) ? "code-row-muted" : ""}`} key={item.id}>
+                  {/* Codul afișat; în modul de editare apar selecturile de rol, grup și camere. */}
                   <span className="code-chip">{item.code}</span>
                   {isEditingCode ? (
                     <>
@@ -437,6 +462,7 @@ export function AccessCodesModal({
                       </span>
                     </>
                   )}
+                  {/* Utilizările și data expirării. */}
                   <span className="code-usage">
                     {accessCodeUsageLabel(item, language)}
                     {accessCodeExpiryLabel(item, language) && (
@@ -445,6 +471,7 @@ export function AccessCodesModal({
                       </small>
                     )}
                   </span>
+                  {/* Acțiuni: copiere, mesaj de invitație, email, prelungire (doar dacă a expirat), modificare, oprire/pornire și ștergere. */}
                   <div className="code-row-actions">
                     <button onClick={() => onCopy(item.code)} type="button">
                       {appText(language, "action.copy")}
@@ -496,14 +523,17 @@ export function AccessCodesModal({
           )}
         </div>
 
+        {/* Eroarea ultimei acțiuni. */}
         {codesError && <p className="error-line manager-alert">{codesError}</p>}
 
+        {/* Închiderea ferestrei. */}
         <div className="modal-actions">
           <button className="primary-button" onClick={onClose} type="button">{appText(language, "action.done")}</button>
         </div>
       </div>
     </div>
 
+    {/* Fereastra de invitație pe email: destinatar, mesaj editabil și limba. */}
     {inviteDraft && (
       <div className="modal-backdrop modal-backdrop-nested" role="presentation" onMouseDown={() => onInviteDraftChange(null)}>
         <section

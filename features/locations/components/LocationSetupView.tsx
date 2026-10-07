@@ -1,10 +1,12 @@
 "use client";
 
+// Ecranul „Deschide locația”, arătat unui manager nou (cont de probă sau licență) până își configurează prima locație.
 import type { RefObject } from "react";
 
 import { InstallAppPrompt } from "@/components/InstallAppPrompt";
 import type { MapsStatus } from "@/lib/types/domain";
 
+// Proprietățile ecranului: adresa, numele, starea hărții și acțiunile.
 type LocationSetupViewProps = {
   address: string;
   addressInputRef: RefObject<HTMLInputElement | null>;
@@ -21,6 +23,7 @@ type LocationSetupViewProps = {
   onSubmit: () => void;
 };
 
+// Componenta ecranului.
 export function LocationSetupView({
   address,
   addressInputRef,
@@ -36,8 +39,10 @@ export function LocationSetupView({
   onSignOut,
   onSubmit,
 }: LocationSetupViewProps) {
+  // Structura ecranului.
   return (
     <main className="kelunia-shell">
+      {/* Antetul cu utilizatorul și ieșirea din cont. */}
       <header className="app-topbar">
         <div>
           <span className="eyebrow">Kelunia</span>
@@ -53,8 +58,10 @@ export function LocationSetupView({
         </div>
       </header>
 
+      {/* Avertisment când nu există internet. */}
       {!isOnline && <p className="offline-banner">{offlineMessage}</p>}
 
+      {/* Formularul: numele locației și adresa oficială (cu sugestii Google Maps când sunt disponibile). */}
       <section className="group-required-panel">
         <div>
           <span className="eyebrow">Trial sau licenta activa</span>
@@ -79,6 +86,7 @@ export function LocationSetupView({
             autoComplete="street-address"
           />
         </label>
+        {/* Mesaje despre starea sugestiilor Google Maps și eroarea trimiterii. */}
         {mapsStatus === "ready" && <p className="muted-note">Alege rezultatul din sugestiile Google Maps.</p>}
         {mapsStatus === "off" && <p className="muted-note">Poti introduce adresa manual; autocomplete Google Maps se activeaza cu cheia Maps.</p>}
         {mapsStatus === "error" && <p className="muted-note">Sugestiile Google Maps nu s-au putut incarca. Poti continua cu adresa scrisa manual.</p>}

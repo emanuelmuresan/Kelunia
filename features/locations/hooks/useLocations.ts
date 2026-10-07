@@ -1,5 +1,6 @@
 "use client";
 
+// Citește locațiile în timp real: proprietarul vede toate, ceilalți doar locația lor; la lipsă sau eroare folosește datele din profil.
 import { useEffect, useState } from "react";
 import { doc, onSnapshot, type Firestore } from "firebase/firestore";
 
@@ -10,6 +11,7 @@ import { isSoftDeleted } from "@/lib/soft-delete";
 
 import type { LocationItem } from "@/lib/types/domain";
 
+// Parametrii: baza de date, utilizatorul, profilul și locația curentă.
 interface UseLocationsProps {
   db: Firestore;
   user: unknown;
@@ -23,6 +25,7 @@ interface UseLocationsProps {
   currentLocationId: string;
 }
 
+// Locația minimă construită din profil, folosită când documentul nu poate fi citit.
 function fallbackLocation(profile: UseLocationsProps["profile"]): LocationItem[] {
   if (!profile?.locationId) {
     return [];
@@ -39,6 +42,7 @@ function fallbackLocation(profile: UseLocationsProps["profile"]): LocationItem[]
   ];
 }
 
+// Hook-ul locațiilor.
 export function useLocations({
   db,
   user,
@@ -49,6 +53,7 @@ export function useLocations({
 }: UseLocationsProps) {
   const [locations, setLocations] = useState<LocationItem[]>([]);
 
+  // Fără utilizator sau fără locație lista este goală.
   useEffect(() => {
     if (!user) {
       setLocations([]);
@@ -60,6 +65,7 @@ export function useLocations({
       return;
     }
 
+    // Utilizator obișnuit: urmărește documentul locației lui; o locație ștearsă logic dispare din listă.
     if (!isOwner) {
       return onSnapshot(
         doc(db, "locations", currentLocationId),
@@ -92,6 +98,7 @@ export function useLocations({
       );
     }
 
+    // Proprietarul: urmărește colecția locațiilor (maximum 200), fără cele șterse logic.
     return onSnapshot(
       buildLocationsQuery(db),
       (snapshot) => {

@@ -1,5 +1,7 @@
 "use client";
 
+// Editorul de spații (camere și grupuri): creare, modificare, ștergere logică cu „Anulează” și audit, în ecranul de setări.
+// Fiecare scriere actualizează și contorul locației folosit pentru limitele planului.
 import { useAppText } from "@/features/shell/hooks/useAppText";
 import { useState } from "react";
 import type { User } from "firebase/auth";
@@ -12,6 +14,7 @@ import { readActiveUntil } from "@/lib/space-expiry";
 import { updateLocationCounterSafely } from "@/lib/usage-counters";
 import type { GroupItem, RoomItem, SpaceEditor, SpaceKind, WriteTarget } from "@/lib/types/domain";
 
+// Parametrii: datele locației, permisiunile și funcțiile din dashboard.
 type UseSpaceEditorParams = {
   db: Firestore;
   user: User | null;
@@ -47,10 +50,12 @@ export function useSpaceEditor({
   setSettingsError,
   setSettingsMessage,
 }: UseSpaceEditorParams) {
+  // Starea editorului: elementul în editare (null = închis) și eroarea afișată în fereastră.
   const msg = useAppText();
   const [spaceEditor, setSpaceEditor] = useState<SpaceEditor | null>(null);
   const [spaceError, setSpaceError] = useState("");
 
+  // Deschide editorul pentru un element nou sau existent; fără drept de editare nu face nimic.
   function openSpaceEditor(kind: SpaceKind, item?: RoomItem | GroupItem) {
     if (!canEditCurrentLocation) {
       return;
@@ -68,6 +73,7 @@ export function useSpaceEditor({
     setSettingsMessage("");
   }
 
+  // Salvează: validează numele și data-limită (nu poate fi în trecut), apoi modifică sau creează documentul.
   async function saveSpaceItem() {
     if (!canEditCurrentLocation || !spaceEditor) {
       return;
@@ -109,6 +115,7 @@ export function useSpaceEditor({
       const previousItem = spaceEditor.id
         ? (spaceEditor.kind === "room" ? rooms : groups).find((item) => item.id === spaceEditor.id) ?? null
         : null;
+      // Datele comune ale documentului; grupurile au și culoare, iar data-limită se șterge din document când e goală.
       const payload = {
         name,
         locationId: currentLocationId,
@@ -125,6 +132,7 @@ export function useSpaceEditor({
         });
         await recordAuditLog(spaceEditor.kind, "update", spaceEditor.id, previousItem, { ...payload, activeUntil: activeUntil || null });
       } else {
+        // Element nou: marcat ca nesters, cu autor și dată; contorul locației crește.
         const createdPayload = {
           ...payload,
           ...(activeUntil ? { activeUntil } : {}),
@@ -149,6 +157,7 @@ export function useSpaceEditor({
     }
   }
 
+  // Șterge logic un element (rămâne în Firestore), scade contorul și oferă „Anulează”.
   async function removeSpaceItem(kind: SpaceKind, itemId: string) {
     const collectionName = kind === "room" ? "rooms" : "groups";
 
@@ -175,6 +184,7 @@ export function useSpaceEditor({
     }
   }
 
+  // Anulează ștergerea unui element și readuce contorul.
   async function restoreSpaceItem(kind: SpaceKind, itemId: string) {
     const collectionName = kind === "room" ? "rooms" : "groups";
 
@@ -194,6 +204,7 @@ export function useSpaceEditor({
     }
   }
 
+  // Starea și acțiunile expuse dashboard-ului.
   return {
     spaceEditor,
     spaceError,

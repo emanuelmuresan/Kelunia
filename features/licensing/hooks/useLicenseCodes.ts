@@ -1,5 +1,8 @@
 "use client";
 
+// Codurile de licență, doar pentru proprietarul platformei: listare în timp real, generare, modificare, oprire/pornire,
+// ștergere și trimiterea codului pe email (printr-o cerere în licenseEmailRequests, procesată de funcțiile cloud).
+// O licență folosită la înregistrare creează un cont de manager care își configurează apoi locația.
 import { useEffect, useState } from "react";
 import type { User } from "firebase/auth";
 import {
@@ -23,6 +26,7 @@ import { normalizeLicenseCode } from "@/lib/licensing";
 import type { SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 import type { BillingStatus, LicenseCodeItem, LocationPlan } from "@/lib/types/domain";
 
+// Ciorna unui cod nou: plan, locație, adresă și valabilitate în zile.
 export type LicenseCodeDraft = {
   plan: LocationPlan | "";
   locationName: string;
@@ -30,6 +34,7 @@ export type LicenseCodeDraft = {
   durationDays: string;
 };
 
+// Ciorna modificării unei licențe existente (plan, stare, locație, adresă, data expirării, activ).
 export type LicenseCodeUpdateDraft = {
   plan: LocationPlan;
   billingStatus: BillingStatus;
@@ -39,6 +44,7 @@ export type LicenseCodeUpdateDraft = {
   active: boolean;
 };
 
+// O cerere de email pentru licență și starea ei (în așteptare, trimisă, eșuată).
 export type LicenseEmailRequestItem = {
   id: string;
   code: string;
@@ -51,6 +57,7 @@ export type LicenseEmailRequestItem = {
   errorMessage?: string;
 };
 
+// Parametrii: baza de date, dacă utilizatorul este proprietar, utilizatorul și limba emailului.
 type UseLicenseCodesParams = {
   db: Firestore;
   isOwner: boolean;
@@ -58,6 +65,7 @@ type UseLicenseCodesParams = {
   language?: SupportedLocale;
 };
 
+// Valorile implicite ale ciornei.
 const defaultDraft: LicenseCodeDraft = {
   plan: "",
   locationName: "",
@@ -65,6 +73,7 @@ const defaultDraft: LicenseCodeDraft = {
   durationDays: "",
 };
 
+// Cod aleatoriu de forma LIC-XXXXX-XXXXX, generat cu generatorul criptografic al browserului.
 function generateLicenseCode() {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   const bytes = new Uint32Array(10);
@@ -74,11 +83,14 @@ function generateLicenseCode() {
   return `LIC-${body.slice(0, 5)}-${body.slice(5, 10)}`;
 }
 
+// Planul de probă este „trialing”, orice alt plan pornește „active”.
 function billingStatusForPlan(plan: LocationPlan): BillingStatus {
   return plan === "trial" ? "trialing" : "active";
 }
 
+// Hook-ul licențelor.
 export function useLicenseCodes({ db, isOwner, user, language = "ro" }: UseLicenseCodesParams) {
+  // Starea: licențele, cererile de email, fereastra, ciorna și mesajele.
   const [licenseCodes, setLicenseCodes] = useState<LicenseCodeItem[]>([]);
   const [licenseEmailRequests, setLicenseEmailRequests] = useState<LicenseEmailRequestItem[]>([]);
   const [showLicenseModal, setShowLicenseModal] = useState(false);
@@ -87,6 +99,7 @@ export function useLicenseCodes({ db, isOwner, user, language = "ro" }: UseLicen
   const [licenseError, setLicenseError] = useState("");
   const [licenseWorking, setLicenseWorking] = useState(false);
 
+  // Abonare în timp real la licențe (maximum 200), doar pentru proprietar.
   useEffect(() => {
     if (!user || !isOwner) {
       setLicenseCodes([]);
@@ -111,6 +124,7 @@ export function useLicenseCodes({ db, isOwner, user, language = "ro" }: UseLicen
     );
   }, [db, isOwner, user]);
 
+  // Abonare la cererile de email ale licențelor (cele mai noi 100).
   useEffect(() => {
     if (!user || !isOwner) {
       setLicenseEmailRequests([]);
@@ -151,6 +165,7 @@ export function useLicenseCodes({ db, isOwner, user, language = "ro" }: UseLicen
     );
   }, [db, isOwner, user]);
 
+  // Deschide fereastra cu ciorna goală.
   function openLicenseCodes() {
     if (!isOwner) {
       return;
@@ -166,6 +181,7 @@ export function useLicenseCodes({ db, isOwner, user, language = "ro" }: UseLicen
     setLicenseDraft(nextDraft);
   }
 
+  // Copiază codul în clipboard.
   async function copyLicenseCode(code: string) {
     setLicenseError("");
     setLicenseMessage("");
@@ -178,6 +194,7 @@ export function useLicenseCodes({ db, isOwner, user, language = "ro" }: UseLicen
     }
   }
 
+  // Generează o licență nouă: validează planul, adresa și valabilitatea (1-3660 zile) și o scrie într-o tranzacție.
   async function createLicenseCode() {
     if (!user || !isOwner) {
       return;
@@ -214,6 +231,7 @@ export function useLicenseCodes({ db, isOwner, user, language = "ro" }: UseLicen
     try {
       let createdCode = "";
 
+      // Până la 6 încercări dacă un cod generat există deja; licența nouă este activă, nefolosită și nerevendicată.
       for (let attempt = 0; attempt < 6; attempt += 1) {
         const code = generateLicenseCode();
         const licenseRef = doc(db, "licenses", code);
@@ -280,6 +298,7 @@ export function useLicenseCodes({ db, isOwner, user, language = "ro" }: UseLicen
     }
   }
 
+  // Oprește sau pornește o licență.
   async function toggleLicenseCodeActive(item: LicenseCodeItem) {
     if (!isOwner) {
       return;
@@ -301,6 +320,7 @@ export function useLicenseCodes({ db, isOwner, user, language = "ro" }: UseLicen
     }
   }
 
+  // Modifică licența și, dacă a fost deja folosită, și locația asociată, într-un singur batch.
   async function updateLicenseCode(item: LicenseCodeItem, draft: LicenseCodeUpdateDraft) {
     if (!isOwner || !user) {
       return;
@@ -373,6 +393,7 @@ export function useLicenseCodes({ db, isOwner, user, language = "ro" }: UseLicen
     }
   }
 
+  // Șterge definitiv documentul licenței (deleteDoc), spre deosebire de restul datelor care se șterg logic; doar proprietarul.
   async function deleteLicenseCode(item: LicenseCodeItem) {
     if (!isOwner) {
       return;
@@ -393,6 +414,7 @@ export function useLicenseCodes({ db, isOwner, user, language = "ro" }: UseLicen
     }
   }
 
+  // Cere trimiterea codului pe email; funcțiile cloud procesează cererea și actualizează starea ei.
   async function sendLicenseEmail(item: LicenseCodeItem, toEmail: string, message: string) {
     if (!isOwner || !user) {
       return;
@@ -432,6 +454,7 @@ export function useLicenseCodes({ db, isOwner, user, language = "ro" }: UseLicen
     }
   }
 
+  // Starea și acțiunile expuse dashboard-ului.
   return {
     copyLicenseCode,
     createLicenseCode,

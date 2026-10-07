@@ -1,5 +1,7 @@
 "use client";
 
+// Editorul de locații din Setări: proprietarul adaugă sau modifică o locație (plan, stare de facturare, valabilitate),
+// iar un manager poate doar să redenumească locația curentă. Fiecare modificare se scrie în jurnalul de audit.
 import { useAppText } from "@/features/shell/hooks/useAppText";
 import { useState } from "react";
 import type { User } from "firebase/auth";
@@ -9,6 +11,7 @@ import type { RecordAuditLog } from "@/lib/audit";
 import { initialLocationBillingFields } from "@/lib/licensing";
 import type { LocationEditor, LocationItem, LocationPlan, WriteTarget } from "@/lib/types/domain";
 
+// Parametrii: baza de date, rolul utilizatorului și funcțiile din dashboard.
 type UseLocationEditorParams = {
   db: Firestore;
   user: User | null;
@@ -27,6 +30,7 @@ type UseLocationEditorParams = {
  * validity), a manager can only rename the current one. Extracted verbatim from
  * app/dashboard/page.tsx — behaviour unchanged.
  */
+// Hook-ul editorului de locații.
 export function useLocationEditor({
   db,
   user,
@@ -40,9 +44,11 @@ export function useLocationEditor({
   setSettingsMessage,
 }: UseLocationEditorParams) {
   const msg = useAppText();
+  // Starea editorului: locația în editare (null = închis) și eroarea afișată în fereastră.
   const [locationEditor, setLocationEditor] = useState<LocationEditor | null>(null);
   const [locationError, setLocationError] = useState("");
 
+  // Deschide editorul pentru o locație nouă sau existentă; doar proprietarul sau managerul locației curente.
   function openLocationEditor(item?: LocationItem) {
     if (!isOwner && !canEditCurrentLocation) {
       return;
@@ -60,6 +66,7 @@ export function useLocationEditor({
     setSettingsError("");
   }
 
+  // Salvează: validează numele, apoi modifică locația existentă sau creează una nouă.
   async function saveLocation() {
     if ((!isOwner && !canEditCurrentLocation) || !locationEditor) {
       return;
@@ -87,6 +94,7 @@ export function useLocationEditor({
           updatedAt: Timestamp.now(),
         };
 
+        // Doar proprietarul poate schimba planul, starea de facturare și valabilitatea (1-3660 zile) a unei locații.
         if (isOwner) {
           const selectedPlan = (locationEditor.plan || previousLocation?.plan || "standard") as LocationPlan;
           const selectedStatus = locationEditor.billingStatus || (selectedPlan === "trial" ? "trialing" : "active");
@@ -118,6 +126,7 @@ export function useLocationEditor({
         await updateDoc(doc(db, "locations", locationEditor.id), updatedLocation);
         await recordAuditLog("location", "update", locationEditor.id, previousLocation, updatedLocation, locationEditor.id, name);
       } else {
+        // Locație nouă: cu planul și starea de facturare inițiale; devine locația aleasă de proprietar.
         const createdPayload = {
           name,
           ownerEmail: user?.email ?? "",

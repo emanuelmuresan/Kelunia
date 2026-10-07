@@ -1,5 +1,8 @@
 "use client";
 
+// Fereastra „Coduri de licență” (doar proprietar): generarea licențelor, lista lor cu starea fiecăreia, modificarea (plan, stare,
+// locație, adresă, expirare), oprirea, ștergerea și trimiterea codului pe email. Acțiunile cer confirmare.
+// Scrierile sunt făcute de useLicenseCodes; aici sunt afișarea și ciornele ferestrelor de editare și de email.
 import { useConfirm } from "@/features/shell/components/ConfirmDialog";
 import { useState } from "react";
 import type {
@@ -15,6 +18,7 @@ import {
 import { appText, type SupportedLocale, type UiCopyKey } from "@/lib/i18n/app-copy-catalog";
 import type { BillingStatus, LicenseCodeItem, LocationItem, LocationPlan } from "@/lib/types/domain";
 
+// Proprietățile ferestrei: licențele, cererile de email, locațiile, mesajele și funcțiile de acțiune.
 interface LicenseCodesModalProps {
   open: boolean;
   draft: LicenseCodeDraft;
@@ -35,6 +39,7 @@ interface LicenseCodesModalProps {
   language?: SupportedLocale;
 }
 
+// Opțiunile de plan și de stare de facturare, și valabilitatea implicită pe plan (probă 14 zile, restul 365).
 const planOptions: Array<{ value: LocationPlan; label: string }> = [
   { value: "trial", label: "Trial" },
   { value: "standard", label: "Standard" },
@@ -58,6 +63,7 @@ const defaultPlanDurationDays: Record<LocationPlan, number> = {
   business: 365,
 };
 
+// Aduce data de sfârșit a unei licențe: din licență, apoi din locația asociată, apoi din data creării plus durata implicită.
 function addDays(date: Date, days: number) {
   const copy = new Date(date);
   copy.setDate(copy.getDate() + days);
@@ -90,6 +96,7 @@ function endDateForLicense(item: LicenseCodeItem, location?: LocationItem) {
   return createdAt ? addDays(createdAt, defaultPlanDurationDays[item.plan]) : null;
 }
 
+// Formatări pentru date și pentru timpul rămas („mai are 5 zile”, „expiră azi”, „expirată de 2 zile”).
 function formatDate(value: Date | null) {
   if (!value) {
     return "data nespecificata";
@@ -139,6 +146,7 @@ function formatRemaining(item: LicenseCodeItem, location?: LocationItem) {
   return `mai are ${days} zile`;
 }
 
+// Starea unei licențe: oprită, folosită, rezervată (revendicată, dar neterminată) sau disponibilă.
 function statusText(item: LicenseCodeItem) {
   if (!item.active) {
     return "oprita";
@@ -155,6 +163,7 @@ function statusText(item: LicenseCodeItem) {
   return "disponibila";
 }
 
+// Mesajul implicit al emailului cu codul de licență și starea ultimei cereri de email.
 function defaultLicenseEmailMessage(item: LicenseCodeItem) {
   const locationName = item.intendedLocationName || item.locationName || "locatia ta";
 
@@ -177,6 +186,7 @@ function emailStatusLabel(request?: LicenseEmailRequestItem) {
   return `in curs catre ${request.toEmail}`;
 }
 
+// Ciorna de editare, preluată din licență și din locația ei.
 function editDraftFor(item: LicenseCodeItem, location?: LocationItem): LicenseCodeUpdateDraft {
   return {
     plan: location?.plan ?? item.plan,
@@ -188,6 +198,7 @@ function editDraftFor(item: LicenseCodeItem, location?: LocationItem): LicenseCo
   };
 }
 
+// Componenta ferestrei.
 export function LicenseCodesModal({
   open,
   draft,
@@ -207,6 +218,7 @@ export function LicenseCodesModal({
   onRemove,
   language = "ro",
 }: LicenseCodesModalProps) {
+  // Starea locală: formularul de creare, ciorna emailului și licența în editare.
   const t = (key: UiCopyKey) => appText(language, key);
   const confirmAction = useConfirm();
   const [createOpen, setCreateOpen] = useState(false);
@@ -218,6 +230,7 @@ export function LicenseCodesModal({
   const [editingLicense, setEditingLicense] = useState<LicenseCodeItem | null>(null);
   const [editDraft, setEditDraft] = useState<LicenseCodeUpdateDraft | null>(null);
 
+  // Fereastra închisă nu se randează; apoi se calculează numerele din sumar (disponibile, folosite, oprite).
   if (!open) {
     return null;
   }
@@ -226,6 +239,7 @@ export function LicenseCodesModal({
   const usedCount = licenseCodes.filter((item) => item.used).length;
   const inactiveCount = licenseCodes.filter((item) => !item.active).length;
 
+  // Acțiuni care cer confirmare înainte de scriere: trimitere email, salvare, ștergere și generare.
   function linkedLocationFor(item: LicenseCodeItem) {
     return locations.find((location) => location.id === item.locationId);
   }
@@ -285,10 +299,13 @@ export function LicenseCodesModal({
     onGenerate();
   }
 
+  // Fereastra principală și, separat, ferestrele de editare și de email.
   return (
     <>
+      {/* Fereastra principală. */}
       <div className="modal-backdrop" role="presentation">
         <div className="modal-card manager-card license-manager-card" role="dialog" aria-modal="true" aria-label={t("license.title")}>
+          {/* Antetul ferestrei. */}
           <div className="modal-head">
             <div>
               <span className="eyebrow">{t("role.owner")}</span>
@@ -297,6 +314,7 @@ export function LicenseCodesModal({
             <button onClick={onClose} type="button" aria-label={t("booking.close")}>x</button>
           </div>
 
+          {/* Sumar: câte licențe sunt disponibile, folosite, oprite și în total. */}
           <div className="settings-summary-list compact-summary-list">
             <div>
               <span>{t("license.total")}</span>
@@ -316,12 +334,14 @@ export function LicenseCodesModal({
             </div>
           </div>
 
+          {/* Butonul care deschide formularul de generare. */}
           <div className="modal-actions">
             <button className="primary-button" onClick={() => setCreateOpen((current) => !current)} type="button">
               {createOpen ? t("license.createClose") : t("license.create")}
             </button>
           </div>
 
+          {/* Formularul de generare: plan, valabilitate, nume și adresa locației. */}
           {createOpen && (
             <div className="code-create-panel">
               <div className="mini-section-head">
@@ -379,10 +399,12 @@ export function LicenseCodesModal({
             </div>
           )}
 
+          {/* Lista licențelor. */}
           <div className="mini-section-head code-list-head">
             <h3>{t("license.list")}</h3>
           </div>
 
+          {/* Rândurile licențelor. */}
           <div className="mini-list license-list">
             {licenseCodes.length === 0 ? (
               <p className="empty-line">{t("license.noCodes")}</p>
@@ -395,8 +417,10 @@ export function LicenseCodesModal({
                 const displayPlan = linkedLocation?.plan ?? item.plan;
                 const displayStatus = linkedLocation?.billingStatus ?? item.billingStatus;
 
+                // Un rând: codul, locația, planul, timpul rămas, starea și ultimul email.
                 return (
                   <div className={`license-row compact-license-row ${!item.active || item.used ? "code-row-muted" : ""}`} key={item.id}>
+                    {/* Datele licenței. */}
                     <div className="license-row-main">
                       <span className="code-chip">{item.code}</span>
                       <strong>{displayName}</strong>
@@ -410,6 +434,7 @@ export function LicenseCodesModal({
                       {statusText(item)}
                     </span>
 
+                    {/* Acțiuni: copiere, email și modificare. */}
                     <div className="license-row-actions">
                       <button className="secondary-button compact" onClick={() => onCopy(item.code)} type="button">
                         {t("action.copy")}
@@ -434,15 +459,18 @@ export function LicenseCodesModal({
             )}
           </div>
 
+          {/* Mesajele de eroare sau succes. */}
           {error && <p className="error-line manager-alert">{error}</p>}
           {message && <p className="success-line manager-alert">{message}</p>}
 
+          {/* Închiderea ferestrei. */}
           <div className="modal-actions">
             <button className="primary-button" onClick={onClose} type="button">{t("action.done")}</button>
           </div>
         </div>
       </div>
 
+      {/* Fereastra de modificare a licenței. */}
       {editingLicense && editDraft && (
         <div className="modal-backdrop modal-backdrop-nested" role="presentation" onMouseDown={() => setEditingLicense(null)}>
           <section
@@ -462,6 +490,7 @@ export function LicenseCodesModal({
               </button>
             </div>
 
+            {/* Câmpurile modificabile: plan, stare, locație, adresă, data expirării și activ. */}
             <div className="settings-form">
               <label>
                 {t("settings.plan")}
@@ -522,6 +551,7 @@ export function LicenseCodesModal({
               </label>
             </div>
 
+            {/* Date doar pentru citire: cod, client, expirare. */}
             <div className="settings-summary-list compact-summary-list">
               <div>
                 <span>{t("settings.codes")}</span>
@@ -537,6 +567,7 @@ export function LicenseCodesModal({
               </div>
             </div>
 
+            {/* Ștergere, oprire/pornire (o licență folosită nu mai poate fi oprită) și salvare. */}
             <div className="modal-actions split-actions">
               <button className="danger-button" disabled={working} onClick={() => removeLicense(editingLicense)} type="button">
                 {t("action.delete")}
@@ -563,6 +594,7 @@ export function LicenseCodesModal({
         </div>
       )}
 
+      {/* Fereastra de trimitere pe email. */}
       {emailDraft.licenseId && (
         <div className="modal-backdrop modal-backdrop-nested" role="presentation" onMouseDown={() => setEmailDraft({ licenseId: "", toEmail: "", message: "" })}>
           <section
@@ -582,6 +614,7 @@ export function LicenseCodesModal({
               </button>
             </div>
 
+            {/* Destinatarul și mesajul emailului. */}
             <div className="settings-form newsletter-compose">
               <label>
                 {t("access.recipientEmail")}

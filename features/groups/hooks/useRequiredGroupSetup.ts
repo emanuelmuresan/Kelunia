@@ -1,5 +1,6 @@
 "use client";
 
+// Alegerea obligatorie a grupului: un utilizator care nu e manager nu intră în aplicație până nu alege un grup din locația lui.
 import { useAppText } from "@/features/shell/hooks/useAppText";
 import { useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import type { User } from "firebase/auth";
@@ -10,6 +11,7 @@ import type { RecordAuditLog } from "@/lib/audit";
 import { normalizeAllowedRoomIds, normalizeRoomAccessMode } from "@/lib/room-access";
 import type { GroupItem, PersonalDraft, WriteTarget } from "@/lib/types/domain";
 
+// Parametrii: utilizatorul, profilul, grupurile locației și funcțiile din dashboard.
 type UseRequiredGroupSetupParams = {
   db: Firestore;
   user: User | null;
@@ -44,15 +46,19 @@ export function useRequiredGroupSetup({
   setPersonalDraft,
   setGroupSetupError,
 }: UseRequiredGroupSetupParams) {
+  // Starea: grupul ales și dacă alegerea a fost deja făcută.
   const msg = useAppText();
   const [groupSetupDraft, setGroupSetupDraft] = useState("");
   const [groupSetupCompleted, setGroupSetupCompleted] = useState(false);
 
+  // Ecranul de alegere se afișează doar dacă utilizatorul nu e manager, nu are grup și nu l-a ales deja.
   const mustChooseGroup = useMemo(
     () => Boolean(user && profile && !isSuperAdmin && !profile.groupName.trim() && !groupSetupCompleted),
     [groupSetupCompleted, isSuperAdmin, profile, user]
   );
 
+  // Salvează grupul ales în profil (cu merge), scrie în audit și actualizează ciorna setărilor personale.
+  // Validări: conexiune, locație existentă și grup care există în lista locației.
   async function saveRequiredGroup() {
     setGroupSetupError("");
 
@@ -79,6 +85,7 @@ export function useRequiredGroupSetup({
       return;
     }
 
+    // Accesul la camere se păstrează din profil (managerii au mereu acces la toate).
     const requiredRoomAccess = role === "manager" ? "all" : normalizeRoomAccessMode(profile.roomAccess);
     const requiredAllowedRoomIds = requiredRoomAccess === "selected" ? normalizeAllowedRoomIds(profile.allowedRoomIds) : [];
 
@@ -114,6 +121,7 @@ export function useRequiredGroupSetup({
     }
   }
 
+  // Starea și acțiunile expuse dashboard-ului.
   return {
     groupSetupDraft,
     setGroupSetupDraft,

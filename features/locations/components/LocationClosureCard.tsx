@@ -1,5 +1,7 @@
 "use client";
 
+// Blocul „Închiderea locației” din Setări > Acces: starea (deschisă sau în curs de închidere), butonul de închidere cu confirmare
+// prin scrierea numelui locației, și redeschiderea cât timp rulează perioada de grație (vezi useLocationClosure).
 import { useState } from "react";
 
 import type { AppLanguage } from "@/context/AuthContext";
@@ -10,6 +12,7 @@ import { locationClosureGraceDays } from "@/lib/config/app";
 import { dateLocales } from "@/lib/date-locales";
 import { appText, type UiCopyKey } from "@/lib/i18n/app-copy-catalog";
 
+// Proprietățile blocului: locația, data programată pentru ștergere și funcția care afișează mesajul de succes.
 type LocationClosureCardProps = {
   language: AppLanguage;
   locationId: string;
@@ -18,6 +21,7 @@ type LocationClosureCardProps = {
   onMessage: (text: string) => void;
 };
 
+// Transformă Timestamp-ul Firestore în Date și formatează data în limba utilizatorului.
 function timestampDate(value: unknown) {
   const date = (value as { toDate?: () => Date } | null | undefined)?.toDate?.();
   return date instanceof Date ? date : null;
@@ -27,8 +31,10 @@ function dateLabel(date: Date, language: AppLanguage) {
   return date.toLocaleDateString(dateLocales[language], { day: "2-digit", month: "long", year: "numeric" });
 }
 
+// Componenta blocului.
 /** Settings card to close a location (or reopen it while the grace period runs). */
 export function LocationClosureCard({ language, locationId, locationName, closureScheduledFor, onMessage }: LocationClosureCardProps) {
+  // Starea: fereastra de confirmare, numele scris și data estimată a ștergerii; numele se compară fără litere mari/mici.
   const t = (key: UiCopyKey) => appText(language, key);
   const confirmAction = useConfirm();
   const { working, error, clearError, requestClosure, cancelClosure } = useLocationClosure({ locationId, onMessage });
@@ -39,6 +45,7 @@ export function LocationClosureCard({ language, locationId, locationName, closur
   const [futureDeletion, setFutureDeletion] = useState<Date | null>(null);
   const nameMatches = typedName.trim().toLowerCase() === locationName.trim().toLowerCase() && locationName.trim() !== "";
 
+  // Închide fereastra de confirmare (nu și în timpul unei cereri) și curăță câmpurile.
   function closeModal() {
     if (working) {
       return;
@@ -49,6 +56,7 @@ export function LocationClosureCard({ language, locationId, locationName, closur
     clearError();
   }
 
+  // Trimite cererea de închidere și închide fereastra doar dacă a reușit.
   async function confirmClosure() {
     if (await requestClosure(typedName.trim())) {
       setModalOpen(false);
@@ -56,6 +64,7 @@ export function LocationClosureCard({ language, locationId, locationName, closur
     }
   }
 
+  // Redeschiderea locației, după confirmare.
   async function reopen() {
     const confirmed = await confirmAction({
       message: t("closure.reopenMessage"),
@@ -67,8 +76,10 @@ export function LocationClosureCard({ language, locationId, locationName, closur
     }
   }
 
+  // Structura blocului.
   return (
     <>
+      {/* Blocul cu starea locației. */}
       <SettingsBlock title={t("closure.title")}>
 
         <div className="settings-summary-list">
@@ -106,6 +117,7 @@ export function LocationClosureCard({ language, locationId, locationName, closur
         </div>
       </SettingsBlock>
 
+      {/* Fereastra de confirmare: explică ce se întâmplă și cere numele exact al locației. */}
       {modalOpen && (
         <div className="modal-backdrop" role="presentation" onMouseDown={closeModal}>
           <section

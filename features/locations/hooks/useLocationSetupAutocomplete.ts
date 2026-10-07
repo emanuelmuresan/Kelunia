@@ -1,9 +1,11 @@
 "use client";
 
+// Căutarea adresei cu Google Maps Places la configurarea locației: încarcă scriptul o singură dată și completează adresa, numele și place_id.
 import { useEffect, useState, type Dispatch, type RefObject, type SetStateAction } from "react";
 
 import type { GooglePlacesWindow, MapsStatus } from "@/lib/types/domain";
 
+// Parametrii: cheia API, câmpul de adresă și funcțiile care completează formularul.
 type UseLocationSetupAutocompleteParams = {
   apiKey: string;
   enabled: boolean;
@@ -14,6 +16,7 @@ type UseLocationSetupAutocompleteParams = {
   setPlaceId: Dispatch<SetStateAction<string>>;
 };
 
+// Hook-ul de autocompletare; returnează starea hărții (oprită, se încarcă, gata, eroare).
 export function useLocationSetupAutocomplete({
   apiKey,
   enabled,
@@ -25,6 +28,7 @@ export function useLocationSetupAutocomplete({
 }: UseLocationSetupAutocompleteParams) {
   const [mapsStatus, setMapsStatus] = useState<MapsStatus>(apiKey ? "loading" : "off");
 
+  // Leagă autocompletarea de câmp când scriptul Google este disponibil.
   useEffect(() => {
     if (!enabled || !apiKey || !inputRef.current) {
       return;
@@ -45,6 +49,7 @@ export function useLocationSetupAutocomplete({
         fields: ["formatted_address", "name", "place_id"],
       });
 
+      // La alegerea unui rezultat completează adresa oficială, numele (dacă e gol) și place_id.
       listener = autocomplete.addListener("place_changed", () => {
         const place = autocomplete.getPlace();
         const officialAddress = place.formatted_address?.trim() ?? "";
@@ -63,6 +68,7 @@ export function useLocationSetupAutocomplete({
       setMapsStatus("ready");
     };
 
+    // Dacă scriptul e deja încărcat se folosește direct; altfel se adaugă în pagină, o singură dată.
     if (mapsWindow.google?.maps?.places?.Autocomplete) {
       setupAutocomplete();
       return () => listener?.remove();
@@ -80,6 +86,7 @@ export function useLocationSetupAutocomplete({
       document.head.appendChild(script);
     }
 
+    // Reacții la încărcarea sau eșecul scriptului; la ieșire ascultătorii se scot.
     const handleLoad = () => setupAutocomplete();
     const handleError = () => setMapsStatus("error");
 
