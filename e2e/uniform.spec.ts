@@ -80,6 +80,36 @@ test("the invitation language can be picked in the codes modal", async ({ page }
   await dialog.screenshot({ path: "test-results/invite-language.png" });
 });
 
+test("an administrator cannot change their own role", async ({ page }) => {
+  await loginAsAdmin(page);
+
+  await page
+    .locator("article.settings-panel")
+    .filter({ has: page.getByRole("heading", { name: "Utilizatori" }) })
+    .getByRole("button", { name: "Modifică" })
+    .click();
+
+  const dialog = page.locator('[aria-labelledby="users-manager-title"]');
+  const ownRow = dialog.locator(".user-row", { hasText: "admin@e2e.test" });
+  await expect(ownRow.getByText("Acesta este contul tău.")).toBeVisible();
+  await expect(ownRow.locator("select").first()).toBeDisabled();
+  await expect(ownRow.getByRole("button", { name: "Modifică" })).toBeDisabled();
+  await expect(ownRow.getByRole("button", { name: "Șterge" })).toBeDisabled();
+
+  // Another user can still be edited.
+  await expect(dialog.locator(".user-row", { hasText: "member@e2e.test" }).getByRole("button", { name: "Modifică" })).toBeEnabled();
+});
+
+test("the only administrator cannot delete their account", async ({ page }) => {
+  await loginAsAdmin(page);
+
+  await page.getByRole("button", { name: "Șterge contul" }).click();
+  const dialog = page.locator('[aria-labelledby="delete-account-title"]');
+  await expect(dialog.getByText("Ești singurul administrator al acestei locații.")).toBeVisible();
+  await dialog.getByPlaceholder("admin@e2e.test").fill("admin@e2e.test");
+  await expect(dialog.getByRole("button", { name: "Șterge definitiv contul" })).toBeDisabled();
+});
+
 // Runs last: it switches the seeded admin to English.
 test("messages follow the chosen language", async ({ page }) => {
   await loginAsAdmin(page);

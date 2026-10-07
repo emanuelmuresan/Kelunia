@@ -10,12 +10,13 @@ import { appText } from "@/lib/i18n/app-copy-catalog";
 
 type DeleteAccountModalProps = {
   accountEmail: string;
+  isSoleAdmin?: boolean;
   language: AppLanguage;
   onClose: () => void;
 };
 
 /** GDPR "delete my account" flow. Rendered only while open, so state resets each time. */
-export function DeleteAccountModal({ accountEmail, language, onClose }: DeleteAccountModalProps) {
+export function DeleteAccountModal({ accountEmail, isSoleAdmin = false, language, onClose }: DeleteAccountModalProps) {
   const t = (key: Parameters<typeof appText>[1]) => appText(language, key);
   const [email, setEmail] = useState("");
   const [working, setWorking] = useState(false);
@@ -32,6 +33,11 @@ export function DeleteAccountModal({ accountEmail, language, onClose }: DeleteAc
   async function deleteCurrentAccount() {
     const cleanEmail = email.trim().toLowerCase();
 
+    if (isSoleAdmin) {
+      setError(t("settings.lastAdminDeleteBlocked"));
+      return;
+    }
+
     if (!accountEmail || cleanEmail !== accountEmail.toLowerCase()) {
       setError("Scrie exact emailul contului pentru confirmare.");
       return;
@@ -47,7 +53,12 @@ export function DeleteAccountModal({ accountEmail, language, onClose }: DeleteAc
       window.location.href = `/login?lang=${language}`;
     } catch (deleteError) {
       console.warn("Contul nu a putut fi sters:", deleteError);
-      setError("Contul nu a putut fi șters. Intră din nou în cont și încearcă încă o dată.");
+      const reason = (deleteError as { details?: { reason?: string } } | null)?.details?.reason;
+      setError(
+        reason === "last-admin"
+          ? t("settings.lastAdminDeleteBlocked")
+          : "Contul nu a putut fi șters. Intră din nou în cont și încearcă încă o dată."
+      );
     } finally {
       setWorking(false);
     }
@@ -75,6 +86,8 @@ export function DeleteAccountModal({ accountEmail, language, onClose }: DeleteAc
             Programările și istoricul locației pot rămâne anonimizate unde sunt necesare pentru continuitate, audit sau obligații legale. Facturile și plățile pot fi păstrate conform obligațiilor fiscale.
           </p>
 
+          {isSoleAdmin && <p className="error-line">{t("settings.lastAdminDeleteBlocked")}</p>}
+
           <label>
             Scrie emailul contului pentru confirmare
             <input
@@ -95,7 +108,7 @@ export function DeleteAccountModal({ accountEmail, language, onClose }: DeleteAc
             </button>
             <button
               className="danger-button"
-              disabled={working || email.trim().toLowerCase() !== accountEmail.toLowerCase()}
+              disabled={working || isSoleAdmin || email.trim().toLowerCase() !== accountEmail.toLowerCase()}
               onClick={deleteCurrentAccount}
               type="button"
             >

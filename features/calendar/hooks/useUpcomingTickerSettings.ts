@@ -5,6 +5,8 @@ import { useCallback, useEffect, useState } from "react";
 export type UpcomingTickerSettings = {
   enabled: boolean;
   color: string;
+  // "" = automatic: white on dark bands, near-black on light ones.
+  textColor: string;
   leadDays: number;
 };
 
@@ -13,6 +15,7 @@ const STORAGE_KEY = "kelunia.upcomingTicker";
 export const defaultUpcomingTickerSettings: UpcomingTickerSettings = {
   enabled: false,
   color: "#1787ff",
+  textColor: "",
   leadDays: 7,
 };
 
@@ -23,6 +26,7 @@ function sanitize(value: unknown): UpcomingTickerSettings {
   return {
     enabled: raw.enabled === true,
     color: typeof raw.color === "string" && /^#[0-9a-fA-F]{6}$/.test(raw.color) ? raw.color : defaultUpcomingTickerSettings.color,
+    textColor: typeof raw.textColor === "string" && /^#[0-9a-fA-F]{6}$/.test(raw.textColor) ? raw.textColor : "",
     leadDays: Number.isFinite(leadDays) ? Math.min(60, Math.max(1, Math.round(leadDays))) : defaultUpcomingTickerSettings.leadDays,
   };
 }

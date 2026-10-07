@@ -193,6 +193,12 @@ export function SettingsView({
   const [errorReportsOpen, setErrorReportsOpen] = useState(false);
 
   const accountEmail = user?.email ?? profile?.email ?? "";
+  // The last administrator of a location cannot delete their account: nobody
+  // would be left to manage it (deleteMyAccount enforces this server-side too).
+  const isSoleAdmin =
+    !isOwner &&
+    isSuperAdmin &&
+    !visibleManagedUsers.some((item) => item.role === "manager" && !item.isOwner && item.id !== user?.uid);
   const activeNewsletterSubscribers = newsletterSubscribers.filter(
     (subscriber) => subscriber.status === "active" && !subscriber.unsubscribed
   );
@@ -381,6 +387,7 @@ export function SettingsView({
       <UsersManagerModal
         language={language}
         managedUsers={visibleManagedUsers}
+        currentUserId={user?.uid ?? ""}
         rooms={rooms}
         canManageMembers={canManageMembers}
         currentLocationId={currentLocationId}
@@ -409,6 +416,7 @@ export function SettingsView({
     {deleteAccountOpen && (
       <DeleteAccountModal
         accountEmail={accountEmail}
+        isSoleAdmin={isSoleAdmin}
         language={language}
         onClose={() => setDeleteAccountOpen(false)}
       />

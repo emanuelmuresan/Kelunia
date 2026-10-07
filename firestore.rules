@@ -1476,7 +1476,10 @@ service cloud.firestore {
         && (
           isOwner()
           || (
-            isLocationSuperAdmin()
+            // Own account goes through the deleteMyAccount function (which keeps
+            // the last administrator in place), never a direct client delete.
+            request.auth.uid != userId
+            && isLocationSuperAdmin()
             && resource.data.locationId == userLocationId()
           )
         );

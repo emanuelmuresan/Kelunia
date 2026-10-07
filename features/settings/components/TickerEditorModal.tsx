@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import type { AppLanguage } from "@/context/AuthContext";
 import { SettingsBlock } from "@/features/settings/components/SettingsBlock";
+import { tickerTextColor } from "@/features/calendar/components/UpcomingTicker";
 import { appText, type UiCopyKey } from "@/lib/i18n/app-copy-catalog";
 import type { UpcomingTickerSettings } from "@/features/calendar/hooks/useUpcomingTickerSettings";
 
@@ -27,7 +28,10 @@ export function TickerEditorModal({ language, settings, onSave, onClose }: Ticke
   const [leadDaysText, setLeadDaysText] = useState(String(settings.leadDays));
   const nextLeadDays = clampTickerLeadDays(leadDaysText, settings.leadDays);
   const dirty =
-    draft.enabled !== settings.enabled || draft.color !== settings.color || nextLeadDays !== settings.leadDays;
+    draft.enabled !== settings.enabled ||
+    draft.color !== settings.color ||
+    draft.textColor !== settings.textColor ||
+    nextLeadDays !== settings.leadDays;
 
   const requestClose = useDismissGuard(dirty, onClose, language);
 
@@ -84,6 +88,40 @@ export function TickerEditorModal({ language, settings, onSave, onClose }: Ticke
                 onChange={(event) => setDraft((current) => ({ ...current, color: event.target.value }))}
               />
             </label>
+
+            <label className="toggle-row compact-toggle">
+              <input
+                type="checkbox"
+                checked={draft.textColor === ""}
+                disabled={!draft.enabled}
+                onChange={(event) =>
+                  setDraft((current) => ({
+                    ...current,
+                    textColor: event.target.checked ? "" : tickerTextColor(current),
+                  }))
+                }
+              />
+              {t("settings.tickerTextAuto")}
+            </label>
+
+            {draft.textColor !== "" && (
+              <label>
+                {t("settings.tickerTextColor")}
+                <input
+                  type="color"
+                  value={draft.textColor}
+                  disabled={!draft.enabled}
+                  onChange={(event) => setDraft((current) => ({ ...current, textColor: event.target.value }))}
+                />
+              </label>
+            )}
+
+            <div
+              className="ticker-preview"
+              style={{ backgroundColor: draft.color, color: tickerTextColor(draft) }}
+            >
+              {t("settings.tickerTitle")}
+            </div>
           </SettingsBlock>
 
           <div className="modal-actions">

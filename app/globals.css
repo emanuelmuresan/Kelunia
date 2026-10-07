@@ -4754,27 +4754,30 @@ img {
   top: var(--kelunia-topbar-h, 118px);
   z-index: 20;
   margin: 0 0 8px;
-  border: 1px solid var(--line);
-  border-left: 4px solid var(--ticker-accent, var(--blue));
   border-radius: 8px;
-  background: #fff;
+  background: var(--ticker-accent, var(--blue));
+  color: var(--ticker-text, #fff);
   overflow: hidden;
 }
 
 .upcoming-ticker-empty {
   padding: 8px 12px;
   font-size: 0.86rem;
-  color: var(--muted);
+  font-weight: 650;
 }
 
 .upcoming-ticker-track {
-  display: inline-flex;
-  gap: 10px;
+  display: flex;
   width: max-content;
-  padding: 7px 10px;
   animation-name: ticker-scroll;
   animation-timing-function: linear;
   animation-iteration-count: infinite;
+}
+
+.upcoming-ticker-set {
+  display: flex;
+  flex: none;
+  align-items: center;
 }
 
 .upcoming-ticker:hover .upcoming-ticker-track,
@@ -4784,37 +4787,43 @@ img {
 
 @keyframes ticker-scroll {
   from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
+  to { transform: translateX(calc(-1 * var(--ticker-shift, 50%))); }
 }
 
 .upcoming-ticker-item {
   display: inline-flex;
   align-items: baseline;
   gap: 6px;
-  padding: 3px 10px;
+  padding: 8px 18px 8px 0;
   border: none;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--ticker-accent, var(--blue)) 12%, #fff);
-  color: var(--ink);
-  font-size: 0.78rem;
+  background: transparent;
+  color: inherit;
+  font-size: 0.82rem;
   white-space: nowrap;
   cursor: pointer;
 }
 
+.upcoming-ticker-item::after {
+  content: "\2022";
+  margin-left: 12px;
+  opacity: 0.55;
+}
+
 .upcoming-ticker-when {
   font-weight: 800;
-  color: color-mix(in srgb, var(--ticker-accent, var(--blue)) 78%, #000);
 }
 
 .upcoming-ticker-what {
-  color: var(--muted);
+  opacity: 0.9;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .upcoming-ticker-track {
     animation: none;
+  }
+
+  .upcoming-ticker {
     overflow-x: auto;
-    max-width: 100%;
   }
 }
 
@@ -5020,4 +5029,18 @@ img {
 .invite-language-field select {
   width: auto;
   min-width: 9rem;
+}
+
+.ticker-preview {
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.user-self-note {
+  display: block;
+  margin-top: 4px;
+  color: var(--amber);
+  font-weight: 650;
 }

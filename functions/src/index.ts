@@ -1143,6 +1143,31 @@ export const deleteMyAccount = onCall(
     }
 
     const uid = request.auth.uid;
+
+    // The last administrator of a location may not leave it without one.
+    const ownProfileSnapshot = await db.doc(`users/${uid}`).get();
+    const ownProfile = ownProfileSnapshot.exists ? ownProfileSnapshot.data() as UserProfile : null;
+
+    if (
+      ownProfile &&
+      ownProfile.isOwner !== true &&
+      normalizeRole(ownProfile.role) === "manager" &&
+      cleanText(ownProfile.locationId, 160)
+    ) {
+      const locationUsers = await db.collection("users").where("locationId", "==", ownProfile.locationId).get();
+      const otherAdmins = locationUsers.docs.filter(
+        (userDoc) => userDoc.id !== uid && normalizeRole((userDoc.data() as UserProfile).role) === "manager"
+      );
+
+      if (otherAdmins.length === 0) {
+        throw new HttpsError(
+          "failed-precondition",
+          "Ești singurul administrator al locației. Numește alt administrator înainte să îți ștergi contul.",
+          { reason: "last-admin" }
+        );
+      }
+    }
+
     const newsletterId = encodeURIComponent(accountEmail);
     const [tokensByUid, tokensByEmail, anonymizedBookings] = await Promise.all([
       deleteQueryResults(db.collection("notificationTokens").where("uid", "==", uid).limit(450)),

@@ -162,6 +162,12 @@ await chk("audit: spoofed actorUid rejected", "DENY", () => addDoc(collection(db
   actorUid: "someoneElse", actorEmail: "m@x.com", actorName: "U", before: null, after: null, createdAt: ts(),
 }));
 
+console.log("\n--- users: administrator safety ---");
+await chk("users: manager cannot change their OWN role", "DENY", () => updateDoc(doc(dbMgr(), "users", MGR), { role: "member" }));
+await chk("users: manager can change ANOTHER user's role", "ALLOW", () => updateDoc(doc(dbMgr(), "users", MEMBER), { role: "guest" }));
+await chk("users: manager cannot delete their own users doc", "DENY", () => deleteDoc(doc(dbMgr(), "users", MGR)));
+await chk("users: manager can delete another user of the location", "ALLOW", () => deleteDoc(doc(dbMgr(), "users", MEMBER)));
+
 console.log("\n--- accessCodes ---");
 await chk("accessCode: soft-delete (updateDoc {...softDelete, active:false})", "ALLOW", () => updateDoc(doc(dbMgr(), "accessCodes", "CODE1"), { ...softDelete(), active: false }));
 await chk("accessCode: undo soft-delete (restore)", "ALLOW", async () => { await updateDoc(doc(dbMgr(), "accessCodes", "CODE1"), { ...softDelete(), active: false }); await updateDoc(doc(dbMgr(), "accessCodes", "CODE1"), { ...{ deleted: false, deletedAt: null, deletedBy: "", deletedByUid: "", updatedBy: "m@x.com", updatedAt: ts() }, active: true }); });

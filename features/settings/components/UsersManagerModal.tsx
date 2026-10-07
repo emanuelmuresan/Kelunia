@@ -16,6 +16,7 @@ type ManagedUserDraft = {
 type UsersManagerModalProps = {
   language: AppLanguage;
   managedUsers: ManagedUser[];
+  currentUserId: string;
   rooms: RoomItem[];
   canManageMembers: boolean;
   currentLocationId: string;
@@ -42,6 +43,7 @@ function sameRoomIds(first: string[], second: string[]) {
 export function UsersManagerModal({
   language,
   managedUsers,
+  currentUserId,
   rooms,
   canManageMembers,
   currentLocationId,
@@ -147,8 +149,10 @@ export function UsersManagerModal({
               draftRole === "manager" ||
               !canManageMembers ||
               managedUser.locationId !== currentLocationId;
+            const isSelf = managedUser.id === currentUserId;
             const canEditManagedUser =
               !managedUser.isOwner &&
+              !isSelf &&
               canManageMembers &&
               managedUser.locationId === currentLocationId;
 
@@ -159,6 +163,7 @@ export function UsersManagerModal({
                   <span>
                     {managedUser.email} · {managedUser.locationName || t("settings.notSet")} · {managedUser.groupName || t("settings.notChosen")}
                   </span>
+                  {isSelf && <small className="user-self-note">{t("settings.selfRoleLocked")}</small>}
                 </div>
 
                 <select
@@ -173,6 +178,7 @@ export function UsersManagerModal({
                   }}
                   disabled={
                     !isEditingUser ||
+                    isSelf ||
                     managedUser.isOwner ||
                     !canManageMembers ||
                     managedUser.locationId !== currentLocationId

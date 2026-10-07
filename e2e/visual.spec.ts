@@ -157,3 +157,26 @@ test("capture unified row actions + toast", async ({ page }) => {
   await page.waitForTimeout(400);
   await page.screenshot({ path: "test-results/toast-after-save.png" });
 });
+
+test("capture ticker colors", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  for (const [name, color] of [["blue", "#1787ff"], ["white", "#ffffff"], ["dark", "#16172b"]]) {
+    await page.addInitScript(([c]) => {
+      try {
+        localStorage.setItem("kelunia.upcomingTicker", JSON.stringify({ enabled: true, color: c, textColor: "", leadDays: 7 }));
+      } catch {
+        /* ignore */
+      }
+    }, [color]);
+    await page.goto("/login");
+    await page.locator('input[type="email"]').fill(USER.email);
+    await page.locator('input[type="password"]').first().fill(USER.password);
+    await page.locator('form button[type="submit"]').click();
+    await page.locator("main.kelunia-shell").waitFor({ timeout: 30_000 });
+    await page.waitForTimeout(1200);
+    await page.locator(".upcoming-ticker").screenshot({ path: `test-results/ticker-${name}.png` });
+    await page.evaluate(() => localStorage.clear());
+    await page.context().clearCookies();
+    await page.goto("/login");
+  }
+});

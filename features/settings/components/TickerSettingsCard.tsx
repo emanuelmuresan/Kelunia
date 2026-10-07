@@ -50,6 +50,16 @@ export function TickerSettingsCard({ language, settings, onChange }: TickerSetti
                   <i className="ticker-color-swatch" style={{ backgroundColor: settings.color }} />
                 </strong>
               </div>
+              <div>
+                <span>{t("settings.tickerTextColor")}</span>
+                <strong>
+                  {settings.textColor ? (
+                    <i className="ticker-color-swatch" style={{ backgroundColor: settings.textColor }} />
+                  ) : (
+                    t("settings.tickerAuto")
+                  )}
+                </strong>
+              </div>
             </>
           )}
         </div>

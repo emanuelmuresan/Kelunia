@@ -1,5 +1,6 @@
 "use client";
 
+import { useAuth } from "@/context/AuthContext";
 import { useAppText } from "@/features/shell/hooks/useAppText";
 import { useConfirm } from "@/features/shell/components/ConfirmDialog";
 import { deleteDoc, doc, updateDoc, type Firestore } from "firebase/firestore";
@@ -43,6 +44,7 @@ export function useManagedUserActions({
 }: UseManagedUserActionsParams) {
   const confirmAction = useConfirm();
   const msg = useAppText();
+  const { user } = useAuth();
 
   async function updateManagedUserRole(managedUser: ManagedUser, nextRole: UserRole) {
     if (!canManageMembers || managedUser.isOwner || managedUser.locationId !== currentLocationId) {
@@ -52,8 +54,27 @@ export function useManagedUserActions({
     setSettingsError("");
     setSettingsMessage("");
 
+    // An administrator who demotes themselves would lock themselves out; only
+    // another administrator may change their role (firestore.rules agree).
+    if (managedUser.id === user?.uid) {
+      setSettingsError(msg("msg.selfRoleChange"));
+      return;
+    }
+
     if (!requireOnline("settings")) {
       return;
+    }
+
+    if (managedUser.role === "manager" && nextRole !== "manager") {
+      const confirmed = await confirmAction({
+        message: msg("msg.confirmDemoteAdmin", { name: managedUser.displayName || managedUser.email }),
+        confirmLabel: msg("msg.demoteAction"),
+        tone: "danger",
+      });
+
+      if (!confirmed) {
+        return;
+      }
     }
 
     const otherSuperAdmins = managedUsers.filter(
@@ -145,6 +166,11 @@ export function useManagedUserActions({
       managedUser.locationId !== currentLocationId ||
       !requireOnline("settings")
     ) {
+      return;
+    }
+
+    if (managedUser.id === user?.uid) {
+      setSettingsError(msg("msg.cannotRemoveSelf"));
       return;
     }
 
