@@ -5,7 +5,7 @@ import { expect, test, type Page } from "@playwright/test";
 // unverified account registers with an invitation code. Regression net for the
 // "Missing or insufficient permissions" reports on access-code registration.
 
-async function stubVerificationEmail(page: Page) {
+async function stubVerificationEmail(page: Page, response: Record<string, unknown> = { sent: true }) {
   // The verification email is a Cloud Function that does not exist on the emulators.
   await page.route("**/sendAuthVerificationEmail", (route) => {
     const headers = {
@@ -18,7 +18,7 @@ async function stubVerificationEmail(page: Page) {
       return route.fulfill({ status: 204, headers });
     }
 
-    return route.fulfill({ status: 200, headers, contentType: "application/json", body: JSON.stringify({ result: { sent: true } }) });
+    return route.fulfill({ status: 200, headers, contentType: "application/json", body: JSON.stringify({ result: response }) });
   });
 }
 
@@ -53,4 +53,23 @@ test("an e-mail typed with capitals still registers (it is normalised to lowerca
 
   await expect(page.locator(".success-line")).toBeVisible({ timeout: 20_000 });
   await expect(page.locator(".error-line")).toHaveCount(0);
+});
+
+test("logging in before verifying resends the email, or says one was just sent", async ({ page }) => {
+  await register(page, "KEL-E2EG-GUES-0003", "inca.neverificat@e2e.test");
+  await expect(page.locator(".success-line")).toBeVisible({ timeout: 20_000 });
+
+  // The form is back in login mode with the e-mail kept; the password was cleared.
+  const logIn = async () => {
+    await page.locator('input[type="password"]').first().fill("Parola-Sigura-2026!");
+    await page.locator('form button[type="submit"]').click();
+  };
+
+  await logIn();
+  await expect(page.locator(".error-line")).toContainText("Ți-am retrimis emailul de verificare", { timeout: 20_000 });
+
+  await page.unroute("**/sendAuthVerificationEmail");
+  await stubVerificationEmail(page, { sent: false, throttled: true });
+  await logIn();
+  await expect(page.locator(".error-line")).toContainText("trimis deja de curând", { timeout: 20_000 });
 });

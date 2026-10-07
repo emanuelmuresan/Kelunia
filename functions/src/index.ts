@@ -898,10 +898,33 @@ export const sendAuthVerificationEmail = onCall(
       return { alreadyVerified: true, sent: false };
     }
 
-    const link = await getAuth().generateEmailVerificationLink(user.email, {
-      url: appUrl("/login"),
-      handleCodeInApp: false,
-    });
+    // Logging in with an unverified account re-sends the email. Do not pile up
+    // sends: within a couple of minutes of the last one, say so instead.
+    const lastSentAt = (await getFirestore().doc(`users/${user.uid}`).get()).data()?.verificationEmailSentAt as
+      | { toMillis?: () => number }
+      | undefined;
+
+    if (lastSentAt?.toMillis && Date.now() - lastSentAt.toMillis() < 2 * 60 * 1000) {
+      return { alreadyVerified: false, sent: false, throttled: true };
+    }
+
+    let link = "";
+
+    try {
+      link = await getAuth().generateEmailVerificationLink(user.email, {
+        url: appUrl("/login"),
+        handleCodeInApp: false,
+      });
+    } catch (error) {
+      // Firebase Auth rate-limits verification links per account. That is not a
+      // configuration problem, so report it as "sent recently", not as a failure.
+      if (String((error as { message?: string }).message ?? "").includes("TOO_MANY_ATTEMPTS_TRY_LATER")) {
+        logger.warn("Verification link rate-limited by Firebase Auth", { uid: user.uid });
+        return { alreadyVerified: false, sent: false, throttled: true };
+      }
+
+      throw error;
+    }
 
     const resend = new Resend(resendApiKey.value());
     const result = await resend.emails.send({

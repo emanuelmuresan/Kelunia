@@ -169,14 +169,14 @@ async function sendVerificationAndSignOut(language: AppLanguage) {
   await signOut(auth);
 }
 
-async function resendVerificationBeforeSignOut(language: AppLanguage) {
+// "sent" = a fresh email went out; "throttled" = one was sent a moment ago.
+async function resendVerificationBeforeSignOut(language: AppLanguage): Promise<"sent" | "throttled"> {
   try {
-    await sendCustomVerificationEmail(language);
+    const result = await sendCustomVerificationEmail(language);
+    return result.throttled ? "throttled" : "sent";
   } catch (error) {
     console.error("Emailul de verificare nu a putut fi trimis:", error);
-    throw new Error(
-      "Emailul de verificare nu a putut fi trimis prin Kelunia. Verifică secretul RESEND_API_KEY, EMAIL_FROM și domeniul Resend."
-    );
+    throw new Error("Emailul de verificare nu a putut fi trimis acum. Încearcă din nou peste câteva minute.");
   } finally {
     await signOut(auth).catch((signOutError) => {
       console.warn("Delogarea după retrimiterea verificării a eșuat:", signOutError);
@@ -185,8 +185,12 @@ async function resendVerificationBeforeSignOut(language: AppLanguage) {
 }
 
 async function sendCustomVerificationEmail(language: AppLanguage) {
-  const sendVerification = httpsCallable(cloudFunctions, "sendAuthVerificationEmail");
-  await sendVerification({ language });
+  const sendVerification = httpsCallable<{ language: AppLanguage }, { sent?: boolean; throttled?: boolean }>(
+    cloudFunctions,
+    "sendAuthVerificationEmail"
+  );
+  const response = await sendVerification({ language });
+  return response.data;
 }
 
 async function sendCustomPasswordResetEmail(email: string, language: AppLanguage) {
@@ -524,8 +528,9 @@ export default function LoginPage() {
         );
 
         if (!credential.user.emailVerified) {
-          await resendVerificationBeforeSignOut(language);
-          throw new Error("Emailul nu este verificat.");
+          const outcome = await resendVerificationBeforeSignOut(language);
+          setError(appText(language, outcome === "throttled" ? "auth.unverifiedAlreadySent" : "auth.unverifiedResent"));
+          return;
         }
 
         router.push("/dashboard");
