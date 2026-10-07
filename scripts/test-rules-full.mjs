@@ -167,6 +167,10 @@ await chk("locations: owner can save a location carrying closure fields", "ALLOW
 await chk("locations: manager can no longer delete the location", "DENY", () => deleteDoc(doc(dbMgr(), "locations", LOC)));
 await chk("locations: owner can delete a location", "ALLOW", () => deleteDoc(doc(dbOwner(), "locations", LOC)));
 
+await chk("closedLocations: owner can read the archived billing record", "ALLOW", async () => { await te.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), "closedLocations", LOC), { name: "L", plan: "pro" })); return getDoc(doc(dbOwner(), "closedLocations", LOC)); });
+await chk("closedLocations: a location manager cannot read it", "DENY", async () => { await te.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), "closedLocations", LOC), { name: "L" })); return getDoc(doc(dbMgr(), "closedLocations", LOC)); });
+await chk("closedLocations: nobody writes from a client (not even the owner)", "DENY", () => setDoc(doc(dbOwner(), "closedLocations", LOC), { name: "x" }));
+
 console.log("\n--- users: administrator safety ---");
 await chk("users: manager cannot change their OWN role", "DENY", () => updateDoc(doc(dbMgr(), "users", MGR), { role: "member" }));
 await chk("users: manager can change ANOTHER user's role", "ALLOW", () => updateDoc(doc(dbMgr(), "users", MEMBER), { role: "guest" }));

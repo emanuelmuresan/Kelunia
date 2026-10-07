@@ -1797,7 +1797,7 @@ async function requireLocationAdmin(request: CallableRequest, locationId: string
   return { email };
 }
 
-// Licence / subscription records that mention a location are billing documents:
+// Licence / subscription records that mention a location are accounting records:
 // the purge deliberately leaves them, and the owner is told which ones remain.
 async function linkedBillingDocuments(locationId: string) {
   const [licenses, subscriptions] = await Promise.all([
@@ -1812,15 +1812,11 @@ async function linkedBillingDocuments(locationId: string) {
 }
 
 function billingDocumentLines(documents: { licenseCodes: string[]; subscriptionCount: number }) {
-  if (documents.licenseCodes.length === 0 && documents.subscriptionCount === 0) {
-    return ["Nu există licențe sau abonamente legate de această locație."];
-  }
-
   return [
-    "Documente legate de locație care NU se șterg automat (le poți șterge sau păstra pentru evidență):",
+    "Rămân păstrate pentru audit contabil (nu se șterg): înregistrarea locației cu datele de facturare (arhivată în closedLocations), jurnalul de audit pentru locație și licențe, plus:",
     `- Licențe (${documents.licenseCodes.length}): ${documents.licenseCodes.join(", ") || "-"}`,
     `- Abonamente: ${documents.subscriptionCount}`,
-  ];
+  ].join("\n");
 }
 
 // Email + push to the platform owner about a location's lifecycle.
@@ -1922,7 +1918,7 @@ export const requestLocationClosure = onCall(
         [
           `Locația ${locationName} (${locationId}) a fost închisă de ${admin.email}.`,
           `Aplicația rămâne doar în citire pentru ea până pe ${dateLabel}; atunci se șterg automat programările, grupurile, sălile, codurile de acces și toate conturile membrilor.`,
-          billingDocumentLines(billing).join("\n"),
+          billingDocumentLines(billing),
           "Dacă a fost o greșeală, locația poate fi redeschisă din Setări până la data de mai sus.",
         ],
         `${locationName} se închide; ștergere automată pe ${dateLabel}.`
@@ -2017,7 +2013,7 @@ export const purgeClosedLocations = onSchedule(
           `Locația ${name} a fost ștearsă definitiv`,
           [
             `Perioada de 30 de zile s-a încheiat: locația ${name} (${location.id}) și ${result.accountsDeleted} conturi asociate au fost șterse definitiv, împreună cu programările, grupurile, sălile și codurile ei.`,
-            billingDocumentLines(billing).join("\n"),
+            billingDocumentLines(billing),
           ],
           `${name} a fost ștearsă definitiv (${result.accountsDeleted} conturi).`
         );

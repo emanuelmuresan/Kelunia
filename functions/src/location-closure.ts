@@ -1,5 +1,5 @@
 import type { Auth } from "firebase-admin/auth";
-import type { Firestore } from "firebase-admin/firestore";
+import { Timestamp, type Firestore } from "firebase-admin/firestore";
 
 // A closed location keeps its data read-only for this many days, then is purged.
 export const closureGraceDays = 30;
@@ -74,7 +74,12 @@ export function closureEmail(
   };
 }
 
-const locationScopedCollections = ["events", "groups", "rooms", "fixedSchedules", "accessCodes", "notificationTokens", "auditLogs"];
+const locationScopedCollections = ["events", "groups", "rooms", "fixedSchedules", "accessCodes", "notificationTokens"];
+
+// What an accounting audit still needs after a purge: the licence/subscription
+// records themselves are never touched, the location's billing data is archived
+// in closedLocations/{id}, and the audit trail of location and licence changes stays.
+const retainedAuditEntityTypes = new Set(["location", "license"]);
 
 async function deleteWhere(db: Firestore, collection: string, field: string, value: string) {
   let deleted = 0;
@@ -93,10 +98,42 @@ async function deleteWhere(db: Firestore, collection: string, field: string, val
   }
 }
 
+// Operational audit entries (bookings, rooms, users...) go; location/licence ones stay.
+async function deleteOperationalAuditLogs(db: Firestore, locationId: string) {
+  let deleted = 0;
+  let cursor: FirebaseFirestore.QueryDocumentSnapshot | undefined;
+
+  for (;;) {
+    let query = db.collection("auditLogs").where("locationId", "==", locationId).orderBy("__name__").limit(450);
+
+    if (cursor) {
+      query = query.startAfter(cursor);
+    }
+
+    const snapshot = await query.get();
+
+    if (snapshot.empty) {
+      return deleted;
+    }
+
+    const batch = db.batch();
+    snapshot.docs
+      .filter((item) => !retainedAuditEntityTypes.has(String(item.data().entityType ?? "")))
+      .forEach((item) => {
+        batch.delete(item.ref);
+        deleted += 1;
+      });
+    await batch.commit();
+    cursor = snapshot.docs[snapshot.docs.length - 1];
+  }
+}
+
 /**
- * Permanently removes a closed location: its data, its settings, every member
- * account (Auth user, profile, tokens) and finally the location itself. Platform
- * owner accounts are never touched.
+ * Permanently removes a closed location: its operational data, its settings and
+ * every member account (Auth user, profile, tokens). Platform owner accounts are
+ * never touched. Billing records stay for accounting: licences and subscriptions
+ * are not touched, and the location's own record is archived to closedLocations
+ * (which also frees the location id for a later, brand-new location).
  */
 export async function purgeLocation(db: Firestore, auth: Auth, locationId: string, ownerEmail: string) {
   const members = await db.collection("users").where("locationId", "==", locationId).get();
@@ -133,8 +170,20 @@ export async function purgeLocation(db: Firestore, auth: Auth, locationId: strin
     removed[collection] = await deleteWhere(db, collection, "locationId", locationId);
   }
 
+  removed.auditLogs = await deleteOperationalAuditLogs(db, locationId);
+
   await db.doc(`settings/calendar_${locationId}`).delete();
-  await db.recursiveDelete(db.doc(`locations/${locationId}`));
+
+  const locationRef = db.doc(`locations/${locationId}`);
+  const locationSnapshot = await locationRef.get();
+
+  if (locationSnapshot.exists) {
+    const { usage: _usage, ...billingRecord } = locationSnapshot.data() ?? {};
+    void _usage;
+    await db.doc(`closedLocations/${locationId}`).set({ ...billingRecord, purgedAt: Timestamp.now(), accountsDeleted });
+  }
+
+  await db.recursiveDelete(locationRef);
 
   return { accountsDeleted, removed };
 }

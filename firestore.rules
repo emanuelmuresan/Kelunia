@@ -1885,6 +1885,13 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Billing record of a purged location, written only by the purge function
+    // (Admin SDK) so licence/subscription history still points at something.
+    match /closedLocations/{locationId} {
+      allow read: if signedInVerified() && isOwner();
+      allow write: if false;
+    }
+
     match /locations/{locationId} {
       // The !hasUserDoc() branch is a deliberate bootstrap exception: a brand-new
       // access-code registration creates the Auth user, then reads the location

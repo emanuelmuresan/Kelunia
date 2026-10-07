@@ -9,12 +9,13 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 
-import { initializeApp } from "firebase-admin/app";
-import { getAuth } from "firebase-admin/auth";
-import { getFirestore } from "firebase-admin/firestore";
-
-const require = createRequire(import.meta.url);
-const { purgeLocation } = require("../functions/lib/location-closure.js");
+// Use the functions package's own firebase-admin: the compiled purge code builds
+// Firestore Timestamps with it, and two copies of the SDK would not interoperate.
+const require = createRequire(new URL("../functions/package.json", import.meta.url));
+const { initializeApp } = require("firebase-admin/app");
+const { getAuth } = require("firebase-admin/auth");
+const { getFirestore } = require("firebase-admin/firestore");
+const { purgeLocation } = require("./lib/location-closure.js");
 
 initializeApp({ projectId: process.env.GCLOUD_PROJECT || "demo-kelunia" });
 const db = getFirestore();
@@ -31,7 +32,20 @@ async function user(uid, email, locationId, extra = {}) {
   await db.doc(`notificationTokens/token-${uid}`).set({ uid, email, locationId, token: `t-${uid}` });
 }
 
-await db.doc(`locations/${GONE}`).set({ name: "Closing", billingStatus: "canceled", closureScheduledFor: new Date(0) });
+await db.doc(`locations/${GONE}`).set({
+  name: "Closing",
+  billingStatus: "canceled",
+  plan: "pro",
+  subscriptionId: "sub-1",
+  officialAddress: "Str. Testului 1",
+  usage: { bookingCount: 3 },
+  closureRequestedAt: new Date(0),
+  closureScheduledFor: new Date(0),
+});
+await db.doc("licenses/lic-1").set({ locationId: GONE, code: "KEL-LIC-1" });
+await db.doc("subscriptions/sub-1").set({ locationId: GONE, plan: "pro" });
+await db.doc("auditLogs/audit-license").set({ locationId: GONE, entityType: "license" });
+await db.doc("auditLogs/audit-location").set({ locationId: GONE, entityType: "location" });
 await db.doc(`locations/${KEPT}`).set({ name: "Other", billingStatus: "active" });
 await db.doc(`settings/calendar_${GONE}`).set({ locationId: GONE });
 await db.doc(`settings/calendar_${KEPT}`).set({ locationId: KEPT });
@@ -67,10 +81,28 @@ for (const uid of ["admin-gone", "member-gone"]) {
   await assert.rejects(auth.getUser(uid), { code: "auth/user-not-found" });
 }
 
-for (const collection of ["events", "groups", "rooms", "fixedSchedules", "accessCodes", "auditLogs"]) {
+for (const collection of ["events", "groups", "rooms", "fixedSchedules", "accessCodes"]) {
   assert.equal(await count(collection, GONE), 0, `${collection} of the closed location removed`);
   assert.equal(await count(collection, KEPT), 1, `${collection} of the other location kept`);
 }
+
+// Operational audit entries go, billing-related ones stay (accounting audit).
+assert.equal(await exists("auditLogs/a"), false, "operational audit entry removed");
+assert.equal(await exists("auditLogs/audit-license"), true, "licence audit entry kept");
+assert.equal(await exists("auditLogs/audit-location"), true, "location audit entry kept");
+assert.equal(await exists("auditLogs/c"), true, "other location audit entry kept");
+
+// Accounting records stay: licences, subscriptions and the archived location record.
+assert.equal(await exists("licenses/lic-1"), true, "licence record kept");
+assert.equal(await exists("subscriptions/sub-1"), true, "subscription record kept");
+const archived = (await db.doc(`closedLocations/${GONE}`).get()).data();
+assert.ok(archived, "location archived for accounting");
+assert.equal(archived.plan, "pro");
+assert.equal(archived.subscriptionId, "sub-1");
+assert.equal(archived.officialAddress, "Str. Testului 1");
+assert.equal(archived.usage, undefined, "operational counters are not archived");
+assert.ok(archived.purgedAt, "purge date recorded");
+assert.equal(archived.accountsDeleted, 2);
 
 assert.equal(await exists(`locations/${KEPT}`), true, "other location kept");
 assert.equal(await exists(`settings/calendar_${KEPT}`), true, "other location settings kept");
