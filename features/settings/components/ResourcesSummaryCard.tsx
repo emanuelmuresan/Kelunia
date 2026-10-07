@@ -28,7 +28,7 @@ export function ResourcesSummaryCard({
   const t = (key: UiCopyKey) => appText(language, key);
 
   return (
-    <SettingsBlock title={title} action={<button className="secondary-button compact" onClick={onOpenResourcesManager} type="button">{t("settings.edit")}</button>}>
+    <SettingsBlock title={title} action={<button className="secondary-button compact" onClick={onOpenResourcesManager} type="button">{t("settings.openAction")}</button>}>
 
       <div className="settings-summary-list">
         <div>

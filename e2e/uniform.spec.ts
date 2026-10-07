@@ -27,7 +27,7 @@ test("deleting a group is undoable from the toast", async ({ page }) => {
   await loginAsAdmin(page);
 
   const configuration = await openSettingsSection(page, "Configurare");
-  await blockOf(configuration, "Spații și grupuri").getByRole("button", { name: "Modifică" }).click();
+  await blockOf(configuration, "Spații și grupuri").getByRole("button", { name: "Deschide" }).click();
   const dialog = page.locator('[aria-labelledby="resources-manager-title"]');
   const row = dialog.locator(".mini-row", { hasText: "Grupa B" });
   await expect(row).toBeVisible();
@@ -77,7 +77,7 @@ test("the invitation language can be picked in the codes modal", async ({ page }
   await loginAsAdmin(page);
 
   const access = await openSettingsSection(page, "Acces");
-  await blockOf(access, "Coduri de acces").getByRole("button", { name: "Modifică" }).click();
+  await blockOf(access, "Coduri de acces").getByRole("button", { name: "Deschide" }).click();
 
   const dialog = page.locator('[aria-label="Coduri de acces"]');
   const languagePicker = dialog.locator(".invite-language-field select");
@@ -92,7 +92,7 @@ test("an administrator cannot change their own role", async ({ page }) => {
   await loginAsAdmin(page);
 
   const access = await openSettingsSection(page, "Acces");
-  await blockOf(access, "Utilizatori").getByRole("button", { name: "Modifică" }).click();
+  await blockOf(access, "Utilizatori").getByRole("button", { name: "Deschide" }).click();
 
   const dialog = page.locator('[aria-labelledby="users-manager-title"]');
   const ownRow = dialog.locator(".user-row", { hasText: "admin@e2e.test" });
@@ -179,11 +179,31 @@ test("closing a location needs the name typed and can be cancelled", async ({ pa
   await expect(dialog).toHaveCount(0);
 });
 
+test("the page settings are three blocks, each with its own Modifică", async ({ page }) => {
+  await loginAsAdmin(page);
+
+  const configuration = await openSettingsSection(page, "Configurare");
+  for (const [block, field] of [
+    ["Ce pagini se văd", "Afișează pagina Calendar"],
+    ["Numele paginilor", "Programări fixe"],
+    ["Cum numești sălile și grupurile", "Săli"],
+  ]) {
+    await blockOf(configuration, block).getByRole("button", { name: "Modifică" }).click();
+    const editor = page.locator('[aria-labelledby="pages-settings-title"]');
+    await expect(editor.getByRole("heading", { name: block })).toBeVisible();
+    // Only this block's fields are in the editor.
+    await expect(editor.locator(".settings-form-section")).toHaveCount(1);
+    await expect(editor.getByText(field).first()).toBeVisible();
+    await editor.getByRole("button", { name: "Renunță" }).click();
+    await expect(editor).toHaveCount(0);
+  }
+});
+
 test("the list page can be hidden but the calendar always stays", async ({ page }) => {
   await loginAsAdmin(page);
 
   const configuration = await openSettingsSection(page, "Configurare");
-  await blockOf(configuration, "Pagini").getByRole("button", { name: "Modifică" }).click();
+  await blockOf(configuration, "Ce pagini se văd").getByRole("button", { name: "Modifică" }).click();
   const editor = page.locator('[aria-labelledby="pages-settings-title"]');
 
   // The calendar checkbox is checked and cannot be changed.
@@ -200,7 +220,7 @@ test("the list page can be hidden but the calendar always stays", async ({ page 
   await expect(page.getByRole("button", { name: "Calendar" }).first()).toBeVisible();
 
   // Put it back so the other specs see the seeded navigation.
-  await blockOf(configuration, "Pagini").getByRole("button", { name: "Modifică" }).click();
+  await blockOf(configuration, "Ce pagini se văd").getByRole("button", { name: "Modifică" }).click();
   await editor.getByLabel("Afișează pagina Listă programări").check();
   await editor.getByRole("button", { name: "Salvează" }).click();
   await expect(page.getByRole("button", { name: "Listă programări" })).toHaveCount(1);
@@ -224,7 +244,7 @@ test("messages follow the chosen language", async ({ page }) => {
   await page.locator('[aria-labelledby="profile-view-title"]').getByRole("button", { name: "Done" }).click();
 
   const configuration = await openSettingsSection(page, "Setup");
-  await blockOf(configuration, "Spații și grupuri").getByRole("button", { name: "Edit" }).click();
+  await blockOf(configuration, "Spații și grupuri").getByRole("button", { name: "Open" }).click();
   const dialog = page.locator('[aria-labelledby="resources-manager-title"]');
   await dialog.locator(".mini-row", { hasText: "Grupa B" }).getByRole("button", { name: "Delete" }).click();
 

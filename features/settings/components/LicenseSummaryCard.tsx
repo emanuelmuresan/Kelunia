@@ -76,7 +76,7 @@ export function LicenseSummaryCard({
 
       <SettingsBlock
         title={t("settings.blockCodes")}
-        action={canManageAccessCodes ? <button className="secondary-button compact" onClick={onOpenCodesEditor} type="button">{t("settings.edit")}</button> : undefined}
+        action={canManageAccessCodes ? <button className="secondary-button compact" onClick={onOpenCodesEditor} type="button">{t("settings.openAction")}</button> : undefined}
       >
         <div className="settings-summary-list">
           <div>

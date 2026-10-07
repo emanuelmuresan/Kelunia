@@ -17,7 +17,7 @@ export function UsersSummaryCard({ language, managedUsers, onOpenUsersManager }:
   const managerCount = managedUsers.filter((item) => item.role === "manager").length;
 
   return (
-    <SettingsBlock title={t("settings.users")} action={<button className="secondary-button compact" onClick={onOpenUsersManager} type="button">{t("settings.edit")}</button>}>
+    <SettingsBlock title={t("settings.users")} action={<button className="secondary-button compact" onClick={onOpenUsersManager} type="button">{t("settings.openAction")}</button>}>
 
       <div className="settings-summary-list">
         <div>

@@ -1325,14 +1325,21 @@ img {
   font-weight: 740;
 }
 
+.settings-summary-list div {
+  display: grid;
+  grid-template-columns: fit-content(55%) minmax(0, 1fr);
+  align-items: center;
+  column-gap: 12px;
+}
+
 .settings-summary-list span {
-  flex: 1 1 0;
   min-width: 0;
+  overflow-wrap: break-word;
 }
 
 .settings-summary-list strong {
-  flex: 0 1 auto;
-  overflow-wrap: break-word;
+  min-width: 0;
+  overflow-wrap: anywhere;
   text-align: right;
 }
 
@@ -5152,4 +5159,9 @@ img {
 
 .settings-section-modal .section-heading p {
   margin: 4px 0 0;
+}
+
+.settings-form-section {
+  display: grid;
+  gap: 12px;
 }

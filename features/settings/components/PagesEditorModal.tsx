@@ -4,10 +4,12 @@ import { useDismissGuard } from "@/features/shell/components/ConfirmDialog";
 import { useState } from "react";
 
 import type { AppLanguage } from "@/context/AuthContext";
-import { SettingsBlock } from "@/features/settings/components/SettingsBlock";
 import { appText, type UiCopyKey } from "@/lib/i18n/app-copy-catalog";
 
+export type PagesSection = "visibility" | "names" | "labels";
+
 type PagesEditorModalProps = {
+  section: PagesSection;
   language: AppLanguage;
   fixedPageEnabledDraft: boolean;
   listPageEnabledDraft: boolean;
@@ -33,6 +35,7 @@ type PagesEditorModalProps = {
 
 /** Per-location navigation: which pages show and what they are called. Cancel restores the previous values. */
 export function PagesEditorModal({
+  section,
   language,
   fixedPageEnabledDraft,
   listPageEnabledDraft,
@@ -107,13 +110,17 @@ export function PagesEditorModal({
       >
         <div className="section-heading">
           <div>
-            <span className="eyebrow">{t("settings.navigation")}</span>
-            <h2 id="pages-settings-title">{t("settings.pages")}</h2>
+            <span className="eyebrow">{t("settings.pages")}</span>
+            <h2 id="pages-settings-title">
+              {t(section === "visibility" ? "settings.blockVisibility" : section === "names" ? "settings.blockSectionNames" : "settings.blockItemNames")}
+            </h2>
           </div>
         </div>
 
         <div className="settings-form">
-          <SettingsBlock title={t("settings.blockVisibility")} hint={t("settings.calendarAlwaysOn")}>
+          {section === "visibility" && (
+          <div className="settings-form-section">
+            <small className="muted-note">{t("settings.calendarAlwaysOn")}</small>
             <label className="toggle-row">
               <input type="checkbox" checked disabled />
               {t("settings.showPage").replace("{{page}}", t("nav.calendar"))}
@@ -134,9 +141,11 @@ export function PagesEditorModal({
               />
               {t("settings.showPage").replace("{{page}}", fixedSectionDraft.trim() || defaultFixedSectionTitle)}
             </label>
-          </SettingsBlock>
+          </div>
+          )}
 
-          <SettingsBlock title={t("settings.blockSectionNames")}>
+          {section === "names" && (
+          <div className="settings-form-section">
             <label>
               {t("nav.fixed")}
               <input value={fixedSectionDraft} onChange={(event) => setFixedSectionDraft(event.target.value)} />
@@ -155,9 +164,11 @@ export function PagesEditorModal({
                 onChange={(event) => setResourcesSectionDraft(event.target.value)}
               />
             </label>
-          </SettingsBlock>
+          </div>
+          )}
 
-          <SettingsBlock title={t("settings.blockItemNames")}>
+          {section === "labels" && (
+          <div className="settings-form-section">
             <label>
               {defaultRoomsLabel}
               <input
@@ -175,7 +186,8 @@ export function PagesEditorModal({
                 onChange={(event) => setGroupsLabelDraft(event.target.value)}
               />
             </label>
-          </SettingsBlock>
+          </div>
+          )}
 
           <div className="modal-actions">
             <button className="secondary-button" onClick={handleClose} type="button">

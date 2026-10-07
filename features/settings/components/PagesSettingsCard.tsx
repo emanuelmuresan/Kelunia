@@ -4,7 +4,7 @@ import { SettingsBlock } from "@/features/settings/components/SettingsBlock";
 import { useState } from "react";
 
 import type { AppLanguage } from "@/context/AuthContext";
-import { PagesEditorModal } from "@/features/settings/components/PagesEditorModal";
+import { PagesEditorModal, type PagesSection } from "@/features/settings/components/PagesEditorModal";
 import { appText, type UiCopyKey } from "@/lib/i18n/app-copy-catalog";
 
 type PagesSettingsCardProps = {
@@ -50,7 +50,7 @@ export function PagesSettingsCard(props: PagesSettingsCardProps) {
     onSaveNavigationSettings,
   } = props;
   const t = (key: UiCopyKey) => appText(language, key);
-  const [editorOpen, setEditorOpen] = useState(false);
+  const [editorSection, setEditorSection] = useState<PagesSection | null>(null);
 
   const fixedName = fixedSectionDraft.trim() || defaultFixedSectionTitle;
   const listName = listViewDraft.trim() || t("nav.list");
@@ -58,19 +58,16 @@ export function PagesSettingsCard(props: PagesSettingsCardProps) {
   const roomsName = roomsLabelDraft.trim() || defaultRoomsLabel;
   const groupsName = groupsLabelDraft.trim() || defaultGroupsLabel;
 
+  const editButton = (section: PagesSection) =>
+    canEditCurrentLocation ? (
+      <button className="secondary-button compact" onClick={() => setEditorSection(section)} type="button">
+        {t("settings.edit")}
+      </button>
+    ) : undefined;
+
   return (
     <>
-      <SettingsBlock
-        title={t("settings.pages")}
-        action={
-          canEditCurrentLocation ? (
-            <button className="secondary-button compact" onClick={() => setEditorOpen(true)} type="button">
-              {t("settings.edit")}
-            </button>
-          ) : undefined
-        }
-      >
-
+      <SettingsBlock title={t("settings.blockVisibility")} action={editButton("visibility")}>
         <div className="settings-summary-list">
           <div>
             <span>{t("nav.calendar")}</span>
@@ -84,19 +81,42 @@ export function PagesSettingsCard(props: PagesSettingsCardProps) {
             <span>{fixedName}</span>
             <strong>{fixedPageEnabledDraft ? t("settings.active") : t("settings.inactive")}</strong>
           </div>
+        </div>
+      </SettingsBlock>
+
+      <SettingsBlock title={t("settings.blockSectionNames")} action={editButton("names")}>
+        <div className="settings-summary-list">
           <div>
-            <span>{t("settings.blockSectionNames")}</span>
-            <strong>{[fixedName, listName, resourcesName].join(" · ")}</strong>
+            <span>{t("nav.fixed")}</span>
+            <strong>{fixedName}</strong>
           </div>
           <div>
-            <span>{t("settings.blockItemNames")}</span>
-            <strong>{roomsName} · {groupsName}</strong>
+            <span>{t("nav.list")}</span>
+            <strong>{listName}</strong>
+          </div>
+          <div>
+            <span>{t("settings.organization")}</span>
+            <strong>{resourcesName}</strong>
           </div>
         </div>
       </SettingsBlock>
 
-      {editorOpen && (
+      <SettingsBlock title={t("settings.blockItemNames")} action={editButton("labels")}>
+        <div className="settings-summary-list">
+          <div>
+            <span>{defaultRoomsLabel}</span>
+            <strong>{roomsName}</strong>
+          </div>
+          <div>
+            <span>{defaultGroupsLabel}</span>
+            <strong>{groupsName}</strong>
+          </div>
+        </div>
+      </SettingsBlock>
+
+      {editorSection && (
         <PagesEditorModal
+          section={editorSection}
           language={language}
           fixedPageEnabledDraft={props.fixedPageEnabledDraft}
           setFixedPageEnabledDraft={props.setFixedPageEnabledDraft}
@@ -117,7 +137,7 @@ export function PagesSettingsCard(props: PagesSettingsCardProps) {
           setGroupsLabelDraft={props.setGroupsLabelDraft}
           defaultGroupsLabel={props.defaultGroupsLabel}
           onSave={onSaveNavigationSettings}
-          onClose={() => setEditorOpen(false)}
+          onClose={() => setEditorSection(null)}
         />
       )}
     </>
