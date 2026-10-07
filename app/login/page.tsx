@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -196,7 +196,12 @@ async function sendCustomPasswordResetEmail(email: string, language: AppLanguage
 
 export default function LoginPage() {
   const [mode, setMode] = useState<AuthMode>("login");
-  const [email, setEmail] = useState("");
+  const submittingRef = useRef(false);
+  const [emailInput, setEmailInput] = useState("");
+  // Firebase Auth lowercases addresses and firestore.rules require the profile's
+  // email to equal the token's, so a typed "Dan@Yahoo.com" (or a trailing space)
+  // created the account and then got the profile write rejected as a permission error.
+  const email = emailInput.trim().toLowerCase();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -242,7 +247,7 @@ export default function LoginPage() {
     }
 
     if (invitedEmail) {
-      setEmail(invitedEmail);
+      setEmailInput(invitedEmail);
     }
   }, []);
 
@@ -259,7 +264,11 @@ export default function LoginPage() {
       router.replace("/dashboard");
     }
 
-    if (!authLoading && user && !user.emailVerified) {
+    // Unverified users do not stay signed in on this screen - except while a
+    // submit is running: registering creates the Auth user first and writes its
+    // profile right after, and signing it out in between sent that write without a
+    // token ("Missing or insufficient permissions"). The submit ends with its own signOut.
+    if (!authLoading && user && !user.emailVerified && !submittingRef.current) {
       void signOut(auth);
     }
   }, [authLoading, router, user]);
@@ -501,6 +510,7 @@ export default function LoginPage() {
     setError("");
     setMessage("");
     setLoading(true);
+    submittingRef.current = true;
 
     try {
       await ensureAuthPersistence();
@@ -609,6 +619,7 @@ export default function LoginPage() {
     } catch (err) {
       setError(readableError(err instanceof Error ? err.message : "A apărut o eroare."));
     } finally {
+      submittingRef.current = false;
       setLoading(false);
     }
   }
@@ -677,9 +688,12 @@ export default function LoginPage() {
             <input
               type="email"
               name="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
+              value={emailInput}
+              onChange={(event) => setEmailInput(event.target.value)}
               placeholder={appText(language, "auth.emailPlaceholder")}
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               autoComplete="email"
               required
             />

@@ -163,6 +163,34 @@ async function seedFirestore() {
     createdBy: "seed@e2e.test",
   });
 
+  // One invitation per role, shaped like the ones the app generates (incl. the
+  // fields the invite-email function adds), for the sign-up e2e.
+  for (const [code, role, maxUses] of [
+    ["KEL-E2EM-ANGR-0001", "manager", 1],
+    ["KEL-E2EB-MEMB-0002", "member", 10],
+    ["KEL-E2EG-GUES-0003", "guest", null],
+  ]) {
+    await db.doc(`accessCodes/${code}`).set({
+      code,
+      role,
+      groupName: role === "manager" ? "" : GROUP_NAME,
+      roomAccess: "all",
+      allowedRoomIds: [],
+      locationId: LOCATION_ID,
+      locationName: LOCATION_NAME,
+      maxUses,
+      usedCount: 0,
+      active: true,
+      createdBy: "admin@e2e.test",
+      createdAt: now,
+      expiresAt: Timestamp.fromMillis(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      deleted: false,
+      lastInviteEmailSentBy: "admin@e2e.test",
+      lastInviteEmailSentTo: "invitee@e2e.test",
+      lastInviteEmailSentAt: now,
+    });
+  }
+
   const soon = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
   await db.doc(`events/e2e-booking-1`).set({

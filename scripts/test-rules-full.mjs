@@ -237,6 +237,7 @@ async function attemptAccessCodeSignup(uid, codeId) {
       uid, email: `${uid}@x.com`, displayName: "New User", group: codeData.groupName, groupName: codeData.groupName,
       role: codeData.role, isOwner: false, locationId: codeData.locationId, locationName: codeData.locationName,
       accessCodeId: codeId, accessCodeRole: codeData.role, roomAccess: codeData.roomAccess, allowedRoomIds: codeData.allowedRoomIds,
+      locationSetupRequired: false,
       usePin: false, lockOnHide: false, useBiometrics: false, language: "ro", createdAt: ts(),
     });
     transaction.update(codeRef, {
@@ -260,6 +261,20 @@ await chk("access-code self-registration: expired code is denied", "DENY", async
   await attemptAccessCodeSignup("selfSignupUidExpired00001", "SELFCODE_EXPIRED");
 });
 
+await chk("access-code self-registration: profile email with different case than the token is denied", "DENY", async () => {
+  await seedAccessCode("SELFCODE_CASE", "guest");
+  const uid = "selfSignupUidCase0000000001";
+  const d = te.authenticatedContext(uid, { email: `${uid}@x.com`, email_verified: false, firebase: { sign_in_provider: "password" } }).firestore();
+  await runTransaction(d, async (transaction) => {
+    transaction.set(doc(d, "users", uid), {
+      uid, email: `${uid.charAt(0).toUpperCase()}${uid.slice(1)}@x.com`, displayName: "New User", group: "G", groupName: "G",
+      role: "guest", isOwner: false, locationId: LOC, locationName: "L", accessCodeId: "SELFCODE_CASE", accessCodeRole: "guest",
+      roomAccess: "all", allowedRoomIds: [], locationSetupRequired: false, usePin: false, lockOnHide: false, useBiometrics: false,
+      language: "ro", createdAt: ts(),
+    });
+    transaction.update(doc(d, "accessCodes", "SELFCODE_CASE"), { active: true, maxUses: null, usedCount: 1, lastUsedAt: ts(), lastUsedBy: `${uid}@x.com`, lastUsedByUid: uid });
+  });
+});
 await chk("access-code self-registration: no-expiresAt (legacy) code still works", "ALLOW", async () => {
   await seedAccessCode("SELFCODE_LEGACY", "guest");
   await attemptAccessCodeSignup("selfSignupUidLegacy000001", "SELFCODE_LEGACY");
