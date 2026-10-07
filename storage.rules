@@ -1,7 +1,10 @@
+// Regulile Firebase Storage: în prezent aplicația nu stochează fișiere, așa că ORICE citire sau scriere este refuzată (ultima regulă).
+// Funcțiile de mai jos (autentificare, proprietar, manager, acces la locație) sunt pregătite pentru o eventuală folosire a Storage și sunt neutilizate acum.
 rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
+    // Utilizator autentificat, cu emailul verificat.
     function signedIn() {
       return request.auth != null;
     }
@@ -15,6 +18,7 @@ service firebase.storage {
       return emailVerified();
     }
 
+    // Documentul utilizatorului din Firestore, de unde se citesc rolul și locația.
     function userPath() {
       return /databases/(default)/documents/users/$(request.auth.uid);
     }
@@ -28,6 +32,7 @@ service firebase.storage {
       return firestore.get(userPath()).data;
     }
 
+    // Proprietarul platformei: emailul fix al proprietarului sau câmpul isOwner din profil.
     function isOwner() {
       return signedInVerified()
         && (
@@ -39,6 +44,7 @@ service firebase.storage {
         );
     }
 
+    // Managerul unei locații (nu proprietarul).
     function isManager() {
       return signedInVerified()
         && hasUserDoc()
@@ -49,6 +55,7 @@ service firebase.storage {
         );
     }
 
+    // Cine poate citi sau scrie fișiere ale unei locații.
     function canReadLocation(locationId) {
       return isOwner()
         || (
@@ -65,6 +72,7 @@ service firebase.storage {
         );
     }
 
+    // Regula de siguranță: tot ce nu este permis explicit este refuzat.
     match /{allPaths=**} {
       allow read, write: if false;
     }

@@ -1,7 +1,13 @@
+// Regulile Firestore ale Kelunia: ce are voie să citească și să scrie fiecare utilizator din client. Funcțiile cloud folosesc Admin SDK și ocolesc aceste reguli,
+// deci regulile de aici și verificările din functions/src/index.ts trebuie păstrate în acord.
+// Autorizarea se bazează pe documentul users/{uid} (rol, locație), nu pe claim-uri; orice scriere cere email verificat, cu excepțiile marcate mai jos.
+// Fișierul are trei părți: ajutoare de identitate și rol, validatoare pentru forma documentelor și, la final, regulile fiecărei colecții.
+// Atenție: Firestore limitează evaluarea unei reguli la 1000 de expresii; de aceea unele funcții sunt scrise compact (vezi comentariile despre buget).
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Identitate: utilizator autentificat, cu emailul verificat, și proprietarul platformei (emailul fix).
     function signedIn() {
       return request.auth != null;
     }
@@ -20,6 +26,7 @@ service cloud.firestore {
         && request.auth.token.email == "emanuelmuresan@gmail.com";
     }
 
+    // Profilul utilizatorului curent, citit din users/{uid}, și locația lui.
     function hasUserDoc() {
       return signedIn()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid));
@@ -33,6 +40,7 @@ service cloud.firestore {
       return hasUserDoc() ? userData().locationId : "";
     }
 
+    // Proprietarul platformei: emailul fix sau câmpul isOwner din profil.
     function isOwner() {
       return isOwnerEmail()
         || (
@@ -41,6 +49,7 @@ service cloud.firestore {
         );
     }
 
+    // Rolurile; acceptă și numele vechi (superadmin, admin, collaborator, viewer, user) pentru compatibilitate.
     function isManagerRole(role) {
       return role == "manager"
         || role == "superadmin"
@@ -58,6 +67,7 @@ service cloud.firestore {
       return role == "guest" || role == "viewer" || role == "user";
     }
 
+    // Limbile acceptate pentru interfață.
     function validLanguage(value) {
       return value == "ro"
         || value == "en"
@@ -67,6 +77,7 @@ service cloud.firestore {
         || value == "pt";
     }
 
+    // Managerul locației (nu proprietarul) și administratorul larg (manager sau membru).
     function isLocationSuperAdmin() {
       return signedInVerified()
         && hasUserDoc()
@@ -84,11 +95,13 @@ service cloud.firestore {
         );
     }
 
+    // Un manager poate gestiona doar propria locație.
     function canManageLocation(locationId) {
       return isLocationSuperAdmin()
         && locationId == userLocationId();
     }
 
+    // Starea de scriere a locației: scrierea e permisă proprietarului sau dacă facturarea este activă ori în probă neexpirată.
     function locationPath(locationId) {
       return /databases/$(database)/documents/locations/$(locationId);
     }
@@ -119,6 +132,7 @@ service cloud.firestore {
       return key in data;
     }
 
+    // Validatoare generice pentru câmpuri: text, culoare, bool, timestamp, liste.
     function validText(value, maxSize) {
       return value is string
         && value.size() > 0
@@ -153,6 +167,7 @@ service cloud.firestore {
         || data[key] is timestamp;
     }
 
+    // Validatoare pentru momentele de notificare.
     // Shape checks for the two notification-offset list formats. Per-element (max
     // 5 items) instead of the previous ~230-entry hasOnly([...]) list, which —
     // evaluated several times per users/{uid} write — blew past Firestore's
@@ -192,6 +207,7 @@ service cloud.firestore {
         );
     }
 
+    // Ștergerea logică (deleted, deletedAt...), valori nule, contoare și limite de plan.
     function validSoftDeleteFields(data) {
       return validOptionalBool(data, "deleted")
         && (!hasKey(data, "deletedAt") || validNullableTimestamp(data.deletedAt))
@@ -217,6 +233,7 @@ service cloud.firestore {
         );
     }
 
+    // Planurile și starea de facturare ale unei locații, contoarele de utilizare și limitele planului.
     function validLocationPlan(value) {
       return value == "trial"
         || value == "standard"
@@ -273,6 +290,7 @@ service cloud.firestore {
         && (!hasKey(limits, "maxActiveBookings") || validNullableLimit(limits.maxActiveBookings));
     }
 
+    // Formatul datei (AAAA-LL-ZZ) și al orei (OO:MM).
     function validDateKey(value) {
       return value is string
         && value.size() == 10;
@@ -283,6 +301,7 @@ service cloud.firestore {
         && value.size() == 5;
     }
 
+    // Codurile de acces: rol, grup, număr maxim de utilizări (manager 1, membru 10, oaspete nelimitat) și accesul la camere.
     function validAccessRole(role) {
       return isGuestRole(role)
         || isMemberRole(role)
@@ -341,6 +360,7 @@ service cloud.firestore {
         );
     }
 
+    // Accesul la camere și la grup pentru rezervări: managerii și proprietarul oricare, membrii doar grupul lor și camerele permise.
     function roomAccessAllows(roomId) {
       return isOwner()
         || isLocationSuperAdmin()
@@ -364,6 +384,7 @@ service cloud.firestore {
         );
     }
 
+    // Căi către documentele codurilor de acces și ale licențelor.
     function accessCodePath(codeId) {
       return /databases/$(database)/documents/accessCodes/$(codeId);
     }
@@ -372,6 +393,7 @@ service cloud.firestore {
       return /databases/$(database)/documents/licenses/$(licenseId);
     }
 
+    // Câte utilizări are un cod deja.
     function existingCodeUsedCount(codeId) {
       return get(accessCodePath(codeId)).data.usedCount is int
         ? get(accessCodePath(codeId)).data.usedCount
@@ -385,6 +407,7 @@ service cloud.firestore {
       return !("expiresAt" in code) || request.time < code.expiresAt;
     }
 
+    // Folosirea unui cod la înregistrare: crește usedCount cu 1, doar dacă e activ, neexpirat și cu utilizări rămase; nu se pot schimba rolul, grupul sau locația.
     function validAccessUseUpdate(codeId) {
       return signedIn()
         && exists(accessCodePath(codeId))
@@ -418,6 +441,7 @@ service cloud.firestore {
         ]);
     }
 
+    // Ștergerea logică a unui cod de acces.
     function canSoftDeleteAccessCode() {
       return isOwner()
         ? true
@@ -515,6 +539,7 @@ service cloud.firestore {
         ]);
     }
 
+    // Un utilizator nou își creează profilul pe baza unui cod de acces, de licență sau în cont de probă (valorile trebuie să coincidă cu ale codului).
     function validAccessCodeForUserCreate(data, userId) {
       let codeId = data.accessCodeId;
       let code = get(accessCodePath(codeId)).data;
@@ -553,6 +578,7 @@ service cloud.firestore {
         && after.lastUsedByUid == userId;
     }
 
+    // Profilul creat cu licență și cu cont de probă.
     function validLicenseForUserCreate(data, userId) {
       let licenseId = data.pendingLicenseId;
       let license = get(licensePath(licenseId)).data;
@@ -584,6 +610,7 @@ service cloud.firestore {
         && (!hasKey(data, "accessCodeId") || data.accessCodeId == "");
     }
 
+    // Un manager nou fără locație încă (cont de probă sau licență) își poate configura locația.
     function hasPendingLocationSetup() {
       return hasUserDoc()
         && isManagerRole(userData().role)
@@ -609,6 +636,7 @@ service cloud.firestore {
     // Inlined (no per-field helper calls) and using `key in data` — the previous
     // ~30 helper invocations, each re-materialising data.keys(), pushed writes past
     // Firestore's 1000-expression limit on the users/{uid} update path.
+    // Forma documentului users/{uid}: câmpuri permise, tipuri și valori.
     function validUserRole(value) {
       return value in [
         "manager", "superadmin", "administrator", "admin",
@@ -684,6 +712,7 @@ service cloud.firestore {
         && (!("createdAt" in data) || data.createdAt is timestamp);
     }
 
+    // Crearea profilului propriu: doar cu un cod de acces valid, licență sau ca cont de probă; niciodată ca proprietar.
     function validUserCreate(userId) {
       return signedIn()
         && request.auth.uid == userId
@@ -725,6 +754,8 @@ service cloud.firestore {
         );
     }
 
+    // Cele patru feluri de actualizare a unui profil: proprietarul platformei se sincronizează, utilizatorul își schimbă setările personale,
+    // un manager nou își termină configurarea locației, iar un manager modifică alți utilizatori din locația lui.
     function validOwnerSyncUpdate(userId) {
       return signedInVerified()
         && isOwnerEmail()
@@ -733,6 +764,7 @@ service cloud.firestore {
         && request.resource.data.isOwner == true;
     }
 
+    // Setările personale pe care utilizatorul și le poate schimba singur (nume, grup, PIN activ, limbă, notificări); rolul, locația și câmpurile PIN rămân protejate.
     function validOwnUserSettingsShape(data) {
       return validOptionalText(data, "displayName", 120)
         && validOptionalText(data, "groupName", 120)
@@ -776,6 +808,7 @@ service cloud.firestore {
         );
     }
 
+    // Actualizare de metadate proprie: rolul, proprietarul, locația și câmpurile PIN nu se pot schimba.
     function validOwnUserMetadataUpdate(userId) {
       // validUserDataShape(request.resource.data) is already asserted by the caller
       // (the users/{userId} allow-update rule) before this branch runs.
@@ -803,6 +836,7 @@ service cloud.firestore {
         );
     }
 
+    // Finalizarea configurării locației de către un manager nou: scrie locația și închide „locationSetupRequired”.
     function validLocationSetupUserUpdate(userId) {
       return signedInVerified()
         && request.auth.uid == userId
@@ -822,6 +856,7 @@ service cloud.firestore {
         ]);
     }
 
+    // Un manager modifică alți utilizatori din locația lui, fără să schimbe locația, proprietarul sau câmpurile PIN.
     function validManagerUserUpdate(userId) {
       // validUserDataShape(request.resource.data) is already asserted by the caller
       // (the users/{userId} allow-update rule) before this branch runs. This branch
@@ -840,6 +875,7 @@ service cloud.firestore {
         && request.resource.data.get("pinResetRequired", false) == resource.data.get("pinResetRequired", false);
     }
 
+    // Forma documentelor: rezervări, camere/grupuri și programe fixe.
     function validEventData(data) {
       return data.keys().hasOnly([
           "group",
@@ -971,6 +1007,7 @@ service cloud.firestore {
         && validSoftDeleteFields(data);
     }
 
+    // Forma setărilor locației (documentul settings/calendar_<locationId>).
     function validOptionalStringList(data, key, maxSize) {
       return !hasKey(data, key)
         || (
@@ -1007,6 +1044,7 @@ service cloud.firestore {
         && data.updatedAt is timestamp;
     }
 
+    // Forma documentelor de locație și regulile de creare și de actualizare a planului de către proprietar.
     function validLocationData(data) {
       return data.keys().hasOnly([
           "name",
@@ -1129,6 +1167,7 @@ service cloud.firestore {
         );
     }
 
+    // Forma licențelor și activarea/oprirea lor.
     function validLicenseData(data) {
       return data.keys().hasOnly([
           "code",
@@ -1204,6 +1243,7 @@ service cloud.firestore {
         ]);
     }
 
+    // Jurnalul de audit: tipurile de entități și acțiuni și forma unei înregistrări.
     function validAuditEntityType(entityType) {
       return entityType == "booking"
         || entityType == "fixedSchedule"
@@ -1254,6 +1294,7 @@ service cloud.firestore {
         && data.createdAt is timestamp;
     }
 
+    // Mesajele din pagina publică (cereri Community, contact), răspunsurile și abonarea la newsletter.
     function validCommunityApplicationStatus(status) {
       return status == "new"
         || status == "reviewed"
@@ -1379,6 +1420,7 @@ service cloud.firestore {
         && data.updatedAt == request.time;
     }
 
+    // Campaniile newsletter și cererile de email pentru licență (create de proprietar, procesate de funcții).
     function validNewsletterCampaignCreate(data) {
       return signedInVerified()
         && isOwner()
@@ -1429,6 +1471,7 @@ service cloud.firestore {
         && data.createdByUid == request.auth.uid;
     }
 
+    // Abonamentele locațiilor.
     function validSubscriptionData(data) {
       return data.keys().hasOnly([
           "locationId",
@@ -1460,6 +1503,9 @@ service cloud.firestore {
         && validOptionalText(data, "updatedBy", 180);
     }
 
+    // REGULILE COLECȚIILOR.
+    // users/{uid}: citire de proprietar, de utilizator sau din aceeași locație; creare doar prin cod/licență/probă; actualizări prin cele patru căi de mai sus;
+    // ștergere de proprietar sau de managerul locației (nu propriul cont, care se șterge prin funcția deleteMyAccount).
     match /users/{userId} {
       allow read: if signedInVerified()
         && (
@@ -1497,6 +1543,7 @@ service cloud.firestore {
           )
         );
 
+      // Documentul privat cu PIN-ul este accesibil doar funcțiilor cloud (Admin SDK).
       // PIN scrypt hash + lockout state. Written/read only by the Admin SDK in the
       // setPin / verifyPin / disablePin Cloud Functions.
       match /private/{document=**} {
@@ -1504,10 +1551,12 @@ service cloud.firestore {
       }
     }
 
+    // Documentul de setări „auth_codes” nu este accesibil clienților.
     match /settings/auth_codes {
       allow read, write: if false;
     }
 
+    // accessCodes: o căutare după id este publică (necesară înainte de autentificare, la înregistrare); lista și scrierea doar pentru proprietar și managerul locației.
     match /accessCodes/{codeId} {
       allow get: if true;
       allow list: if signedInVerified()
@@ -1572,6 +1621,7 @@ service cloud.firestore {
         && locationWriteEnabled(resource.data.locationId);
     }
 
+    // settings/calendar_<locationId>: citire pentru membrii locației, scriere pentru proprietar și managerul locației.
     match /settings/{settingId} {
       // Match on the doc id (settings/calendar_<locationId>) rather than
       // resource.data so a not-yet-created settings doc resolves cleanly instead
@@ -1603,6 +1653,8 @@ service cloud.firestore {
         );
     }
 
+    // licenses: o licență disponibilă poate fi citită după id înainte de autentificare; lista, crearea și ștergerea sunt ale proprietarului;
+    // un cont nou o poate revendica și apoi marca ca folosită, schimbând doar câmpurile permise.
     match /licenses/{licenseId} {
       allow get: if (
           signedInVerified()
@@ -1674,6 +1726,7 @@ service cloud.firestore {
         );
     }
 
+    // communityApplications și mesajele lor: oricine poate trimite o cerere; citirea, răspunsul și ștergerea sunt ale proprietarului.
     match /communityApplications/{applicationId} {
       allow create: if validCommunityApplicationData(request.resource.data);
       allow read: if signedInVerified() && isOwner();
@@ -1688,12 +1741,14 @@ service cloud.firestore {
       }
     }
 
+    // newsletterSubscribers: abonarea e publică (cu format validat); lista și ștergerea sunt ale proprietarului.
     match /newsletterSubscribers/{subscriberId} {
       allow create, update: if validNewsletterSubscriberPublicWrite(subscriberId, request.resource.data)
         || (signedInVerified() && isOwner());
       allow read, delete: if signedInVerified() && isOwner();
     }
 
+    // errorReports: un utilizator autentificat poate trimite un raport cu propriul uid; doar proprietarul îl citește și îl marchează rezolvat.
     match /errorReports/{reportId} {
       allow create: if signedInVerified()
         && request.resource.data.uid == request.auth.uid
@@ -1714,6 +1769,7 @@ service cloud.firestore {
       allow delete: if signedInVerified() && isOwner();
     }
 
+    // newsletterCampaigns și licenseEmailRequests: create de proprietar; trimiterea o fac funcțiile cloud, care actualizează starea.
     match /newsletterCampaigns/{campaignId} {
       allow read: if signedInVerified() && isOwner();
       allow create: if validNewsletterCampaignCreate(request.resource.data);
@@ -1733,6 +1789,7 @@ service cloud.firestore {
       allow delete: if signedInVerified() && isOwner();
     }
 
+    // subscriptions: citite de proprietar și de managerul locației; scrise doar de proprietar.
     match /subscriptions/{subscriptionId} {
       allow read: if signedInVerified()
         && (
@@ -1748,6 +1805,8 @@ service cloud.firestore {
       allow delete: if signedInVerified() && isOwner();
     }
 
+    // events (rezervările): citire pentru membrii locației; creare și modificare cu validare și verificarea grupului, camerei și stării licenței;
+    // ștergere logică și ștergere pentru proprietar, managerul locației sau autorul (administrator). Clientul scrie în principal prin funcția saveBooking.
     match /events/{eventId} {
       allow read: if signedInVerified()
         && (
@@ -1819,6 +1878,7 @@ service cloud.firestore {
         );
     }
 
+    // rooms, groups și fixedSchedules: citire pentru membrii locației; creare, modificare și ștergere doar pentru managerul locației (proprietarul nu scrie aici), cu licență activă.
     match /rooms/{roomId} {
       allow read: if signedInVerified()
         && (
@@ -1870,6 +1930,7 @@ service cloud.firestore {
         && locationWriteEnabled(resource.data.locationId);
     }
 
+    // auditLogs: citire pentru proprietar și manageri; creare cu autorul propriu; nu se modifică și nu se șterg din client.
     match /auditLogs/{logId} {
       allow read: if signedInVerified()
         && (
@@ -1890,11 +1951,14 @@ service cloud.firestore {
 
     // Billing record of a purged location, written only by the purge function
     // (Admin SDK) so licence/subscription history still points at something.
+    // closedLocations: arhiva datelor de facturare ale unei locații șterse; citită de proprietar, scrisă doar de funcția cloud.
     match /closedLocations/{locationId} {
       allow read: if signedInVerified() && isOwner();
       allow write: if false;
     }
 
+    // locations: citire pentru membrii locației (cu excepția de bootstrap de mai jos); creare și actualizare cu validare; planul și facturarea doar de proprietar;
+    // ștergerea directă doar de proprietar (managerii închid locația prin funcția requestLocationClosure).
     match /locations/{locationId} {
       // The !hasUserDoc() branch is a deliberate bootstrap exception: a brand-new
       // access-code registration creates the Auth user, then reads the location
