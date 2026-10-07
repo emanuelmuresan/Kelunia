@@ -1797,6 +1797,49 @@ async function requireLocationAdmin(request: CallableRequest, locationId: string
   return { email };
 }
 
+// Licence / subscription records that mention a location are billing documents:
+// the purge deliberately leaves them, and the owner is told which ones remain.
+async function linkedBillingDocuments(locationId: string) {
+  const [licenses, subscriptions] = await Promise.all([
+    db.collection("licenses").where("locationId", "==", locationId).get(),
+    db.collection("subscriptions").where("locationId", "==", locationId).get(),
+  ]);
+
+  return {
+    licenseCodes: licenses.docs.map((item) => cleanText(item.data().code, 80) || item.id),
+    subscriptionCount: subscriptions.size,
+  };
+}
+
+function billingDocumentLines(documents: { licenseCodes: string[]; subscriptionCount: number }) {
+  if (documents.licenseCodes.length === 0 && documents.subscriptionCount === 0) {
+    return ["Nu există licențe sau abonamente legate de această locație."];
+  }
+
+  return [
+    "Documente legate de locație care NU se șterg automat (le poți șterge sau păstra pentru evidență):",
+    `- Licențe (${documents.licenseCodes.length}): ${documents.licenseCodes.join(", ") || "-"}`,
+    `- Abonamente: ${documents.subscriptionCount}`,
+  ];
+}
+
+// Email + push to the platform owner about a location's lifecycle.
+async function notifyOwner(subject: string, lines: string[], pushBody: string) {
+  const text = lines.join("\n\n");
+  const html = `<div style="font-family:Arial,sans-serif;line-height:1.6;color:#172033;max-width:640px"><h1 style="font-size:22px;margin:0 0 18px;color:#b9503d">Kelunia</h1><p>${escapeHtml(text).replace(/\n\n/g, "</p><p>").replace(/\n/g, "<br />")}</p></div>`;
+
+  await new Resend(resendApiKey.value()).emails
+    .send({ from: emailFrom.value(), to: [ownerAccountEmail], subject, text, html })
+    .catch((error) => logger.warn("Owner notice email failed", { subject, error }));
+
+  const tokens = await db.collection("notificationTokens").where("email", "==", ownerAccountEmail).get();
+
+  await deliverPush(
+    tokens.docs.map((item) => item.data() as NotificationTokenDocument).filter((item) => Boolean(item.token)),
+    { bookingId: "", body: pushBody, tag: `location-lifecycle-${Date.now()}`, title: subject, url: "/dashboard" }
+  ).catch((error) => logger.warn("Owner notice push failed", { subject, error }));
+}
+
 export const requestLocationClosure = onCall(
   {
     region: "europe-west1",
@@ -1870,6 +1913,24 @@ export const requestLocationClosure = onCall(
       logger.error("Closure notices failed", { locationId, error });
     }
 
+    try {
+      const dateLabel = scheduledFor.toDate().toLocaleDateString("ro-RO", { day: "2-digit", month: "long", year: "numeric" });
+      const billing = await linkedBillingDocuments(locationId);
+
+      await notifyOwner(
+        `Locația ${locationName} a fost închisă`,
+        [
+          `Locația ${locationName} (${locationId}) a fost închisă de ${admin.email}.`,
+          `Aplicația rămâne doar în citire pentru ea până pe ${dateLabel}; atunci se șterg automat programările, grupurile, sălile, codurile de acces și toate conturile membrilor.`,
+          billingDocumentLines(billing).join("\n"),
+          "Dacă a fost o greșeală, locația poate fi redeschisă din Setări până la data de mai sus.",
+        ],
+        `${locationName} se închide; ștergere automată pe ${dateLabel}.`
+      );
+    } catch (error) {
+      logger.error("Owner closure notice failed", { locationId, error });
+    }
+
     logger.info("Location closure requested", { locationId, by: admin.email, scheduledFor: scheduledFor.toDate().toISOString() });
 
     return { scheduledFor: scheduledFor.toMillis() };
@@ -1879,6 +1940,7 @@ export const requestLocationClosure = onCall(
 export const cancelLocationClosure = onCall(
   {
     region: "europe-west1",
+    secrets: [resendApiKey],
     enforceAppCheck: true,
   },
   async (request) => {
@@ -1907,6 +1969,17 @@ export const cancelLocationClosure = onCall(
       updatedBy: admin.email,
     });
 
+    try {
+      const name = cleanText(location.name ?? location.locationName, 180);
+      await notifyOwner(
+        `Locația ${name} a fost redeschisă`,
+        [`${admin.email} a redeschis locația ${name} (${locationId}). Ștergerea programată a fost anulată.`],
+        `${name} a fost redeschisă; ștergerea a fost anulată.`
+      );
+    } catch (error) {
+      logger.error("Owner reopen notice failed", { locationId, error });
+    }
+
     logger.info("Location closure cancelled", { locationId, by: admin.email });
 
     return { reopened: true };
@@ -1917,6 +1990,7 @@ export const purgeClosedLocations = onSchedule(
   {
     region: "europe-west1",
     schedule: "0 3 * * *",
+    secrets: [resendApiKey],
     timeZone: "Europe/Bucharest",
     timeoutSeconds: 540,
   },
@@ -1933,8 +2007,20 @@ export const purgeClosedLocations = onSchedule(
       }
 
       try {
+        const name = cleanText(data.name ?? data.locationName, 180);
+        // Read before the purge: afterwards nothing links back to the location.
+        const billing = await linkedBillingDocuments(location.id);
         const result = await purgeLocation(db, getAuth(), location.id, ownerAccountEmail);
         logger.info("Purged closed location", { locationId: location.id, ...result });
+
+        await notifyOwner(
+          `Locația ${name} a fost ștearsă definitiv`,
+          [
+            `Perioada de 30 de zile s-a încheiat: locația ${name} (${location.id}) și ${result.accountsDeleted} conturi asociate au fost șterse definitiv, împreună cu programările, grupurile, sălile și codurile ei.`,
+            billingDocumentLines(billing).join("\n"),
+          ],
+          `${name} a fost ștearsă definitiv (${result.accountsDeleted} conturi).`
+        );
       } catch (error) {
         logger.error("Location purge failed", { locationId: location.id, error });
       }
