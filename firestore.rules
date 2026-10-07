@@ -1023,6 +1023,10 @@ service cloud.firestore {
           "trialEndsAt",
           "usage",
           "planLimits",
+          "closureRequestedAt",
+          "closureRequestedBy",
+          "closureScheduledFor",
+          "statusBeforeClosure",
           "deleted",
           "deletedAt",
           "deletedBy",
@@ -1045,6 +1049,12 @@ service cloud.firestore {
         && (!hasKey(data, "trialEndsAt") || validNullableTimestamp(data.trialEndsAt))
         && (!hasKey(data, "usage") || validUsageCounters(data.usage))
         && (!hasKey(data, "planLimits") || validPlanLimits(data.planLimits))
+        // Set by the requestLocationClosure / cancelLocationClosure functions only;
+        // listed so ordinary location writes still validate while a closure is pending.
+        && validOptionalTimestamp(data, "closureRequestedAt")
+        && validOptionalText(data, "closureRequestedBy", 180)
+        && validOptionalTimestamp(data, "closureScheduledFor")
+        && validOptionalText(data, "statusBeforeClosure", 30)
         && validSoftDeleteFields(data);
     }
 
@@ -1920,7 +1930,10 @@ service cloud.firestore {
             "usage"
           ])
         );
-      allow delete: if isOwner() || (canManageLocation(locationId) && locationWriteEnabled(locationId));
+      // Closing a location goes through requestLocationClosure (30 days read-only,
+      // then a scheduled purge removes its data and accounts) - a client delete would
+      // leave all of that orphaned, so only the platform owner may delete directly.
+      allow delete: if isOwner();
     }
   }
 }

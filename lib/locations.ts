@@ -51,5 +51,7 @@ export function normalizeLocation(id: string, data: Record<string, unknown>, fal
     trialEndsAt: data.trialEndsAt ?? null,
     usage: normalizeLocationUsage(data.usage),
     planLimits: normalizePlanLimits(data.planLimits),
+    closureRequestedAt: data.closureRequestedAt ?? null,
+    closureScheduledFor: data.closureScheduledFor ?? null,
   };
 }

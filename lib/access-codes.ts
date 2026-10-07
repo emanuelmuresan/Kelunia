@@ -1,5 +1,6 @@
 import type { UserRole } from "@/context/AuthContext";
 import { defaultLocationName, memberAccessCodeMaxUses } from "@/lib/config/app";
+import { dateLocales } from "@/lib/date-locales";
 import { appText, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 import { normalizeRoomAccess } from "@/lib/room-access";
 import type { LocationCode } from "@/lib/types/domain";
@@ -54,15 +55,6 @@ export function normalizeAccessCode(id: string, data: Record<string, unknown>): 
     expiresAt: data.expiresAt,
   };
 }
-
-const dateLocales: Record<SupportedLocale, string> = {
-  ro: "ro-RO",
-  en: "en-GB",
-  es: "es-ES",
-  it: "it-IT",
-  fr: "fr-FR",
-  pt: "pt-PT",
-};
 
 export function accessCodeUsageLabel(item: LocationCode, language: SupportedLocale = "ro") {
   if (!item.active) {

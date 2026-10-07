@@ -150,6 +150,30 @@ test("the empty-state message flows on one line instead of wrapping", async ({ p
   expect(await position()).toBeLessThan(first);
 });
 
+test("closing a location needs the name typed and can be cancelled", async ({ page }) => {
+  await loginAsAdmin(page);
+
+  const card = page
+    .locator("article.settings-panel")
+    .filter({ has: page.getByRole("heading", { name: "Închidere locație" }) });
+  await expect(card.getByText("Deschisă")).toBeVisible();
+  await card.getByRole("button", { name: "Închide locația" }).click();
+
+  const dialog = page.locator('[aria-labelledby="close-location-title"]');
+  const confirmButton = dialog.getByRole("button", { name: "Închide locația" });
+  await expect(dialog.getByText("30 de zile")).toBeVisible();
+  await expect(confirmButton).toBeDisabled();
+
+  await dialog.locator("input").fill("alt nume");
+  await expect(confirmButton).toBeDisabled();
+
+  await dialog.locator("input").fill("sala e2e");
+  await expect(confirmButton).toBeEnabled();
+
+  await dialog.getByRole("button", { name: "Renunță" }).click();
+  await expect(dialog).toHaveCount(0);
+});
+
 // Runs last: it switches the seeded admin to English.
 test("messages follow the chosen language", async ({ page }) => {
   await loginAsAdmin(page);

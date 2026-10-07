@@ -88,3 +88,6 @@ export const memberAccessCodeMaxUses = 10;
 export const accessCodeExpiryDays = 7;
 export const listPageSize = 50;
 export const maxNotificationDelayMs = 2147483647;
+
+// Keep in step with closureGraceDays in functions/src/location-closure.ts.
+export const locationClosureGraceDays = 30;

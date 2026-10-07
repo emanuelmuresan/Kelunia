@@ -74,6 +74,8 @@ export interface LocationItem {
   trialEndsAt?: unknown;
   usage?: LocationUsage;
   planLimits?: PlanLimits;
+  closureRequestedAt?: unknown;
+  closureScheduledFor?: unknown;
 }
 
 export type LocationPlan = "trial" | "standard" | "pro" | "business";

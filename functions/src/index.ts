@@ -6,10 +6,11 @@ import { logger } from "firebase-functions";
 import { defineSecret, defineString } from "firebase-functions/params";
 import { setGlobalOptions } from "firebase-functions/v2";
 import { onDocumentCreated, onDocumentWritten } from "firebase-functions/v2/firestore";
-import { HttpsError, onCall } from "firebase-functions/v2/https";
+import { HttpsError, onCall, type CallableRequest } from "firebase-functions/v2/https";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { Resend } from "resend";
 import { inviteCopy, type InviteCopy } from "./invite-i18n";
+import { closureEmail, closureGraceDays, purgeLocation } from "./location-closure";
 import { createHash } from "node:crypto";
 import { connect } from "node:http2";
 
@@ -1159,7 +1160,11 @@ export const deleteMyAccount = onCall(
         (userDoc) => userDoc.id !== uid && normalizeRole((userDoc.data() as UserProfile).role) === "manager"
       );
 
-      if (otherAdmins.length === 0) {
+      // A location that is being closed no longer needs an administrator.
+      const locationClosing = otherAdmins.length === 0
+        && Boolean((await db.doc(`locations/${ownProfile.locationId}`).get()).data()?.closureScheduledFor);
+
+      if (otherAdmins.length === 0 && !locationClosing) {
         throw new HttpsError(
           "failed-precondition",
           "Ești singurul administrator al locației. Numește alt administrator înainte să îți ștergi contul.",
@@ -1765,6 +1770,173 @@ export const notifySpaceExpiry = onSchedule(
         );
       } catch (error) {
         logger.error("Space expiry push failed", { locationId, error });
+      }
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
+// Closing a location: read-only for closureGraceDays, then purged for good.
+// ---------------------------------------------------------------------------
+
+async function requireLocationAdmin(request: CallableRequest, locationId: string) {
+  if (!request.auth?.uid || request.auth.token.email_verified !== true) {
+    throw new HttpsError("unauthenticated", "Trebuie să fii autentificat cu email verificat.");
+  }
+
+  const profileSnapshot = await db.doc(`users/${request.auth.uid}`).get();
+  const profile = profileSnapshot.exists ? profileSnapshot.data() as UserProfile : null;
+  const email = cleanEmail(request.auth.token.email);
+  const isOwner = profile?.isOwner === true || email === ownerAccountEmail;
+  const isLocationAdmin = normalizeRole(profile?.role) === "manager" && profile?.locationId === locationId;
+
+  if (!isOwner && !isLocationAdmin) {
+    throw new HttpsError("permission-denied", "Doar un administrator al locației poate face asta.");
+  }
+
+  return { email };
+}
+
+export const requestLocationClosure = onCall(
+  {
+    region: "europe-west1",
+    secrets: [resendApiKey],
+    enforceAppCheck: true,
+  },
+  async (request) => {
+    const data = request.data as { locationId?: string; confirmationName?: string } | undefined;
+    const locationId = cleanText(data?.locationId, 160);
+
+    if (!locationId) {
+      throw new HttpsError("invalid-argument", "Locația lipsește.");
+    }
+
+    const admin = await requireLocationAdmin(request, locationId);
+    const locationRef = db.doc(`locations/${locationId}`);
+    const locationSnapshot = await locationRef.get();
+
+    if (!locationSnapshot.exists) {
+      throw new HttpsError("not-found", "Locația nu există.");
+    }
+
+    const location = locationSnapshot.data() ?? {};
+
+    if (location.closureScheduledFor) {
+      throw new HttpsError("failed-precondition", "Locația este deja în curs de închidere.", { reason: "already-closing" });
+    }
+
+    const locationName = cleanText(location.name ?? location.locationName, 180);
+
+    if (cleanText(data?.confirmationName, 180).toLowerCase() !== locationName.toLowerCase()) {
+      throw new HttpsError("invalid-argument", "Numele locației nu se potrivește.", { reason: "name-mismatch" });
+    }
+
+    const scheduledFor = Timestamp.fromMillis(Date.now() + closureGraceDays * 24 * 60 * 60 * 1000);
+
+    await locationRef.update({
+      billingStatus: "canceled",
+      statusBeforeClosure: cleanText(location.billingStatus, 30) || "active",
+      closureRequestedAt: FieldValue.serverTimestamp(),
+      closureRequestedBy: admin.email,
+      closureScheduledFor: scheduledFor,
+      updatedAt: FieldValue.serverTimestamp(),
+      updatedBy: admin.email,
+    });
+
+    // Tell everyone on the location, each in their own language. A failed email
+    // must never undo the closure.
+    try {
+      const members = await db.collection("users").where("locationId", "==", locationId).get();
+      const resend = new Resend(resendApiKey.value());
+
+      for (const member of members.docs.slice(0, 300)) {
+        const profile = member.data() as UserProfile & { language?: string };
+        const to = cleanEmail(profile.email);
+
+        if (!to || profile.isOwner === true) {
+          continue;
+        }
+
+        const mail = closureEmail(emailLanguage(profile.language), {
+          location: locationName,
+          admin: admin.email,
+          scheduledFor: scheduledFor.toDate(),
+        });
+
+        await resend.emails.send({ from: emailFrom.value(), to: [to], subject: mail.subject, text: mail.text, html: mail.html })
+          .catch((error) => logger.warn("Closure notice email failed", { to, error }));
+      }
+    } catch (error) {
+      logger.error("Closure notices failed", { locationId, error });
+    }
+
+    logger.info("Location closure requested", { locationId, by: admin.email, scheduledFor: scheduledFor.toDate().toISOString() });
+
+    return { scheduledFor: scheduledFor.toMillis() };
+  }
+);
+
+export const cancelLocationClosure = onCall(
+  {
+    region: "europe-west1",
+    enforceAppCheck: true,
+  },
+  async (request) => {
+    const locationId = cleanText((request.data as { locationId?: string } | undefined)?.locationId, 160);
+
+    if (!locationId) {
+      throw new HttpsError("invalid-argument", "Locația lipsește.");
+    }
+
+    const admin = await requireLocationAdmin(request, locationId);
+    const locationRef = db.doc(`locations/${locationId}`);
+    const locationSnapshot = await locationRef.get();
+    const location = locationSnapshot.data();
+
+    if (!location?.closureScheduledFor) {
+      throw new HttpsError("failed-precondition", "Locația nu este în curs de închidere.");
+    }
+
+    await locationRef.update({
+      billingStatus: cleanText(location.statusBeforeClosure, 30) || "active",
+      statusBeforeClosure: FieldValue.delete(),
+      closureRequestedAt: FieldValue.delete(),
+      closureRequestedBy: FieldValue.delete(),
+      closureScheduledFor: FieldValue.delete(),
+      updatedAt: FieldValue.serverTimestamp(),
+      updatedBy: admin.email,
+    });
+
+    logger.info("Location closure cancelled", { locationId, by: admin.email });
+
+    return { reopened: true };
+  }
+);
+
+export const purgeClosedLocations = onSchedule(
+  {
+    region: "europe-west1",
+    schedule: "0 3 * * *",
+    timeZone: "Europe/Bucharest",
+    timeoutSeconds: 540,
+  },
+  async () => {
+    const due = await db.collection("locations").where("closureScheduledFor", "<=", Timestamp.now()).get();
+
+    for (const location of due.docs) {
+      const data = location.data();
+
+      // Only locations that really went through the closure flow.
+      if (data.billingStatus !== "canceled" || !data.closureRequestedAt) {
+        logger.warn("Skipping purge: location is not in a closed state", { locationId: location.id });
+        continue;
+      }
+
+      try {
+        const result = await purgeLocation(db, getAuth(), location.id, ownerAccountEmail);
+        logger.info("Purged closed location", { locationId: location.id, ...result });
+      } catch (error) {
+        logger.error("Location purge failed", { locationId: location.id, error });
       }
     }
   }

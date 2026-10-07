@@ -162,6 +162,11 @@ await chk("audit: spoofed actorUid rejected", "DENY", () => addDoc(collection(db
   actorUid: "someoneElse", actorEmail: "m@x.com", actorName: "U", before: null, after: null, createdAt: ts(),
 }));
 
+console.log("\n--- locations: closure ---");
+await chk("locations: owner can save a location carrying closure fields", "ALLOW", () => updateDoc(doc(dbOwner(), "locations", LOC), { closureRequestedBy: "m@x.com", statusBeforeClosure: "active", closureScheduledFor: Timestamp.fromMillis(Date.now() + 30 * 86400000), closureRequestedAt: ts() }));
+await chk("locations: manager can no longer delete the location", "DENY", () => deleteDoc(doc(dbMgr(), "locations", LOC)));
+await chk("locations: owner can delete a location", "ALLOW", () => deleteDoc(doc(dbOwner(), "locations", LOC)));
+
 console.log("\n--- users: administrator safety ---");
 await chk("users: manager cannot change their OWN role", "DENY", () => updateDoc(doc(dbMgr(), "users", MGR), { role: "member" }));
 await chk("users: manager can change ANOTHER user's role", "ALLOW", () => updateDoc(doc(dbMgr(), "users", MEMBER), { role: "guest" }));

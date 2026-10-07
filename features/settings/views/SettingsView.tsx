@@ -7,6 +7,7 @@ import { NewsletterModal } from "@/features/settings/components/NewsletterModal"
 import { LandingInboxModal } from "@/features/settings/components/LandingInboxModal";
 import { ResourcesManagerModal } from "@/features/settings/components/ResourcesManagerModal";
 import { UsersManagerModal } from "@/features/settings/components/UsersManagerModal";
+import { LocationClosureCard } from "@/features/locations/components/LocationClosureCard";
 import { ProfileEditorModal } from "@/features/settings/components/ProfileEditorModal";
 import { ProfileSummaryCard } from "@/features/settings/components/ProfileSummaryCard";
 import { ReportProblemModal } from "@/features/shell/components/ReportProblemModal";
@@ -36,6 +37,7 @@ import type {
 
 type SettingsViewProps = {
   settingsError: string;
+  onSettingsMessage: (text: string) => void;
   pinResetRequired: boolean;
   userExists: boolean;
   isOwner: boolean;
@@ -110,6 +112,7 @@ type SettingsViewProps = {
 
 export function SettingsView({
   settingsError,
+  onSettingsMessage,
   pinResetRequired,
   userExists,
   isOwner,
@@ -195,9 +198,12 @@ export function SettingsView({
   const accountEmail = user?.email ?? profile?.email ?? "";
   // The last administrator of a location cannot delete their account: nobody
   // would be left to manage it (deleteMyAccount enforces this server-side too).
+  const currentLocation = locations.find((item) => item.id === currentLocationId);
+  const locationClosing = Boolean(currentLocation?.closureScheduledFor);
   const isSoleAdmin =
     !isOwner &&
     isSuperAdmin &&
+    !locationClosing &&
     !visibleManagedUsers.some((item) => item.role === "manager" && !item.isOwner && item.id !== user?.uid);
   const activeNewsletterSubscribers = newsletterSubscribers.filter(
     (subscriber) => subscriber.status === "active" && !subscriber.unsubscribed
@@ -362,6 +368,16 @@ export function SettingsView({
               language={language}
               managedUsers={visibleManagedUsers}
               onOpenUsersManager={() => setUsersManagerOpen(true)}
+            />
+          )}
+
+          {showLocationSettings && currentLocationId && (
+            <LocationClosureCard
+              language={language}
+              locationId={currentLocationId}
+              locationName={currentLocation?.name ?? ""}
+              closureScheduledFor={currentLocation?.closureScheduledFor}
+              onMessage={onSettingsMessage}
             />
           )}
         </>

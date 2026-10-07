@@ -94,6 +94,7 @@ import { useCalendarSwipe } from "@/features/calendar/hooks/useCalendarSwipe";
 import { useManagedUserActions } from "@/features/users/hooks/useManagedUserActions";
 import { useLocationEditor } from "@/features/locations/hooks/useLocationEditor";
 import { useAppLock } from "@/features/security/hooks/useAppLock";
+import { dateLocales } from "@/lib/date-locales";
 import { appText } from "@/lib/i18n/app-copy-catalog";
 import { AppLockModal } from "@/features/security/components/AppLockModal";
 import { useCalendarSettings } from "@/features/settings/hooks/useCalendarSettings";
@@ -1083,6 +1084,10 @@ export default function KeluniaPage() {
     }
   }
 
+  const closureDate = (currentLocation?.closureScheduledFor as { toDate?: () => Date } | null | undefined)?.toDate?.();
+  const closureBanner = closureDate
+    ? msg("closure.banner", { date: closureDate.toLocaleDateString(dateLocales[language], { day: "2-digit", month: "long", year: "numeric" }) })
+    : "";
   const editableCodeLocations = currentLocation
     ? [currentLocation]
     : [{ id: currentLocationId, name: locationName, ownerEmail: "", address: "", placeId: "" }];
@@ -1166,7 +1171,7 @@ export default function KeluniaPage() {
         headerTitle={headerTitle}
         isOnline={isOnline}
         isSignedIn={Boolean(user)}
-        licenseMessage={licenseAccess.message}
+        licenseMessage={closureBanner || licenseAccess.message}
         language={language}
         navigationItems={navigationItems}
         offlineMessage={offlineReadOnlyMessage}
@@ -1299,6 +1304,7 @@ export default function KeluniaPage() {
       {displayedView === "settings" && (
       <SettingsView
         settingsError={settingsError}
+        onSettingsMessage={setSettingsMessage}
         pinResetRequired={Boolean(profile?.pinResetRequired) && !pinConfiguredLocally}
         userExists={Boolean(user)}
         isOwner={isOwner}
