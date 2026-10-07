@@ -441,8 +441,25 @@ service cloud.firestore {
           !hasKey(resource.data, "code")
           || request.resource.data.code == resource.data.code
         )
-        && request.resource.data.active == false
-        && request.resource.data.deleted == true
+        && (
+          (
+            request.resource.data.active == false
+            && request.resource.data.deleted == true
+          )
+          // Undo of a soft delete, folded into this branch: a separate branch
+          // pushed the manager-edit path past the 1000-expression budget.
+          || (
+            resource.data.get("deleted", false) == true
+            && request.resource.data.deleted == false
+            && request.resource.data.active is bool
+            && validAccessUsage(
+              resource.data.role,
+              resource.data.maxUses,
+              resource.data.usedCount,
+              request.resource.data.active
+            )
+          )
+        )
         && validSoftDeleteFields(request.resource.data)
         && validOptionalText(request.resource.data, "updatedBy", 180)
         && validOptionalTimestamp(request.resource.data, "updatedAt")
@@ -454,6 +471,47 @@ service cloud.firestore {
           "deletedByUid",
           "updatedBy",
           "updatedAt"
+        ]);
+    }
+
+    // Aliasing request/resource data keeps this write inside Firestore's
+    // 1000-expression budget (it used to sit at the very edge).
+    function validAccessCodeManagerUpdate() {
+      let before = resource.data;
+      let after = request.resource.data;
+      return (
+          isOwner()
+          || (
+            isLocationSuperAdmin()
+            && before.locationId == userLocationId()
+          )
+        )
+        && locationWriteEnabled(before.locationId)
+        && after.locationId == before.locationId
+        && after.code == before.code
+        && validText(after.locationName, 180)
+        && validAccessRole(after.role)
+        && validAccessGroup(after.role, after.groupName)
+        && validRoomAccessData(after.role, after)
+        && validAccessUsage(after.role, after.maxUses, after.usedCount, after.active)
+        && validSoftDeleteFields(after)
+        && (!("expiresAt" in after) || after.expiresAt is timestamp)
+        && after.diff(before).affectedKeys().hasOnly([
+          "role",
+          "groupName",
+          "roomAccess",
+          "allowedRoomIds",
+          "locationName",
+          "maxUses",
+          "usedCount",
+          "active",
+          "updatedBy",
+          "updatedAt",
+          "deleted",
+          "deletedAt",
+          "deletedBy",
+          "deletedByUid",
+          "expiresAt"
         ]);
     }
 
@@ -1486,47 +1544,7 @@ service cloud.firestore {
         && (!("expiresAt" in request.resource.data) || request.resource.data.expiresAt is timestamp)
         && validSoftDeleteFields(request.resource.data);
       allow update: if validAccessCodeSoftDeleteUpdate()
-        || (
-          (
-            isOwner()
-            || (
-              isLocationSuperAdmin()
-              && resource.data.locationId == userLocationId()
-            )
-          )
-          && locationWriteEnabled(resource.data.locationId)
-          && request.resource.data.locationId == resource.data.locationId
-          && request.resource.data.code == resource.data.code
-          && validText(request.resource.data.locationName, 180)
-          && validAccessRole(request.resource.data.role)
-          && validAccessGroup(request.resource.data.role, request.resource.data.groupName)
-          && validRoomAccessData(request.resource.data.role, request.resource.data)
-          && validAccessUsage(
-            request.resource.data.role,
-            request.resource.data.maxUses,
-            request.resource.data.usedCount,
-            request.resource.data.active
-          )
-          && validSoftDeleteFields(request.resource.data)
-          && (!("expiresAt" in request.resource.data) || request.resource.data.expiresAt is timestamp)
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-            "role",
-            "groupName",
-            "roomAccess",
-            "allowedRoomIds",
-            "locationName",
-            "maxUses",
-            "usedCount",
-            "active",
-            "updatedBy",
-            "updatedAt",
-            "deleted",
-            "deletedAt",
-            "deletedBy",
-            "deletedByUid",
-            "expiresAt"
-          ])
-        )
+        || validAccessCodeManagerUpdate()
         || validAccessUseUpdate(codeId);
       allow delete: if (
           isOwner()

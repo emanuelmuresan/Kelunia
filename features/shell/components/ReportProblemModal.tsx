@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+
+import { useAuth } from "@/context/AuthContext";
+import { useDismissGuard } from "@/features/shell/components/ConfirmDialog";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 
 import { auth, db } from "@/lib/firebase";
@@ -16,6 +19,8 @@ export function ReportProblemModal({ open, errorContext, onClose }: ReportProble
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState("");
+  const { profile } = useAuth();
+  const requestClose = useDismissGuard(text.trim().length > 0 && !done && !sending, onClose, profile?.language ?? "ro");
 
   if (!open) {
     return null;
@@ -56,7 +61,7 @@ export function ReportProblemModal({ open, errorContext, onClose }: ReportProble
   }
 
   return (
-    <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
+    <div className="modal-backdrop" role="presentation" onMouseDown={requestClose}>
       <section
         className="modal-card small-card"
         role="dialog"

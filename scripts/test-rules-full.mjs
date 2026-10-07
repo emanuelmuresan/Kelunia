@@ -94,9 +94,11 @@ async function chk(label, want, fn) {
 console.log("\n--- rooms / groups (manager owns location) ---");
 await chk("room: edit name (updateDoc)", "ALLOW", () => updateDoc(doc(dbMgr(), "rooms", "room1"), { name: "Sala X", locationId: LOC, locationName: "L", updatedBy: "m@x.com", updatedAt: ts() }));
 await chk("room: soft-delete (updateDoc softDeletePayload)", "ALLOW", () => updateDoc(doc(dbMgr(), "rooms", "room1"), softDelete()));
+await chk("room: undo soft-delete (restore)", "ALLOW", async () => { await updateDoc(doc(dbMgr(), "rooms", "room1"), softDelete()); await updateDoc(doc(dbMgr(), "rooms", "room1"), { deleted: false, deletedAt: null, deletedBy: "", deletedByUid: "", updatedBy: "m@x.com", updatedAt: ts() }); });
 await chk("room: create (addDoc)", "ALLOW", () => addDoc(collection(dbMgr(), "rooms"), roomDoc({ name: "Noua" })));
 await chk("group: edit name+color (updateDoc)", "ALLOW", () => updateDoc(doc(dbMgr(), "groups", "group1"), { name: "Gr X", color: "#112233", locationId: LOC, locationName: "L", updatedBy: "m@x.com", updatedAt: ts() }));
 await chk("group: soft-delete (updateDoc softDeletePayload)", "ALLOW", () => updateDoc(doc(dbMgr(), "groups", "group1"), softDelete()));
+await chk("group: undo soft-delete (restore)", "ALLOW", async () => { await updateDoc(doc(dbMgr(), "groups", "group1"), softDelete()); await updateDoc(doc(dbMgr(), "groups", "group1"), { deleted: false, deletedAt: null, deletedBy: "", deletedByUid: "", updatedBy: "m@x.com", updatedAt: ts() }); });
 await chk("group: set temporary activeUntil (valid date key)", "ALLOW", () => updateDoc(doc(dbMgr(), "groups", "group1"), { name: "Gr T", color: "#112233", activeUntil: "2026-12-31", locationId: LOC, locationName: "L", updatedBy: "m@x.com", updatedAt: ts() }));
 await chk("room: create temporary (activeUntil)", "ALLOW", () => addDoc(collection(dbMgr(), "rooms"), roomDoc({ name: "Temp", activeUntil: "2026-12-31" })));
 await chk("group: malformed activeUntil denied", "DENY", () => updateDoc(doc(dbMgr(), "groups", "group1"), { name: "Gr T", color: "#112233", activeUntil: "31/12/2026", locationId: LOC, locationName: "L", updatedBy: "m@x.com", updatedAt: ts() }));
@@ -107,6 +109,7 @@ await chk("room: member cannot soft-delete", "DENY", () => updateDoc(doc(dbMembe
 console.log("\n--- fixedSchedules ---");
 await chk("fixed: edit (updateDoc)", "ALLOW", () => updateDoc(doc(dbMgr(), "fixedSchedules", "fx1"), { dayIndex: 2, group: "G", room: "R", startTime: "09:00", endTime: "11:00", title: "T2", locationId: LOC, locationName: "L", updatedBy: "m@x.com", updatedAt: ts() }));
 await chk("fixed: soft-delete (updateDoc softDeletePayload)", "ALLOW", () => updateDoc(doc(dbMgr(), "fixedSchedules", "fx1"), softDelete()));
+await chk("fixed: undo soft-delete (restore)", "ALLOW", async () => { await updateDoc(doc(dbMgr(), "fixedSchedules", "fx1"), softDelete()); await updateDoc(doc(dbMgr(), "fixedSchedules", "fx1"), { deleted: false, deletedAt: null, deletedBy: "", deletedByUid: "", updatedBy: "m@x.com", updatedAt: ts() }); });
 await chk("fixed: create (addDoc)", "ALLOW", () => addDoc(collection(dbMgr(), "fixedSchedules"), fixedDoc({ title: "New" })));
 
 console.log("\n--- locations ---");
@@ -161,6 +164,7 @@ await chk("audit: spoofed actorUid rejected", "DENY", () => addDoc(collection(db
 
 console.log("\n--- accessCodes ---");
 await chk("accessCode: soft-delete (updateDoc {...softDelete, active:false})", "ALLOW", () => updateDoc(doc(dbMgr(), "accessCodes", "CODE1"), { ...softDelete(), active: false }));
+await chk("accessCode: undo soft-delete (restore)", "ALLOW", async () => { await updateDoc(doc(dbMgr(), "accessCodes", "CODE1"), { ...softDelete(), active: false }); await updateDoc(doc(dbMgr(), "accessCodes", "CODE1"), { ...{ deleted: false, deletedAt: null, deletedBy: "", deletedByUid: "", updatedBy: "m@x.com", updatedAt: ts() }, active: true }); });
 await chk("accessCode: create with expiresAt timestamp", "ALLOW", () =>
   setDoc(doc(dbMgr(), "accessCodes", "CODE_NEW"), accessCodeDoc({ code: "CODE_NEW", expiresAt: Timestamp.fromMillis(Date.now() + 7 * 86400000) }))
 );

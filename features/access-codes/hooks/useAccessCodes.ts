@@ -71,6 +71,7 @@ type UseAccessCodesParams = {
   recordAuditLog: RecordAuditLog;
   requireOnline: (target: WriteTarget) => boolean;
   rooms: RoomItem[];
+  pushToast: (input: { message: string; actionLabel?: string; onAction?: () => void | Promise<void>; tone?: "default" | "error" }) => string;
   softDeletePayload: () => Record<string, unknown>;
   user: User | null;
   language?: SupportedLocale;
@@ -87,6 +88,7 @@ export function useAccessCodes({
   recordAuditLog,
   requireOnline,
   rooms,
+  pushToast,
   softDeletePayload,
   user,
   language = "ro",
@@ -558,7 +560,7 @@ export function useAccessCodes({
   }
 
   async function removeAccessCode(item: LocationCode) {
-    if (!canEditCurrentLocation || item.locationId !== currentLocationId || !requireOnline("codes") || !confirm(`Stergi codul ${item.code}?`)) {
+    if (!canEditCurrentLocation || item.locationId !== currentLocationId || !requireOnline("codes")) {
       return;
     }
 
@@ -570,10 +572,34 @@ export function useAccessCodes({
       await updateDoc(doc(db, "accessCodes", item.id), deletedPayload);
       await updateLocationCounterSafely(db, item.locationId, "accessCodeCount", -1);
       await recordAuditLog("accessCode", "delete", item.id, item, { ...item, ...deletedPayload }, item.locationId, item.locationName || locationName);
-      setCodesMessage("Codul a fost sters.");
+      pushToast({
+        message: "Codul a fost șters",
+        actionLabel: "Anulează",
+        onAction: () => restoreAccessCode(item),
+      });
     } catch (error) {
       console.error("Codul nu a putut fi sters:", error);
       setCodesError("Codul nu a putut fi sters. Verifica regulile Firebase.");
+    }
+  }
+
+  async function restoreAccessCode(item: LocationCode) {
+    try {
+      const restoredPayload = {
+        deleted: false,
+        deletedAt: null,
+        deletedBy: "",
+        deletedByUid: "",
+        active: item.active,
+        updatedBy: user?.email ?? "",
+        updatedAt: Timestamp.now(),
+      };
+      await updateDoc(doc(db, "accessCodes", item.id), restoredPayload);
+      await updateLocationCounterSafely(db, item.locationId, "accessCodeCount", 1);
+      await recordAuditLog("accessCode", "update", item.id, { ...item, deleted: true }, { ...item, ...restoredPayload }, item.locationId, item.locationName || locationName);
+    } catch (error) {
+      console.error("Anularea ștergerii nu a reușit:", error);
+      setCodesError("Anularea ștergerii nu a reușit. Reîncarcă și încearcă din nou.");
     }
   }
 

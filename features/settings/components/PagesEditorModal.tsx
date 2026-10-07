@@ -1,5 +1,6 @@
 "use client";
 
+import { useDismissGuard } from "@/features/shell/components/ConfirmDialog";
 import { useState } from "react";
 
 import type { AppLanguage } from "@/context/AuthContext";
@@ -77,6 +78,8 @@ export function PagesEditorModal({
     onClose();
   }
 
+  const requestClose = useDismissGuard(dirty, handleClose, language);
+
   function handleSave() {
     if (!dirty) {
       return;
@@ -87,7 +90,7 @@ export function PagesEditorModal({
   }
 
   return (
-    <div className="modal-backdrop" role="presentation" onMouseDown={handleClose}>
+    <div className="modal-backdrop" role="presentation" onMouseDown={requestClose}>
       <section
         className="modal-card small-card"
         role="dialog"

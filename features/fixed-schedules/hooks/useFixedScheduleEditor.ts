@@ -20,6 +20,7 @@ type UseFixedScheduleEditorParams = {
   requireOnline: (target?: WriteTarget) => boolean;
   softDeletePayload: () => Record<string, unknown>;
   recordAuditLog: RecordAuditLog;
+  pushToast: (input: { message: string; actionLabel?: string; onAction?: () => void | Promise<void>; tone?: "default" | "error" }) => string;
   setSettingsMessage: (value: string) => void;
 };
 
@@ -38,6 +39,7 @@ export function useFixedScheduleEditor({
   requireOnline,
   softDeletePayload,
   recordAuditLog,
+  pushToast,
   setSettingsMessage,
 }: UseFixedScheduleEditorParams) {
   const [showFixedManager, setShowFixedManager] = useState(false);
@@ -159,7 +161,7 @@ export function useFixedScheduleEditor({
   }
 
   async function removeFixedSchedule(itemId: string) {
-    if (!canEditCurrentLocation || !requireOnline("fixed") || !confirm("Ștergi acest program?")) {
+    if (!canEditCurrentLocation || !requireOnline("fixed")) {
       return;
     }
 
@@ -171,10 +173,31 @@ export function useFixedScheduleEditor({
       await updateDoc(doc(db, "fixedSchedules", itemId), deletedPayload);
       await updateLocationCounterSafely(db, currentLocationId, "fixedScheduleCount", -1);
       await recordAuditLog("fixedSchedule", "delete", itemId, previousSchedule, previousSchedule ? { ...previousSchedule, ...deletedPayload } : deletedPayload);
-      setSettingsMessage("Programul a fost șters.");
+      pushToast({
+        message: "Programul a fost șters",
+        actionLabel: "Anulează",
+        onAction: () => restoreFixedSchedule(itemId),
+      });
     } catch (error) {
       console.error("Programul nu a putut fi șters:", error);
       setFixedError("Firebase nu permite încă ștergerea programului.");
+    }
+  }
+
+  async function restoreFixedSchedule(itemId: string) {
+    try {
+      await updateDoc(doc(db, "fixedSchedules", itemId), {
+        deleted: false,
+        deletedAt: null,
+        deletedBy: "",
+        deletedByUid: "",
+        updatedBy: user?.email ?? "",
+        updatedAt: Timestamp.now(),
+      });
+      await updateLocationCounterSafely(db, currentLocationId, "fixedScheduleCount", 1);
+    } catch (error) {
+      console.error("Anularea ștergerii nu a reușit:", error);
+      setFixedError("Anularea ștergerii nu a reușit. Reîncarcă și încearcă din nou.");
     }
   }
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { useDismissGuard } from "@/features/shell/components/ConfirmDialog";
 import { useState } from "react";
 
 import type { AppLanguage } from "@/context/AuthContext";
@@ -66,6 +67,8 @@ export function ProfileEditorModal({
     onClose();
   }
 
+  const requestClose = useDismissGuard(profileDirty, handleClose, language);
+
   async function handleSave() {
     if (!profileDirty) {
       return;
@@ -87,7 +90,7 @@ export function ProfileEditorModal({
   }
 
   return (
-    <div className="modal-backdrop" role="presentation" onMouseDown={handleClose}>
+    <div className="modal-backdrop" role="presentation" onMouseDown={requestClose}>
       <section
         className="modal-card small-card"
         role="dialog"

@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/features/shell/components/ConfirmDialog";
 import { deleteDoc, doc, updateDoc, type Firestore } from "firebase/firestore";
 
 import type { UserRole } from "@/context/AuthContext";
@@ -39,6 +40,8 @@ export function useManagedUserActions({
   setSettingsError,
   setSettingsMessage,
 }: UseManagedUserActionsParams) {
+  const confirmAction = useConfirm();
+
   async function updateManagedUserRole(managedUser: ManagedUser, nextRole: UserRole) {
     if (!canManageMembers || managedUser.isOwner || managedUser.locationId !== currentLocationId) {
       return;
@@ -138,9 +141,18 @@ export function useManagedUserActions({
       !canManageMembers ||
       managedUser.isOwner ||
       managedUser.locationId !== currentLocationId ||
-      !requireOnline("settings") ||
-      !confirm(`Stergi contul ${managedUser.email}?`)
+      !requireOnline("settings")
     ) {
+      return;
+    }
+
+    const confirmed = await confirmAction({
+      message: `Ștergi contul ${managedUser.email}? Acțiunea nu poate fi anulată.`,
+      confirmLabel: "Șterge contul",
+      tone: "danger",
+    });
+
+    if (!confirmed) {
       return;
     }
 

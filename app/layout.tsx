@@ -1,6 +1,7 @@
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { ShellModeClass } from "@/components/ShellModeClass";
+import { ConfirmProvider } from "@/features/shell/components/ConfirmDialog";
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import PwaRegister from "./pwa-register";
@@ -60,7 +61,9 @@ export default function RootLayout({
         <AuthProvider>
           <ShellModeClass />
           <PwaRegister />
-          {children}
+          <ConfirmProvider>
+            {children}
+          </ConfirmProvider>
           <footer className="app-footer">
             <img src="/semnatura.png" alt="Semnătură" />
           </footer>

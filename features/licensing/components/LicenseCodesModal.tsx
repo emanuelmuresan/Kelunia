@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/features/shell/components/ConfirmDialog";
 import { useState } from "react";
 import type {
   LicenseCodeDraft,
@@ -207,6 +208,7 @@ export function LicenseCodesModal({
   language = "ro",
 }: LicenseCodesModalProps) {
   const t = (key: UiCopyKey) => appText(language, key);
+  const confirmAction = useConfirm();
   const [createOpen, setCreateOpen] = useState(false);
   const [emailDraft, setEmailDraft] = useState({
     licenseId: "",
@@ -243,7 +245,7 @@ export function LicenseCodesModal({
   }
 
   async function sendEmail(item: LicenseCodeItem) {
-    if (!window.confirm(t("license.confirmSend").replace("{{code}}", item.code).replace("{{email}}", emailDraft.toEmail))) {
+    if (!(await confirmAction({ message: t("license.confirmSend").replace("{{code}}", item.code).replace("{{email}}", emailDraft.toEmail) }))) {
       return;
     }
 
@@ -256,7 +258,7 @@ export function LicenseCodesModal({
       return;
     }
 
-    if (!window.confirm(t("license.confirmSave").replace("{{code}}", editingLicense.code))) {
+    if (!(await confirmAction({ message: t("license.confirmSave").replace("{{code}}", editingLicense.code) }))) {
       return;
     }
 
@@ -266,7 +268,7 @@ export function LicenseCodesModal({
   }
 
   async function removeLicense(item: LicenseCodeItem) {
-    if (!window.confirm(t("license.confirmDelete").replace("{{code}}", item.code))) {
+    if (!(await confirmAction({ message: t("license.confirmDelete").replace("{{code}}", item.code), confirmLabel: t("action.delete"), tone: "danger" }))) {
       return;
     }
 
@@ -275,8 +277,8 @@ export function LicenseCodesModal({
     setEditDraft(null);
   }
 
-  function generateWithConfirmation() {
-    if (!window.confirm(t("license.confirmCreate"))) {
+  async function generateWithConfirmation() {
+    if (!(await confirmAction({ message: t("license.confirmCreate") }))) {
       return;
     }
 
@@ -542,8 +544,8 @@ export function LicenseCodesModal({
               <button
                 className="secondary-button"
                 disabled={working || editingLicense.used}
-                onClick={() => {
-                  if (window.confirm(`${editingLicense.active ? "Opresti" : "Activezi"} licenta ${editingLicense.code}?`)) {
+                onClick={async () => {
+                  if (await confirmAction({ message: `${editingLicense.active ? "Oprești" : "Activezi"} licența ${editingLicense.code}?` })) {
                     onToggleActive(editingLicense);
                     setEditingLicense(null);
                     setEditDraft(null);

@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/features/shell/components/ConfirmDialog";
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { registerPlugin } from "@capacitor/core";
 import type { User } from "firebase/auth";
@@ -43,6 +44,7 @@ export function useAppLock({
   setPersonalDraft,
   setSettingsError,
 }: UseAppLockParams) {
+  const confirmAction = useConfirm();
   const [appLocked, setAppLocked] = useState(false);
   const [unlockPin, setUnlockPin] = useState("");
   const [unlockError, setUnlockError] = useState("");
@@ -81,7 +83,9 @@ export function useAppLock({
   }, [lockSessionKey, pinLockEnabled]);
 
   async function confirmSignOut() {
-    if (typeof window !== "undefined" && !window.confirm("Vrei sa iesi din cont?")) {
+    const confirmed = await confirmAction({ message: "Vrei să ieși din cont?", confirmLabel: "Ieși din cont" });
+
+    if (!confirmed) {
       return;
     }
 

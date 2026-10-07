@@ -1,5 +1,6 @@
 "use client";
 
+import { useDismissGuard } from "@/features/shell/components/ConfirmDialog";
 import { useState } from "react";
 
 import type { AppLanguage } from "@/context/AuthContext";
@@ -28,8 +29,10 @@ export function TickerEditorModal({ language, settings, onSave, onClose }: Ticke
   const dirty =
     draft.enabled !== settings.enabled || draft.color !== settings.color || nextLeadDays !== settings.leadDays;
 
+  const requestClose = useDismissGuard(dirty, onClose, language);
+
   return (
-    <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
+    <div className="modal-backdrop" role="presentation" onMouseDown={requestClose}>
       <section
         className="modal-card small-card"
         role="dialog"

@@ -468,6 +468,7 @@ export default function KeluniaPage() {
     saveSpaceItem,
     removeSpaceItem,
   } = useSpaceEditor({
+    pushToast,
     db,
     user,
     rooms,
@@ -498,6 +499,7 @@ export default function KeluniaPage() {
     saveFixedSchedule,
     removeFixedSchedule,
   } = useFixedScheduleEditor({
+    pushToast,
     db,
     user,
     fixedSchedules,
@@ -657,6 +659,7 @@ export default function KeluniaPage() {
     toggleAccessCodeActive,
     updateAccessCodeDetails,
   } = useAccessCodes({
+    pushToast,
     canEditCurrentLocation: canManageAccessCodes,
     currentLocationId,
     currentLocationManagerCapacityUsed,

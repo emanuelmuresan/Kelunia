@@ -22,6 +22,7 @@ type UseSpaceEditorParams = {
   requireOnline: (target?: WriteTarget) => boolean;
   softDeletePayload: () => Record<string, unknown>;
   recordAuditLog: RecordAuditLog;
+  pushToast: (input: { message: string; actionLabel?: string; onAction?: () => void | Promise<void>; tone?: "default" | "error" }) => string;
   setSettingsError: (value: string) => void;
   setSettingsMessage: (value: string) => void;
 };
@@ -41,6 +42,7 @@ export function useSpaceEditor({
   requireOnline,
   softDeletePayload,
   recordAuditLog,
+  pushToast,
   setSettingsError,
   setSettingsMessage,
 }: UseSpaceEditorParams) {
@@ -147,9 +149,8 @@ export function useSpaceEditor({
 
   async function removeSpaceItem(kind: SpaceKind, itemId: string) {
     const collectionName = kind === "room" ? "rooms" : "groups";
-    const label = kind === "room" ? "această sală" : "acest grup";
 
-    if (!canEditCurrentLocation || !requireOnline("settings") || !confirm(`Ștergi ${label}?`)) {
+    if (!canEditCurrentLocation || !requireOnline("settings")) {
       return;
     }
 
@@ -161,10 +162,33 @@ export function useSpaceEditor({
       await updateDoc(doc(db, collectionName, itemId), deletedPayload);
       await updateLocationCounterSafely(db, currentLocationId, kind === "room" ? "roomCount" : "groupCount", -1);
       await recordAuditLog(kind, "delete", itemId, previousItem, previousItem ? { ...previousItem, ...deletedPayload } : deletedPayload);
-      setSettingsMessage(kind === "room" ? "Sala a fost ștearsă." : "Grupul a fost șters.");
+      pushToast({
+        message: kind === "room" ? "Sala a fost ștearsă" : "Grupul a fost șters",
+        actionLabel: "Anulează",
+        onAction: () => restoreSpaceItem(kind, itemId),
+      });
     } catch (error) {
       console.error("Elementul nu a putut fi șters:", error);
       setSettingsError("Firebase nu permite încă ștergerea. Actualizează regulile Firestore pentru administrator.");
+    }
+  }
+
+  async function restoreSpaceItem(kind: SpaceKind, itemId: string) {
+    const collectionName = kind === "room" ? "rooms" : "groups";
+
+    try {
+      await updateDoc(doc(db, collectionName, itemId), {
+        deleted: false,
+        deletedAt: null,
+        deletedBy: "",
+        deletedByUid: "",
+        updatedBy: user?.email ?? "",
+        updatedAt: Timestamp.now(),
+      });
+      await updateLocationCounterSafely(db, currentLocationId, kind === "room" ? "roomCount" : "groupCount", 1);
+    } catch (error) {
+      console.error("Anularea ștergerii nu a reușit:", error);
+      setSettingsError("Anularea ștergerii nu a reușit. Reîncarcă și încearcă din nou.");
     }
   }
 
