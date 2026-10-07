@@ -1,20 +1,25 @@
+// Logica de programare: comparări de ore și date, normalizarea unei rezervări din Firestore și sortări.
 import { dateKey } from "@/lib/dates";
 import { defaultLocationName } from "@/lib/config/app";
 import type { Booking, FixedSchedule } from "@/lib/types/domain";
 
+// Transformă „HH:MM” în minute de la miezul nopții.
 export function timeToMinutes(time: string) {
   const [hours, minutes] = time.split(":").map(Number);
   return hours * 60 + minutes;
 }
 
+// Două intervale orare se suprapun dacă fiecare începe înainte ca celălalt să se termine (capetele care se ating nu contează).
 export function timeRangesOverlap(startA: string, endA: string, startB: string, endB: string) {
   return timeToMinutes(startA) < timeToMinutes(endB) && timeToMinutes(endA) > timeToMinutes(startB);
 }
 
+// Două intervale de date se suprapun dacă se intersectează, capetele fiind incluse.
 export function dateRangesOverlap(startA: string, endA: string, startB: string, endB: string) {
   return startA <= endB && startB <= endA;
 }
 
+// Construiește o rezervare din documentul Firestore; acceptă și câmpurile vechi (orar, congregatie, motiv).
 export function normalizeBooking(id: string, data: Record<string, unknown>): Booking {
   const legacyTime = String(data.orar ?? "08:00 - 10:00").split(" - ");
   const startDate = String(data.startDate ?? data.date ?? dateKey(new Date()));
@@ -48,12 +53,14 @@ export function normalizeBooking(id: string, data: Record<string, unknown>): Boo
   };
 }
 
+// Rezervările care cad într-o zi, ordonate după ora de început.
 export function bookingsForDay(bookings: Booking[], key: string) {
   return bookings
     .filter((booking) => key >= booking.startDate && key <= booking.endDate)
     .sort((a, b) => a.startTime.localeCompare(b.startTime));
 }
 
+// Sortare „naturală” în română: „Sala 2” înaintea lui „Sala 10”, fără diferență între litere mari și mici.
 const naturalTextSorter = new Intl.Collator("ro", {
   numeric: true,
   sensitivity: "base",
@@ -63,6 +70,7 @@ export function compareNaturalText(a: string, b: string) {
   return naturalTextSorter.compare(a.trim(), b.trim());
 }
 
+// Ordinea programelor fixe: zi, oră, cameră, grup, titlu.
 export function compareFixedSchedules(a: FixedSchedule, b: FixedSchedule) {
   return (
     a.dayIndex - b.dayIndex ||
@@ -74,6 +82,7 @@ export function compareFixedSchedules(a: FixedSchedule, b: FixedSchedule) {
   );
 }
 
+// Compară numele grupului cu cel al utilizatorului, fără diferență între litere mari și mici.
 export function isOwnGroupName(itemGroupName: string, profileGroupName: string | undefined) {
   return Boolean(profileGroupName?.trim() && itemGroupName.trim().toLowerCase() === profileGroupName.trim().toLowerCase());
 }
@@ -86,10 +95,12 @@ export function isGroupFixedSchedule(schedule: FixedSchedule, groupName: string 
   return isOwnGroupName(schedule.group, groupName);
 }
 
+// Momentul de început al rezervării ca obiect Date.
 export function bookingStartDateTime(booking: Booking) {
   return new Date(`${booking.startDate}T${booking.startTime || "00:00"}`);
 }
 
+// Programele fixe dintr-o zi a săptămânii, sortate.
 export function fixedForDay(schedules: FixedSchedule[], dayIndex: number) {
   return schedules
     .filter((schedule) => schedule.dayIndex === dayIndex)

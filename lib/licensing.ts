@@ -1,3 +1,5 @@
+// Licențierea locațiilor: planuri, stare de facturare, limite, perioada de probă și dacă o locație mai poate fi modificată.
+// O locație cu perioada de probă sau abonamentul expirat, sau cu facturare blocată, devine doar pentru citire.
 import { appText, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 import type {
   BillingStatus,
@@ -10,10 +12,12 @@ import type {
   PlanLimits,
 } from "@/lib/types/domain";
 
+// Durata perioadei de probă și planul/starea implicite pentru o locație nouă.
 export const trialDays = 14;
 export const defaultLocationPlan: LocationPlan = "standard";
 export const defaultBillingStatus: BillingStatus = "trialing";
 
+// Ierarhia planurilor și planul minim necesar fiecărei funcții.
 type FeaturePlanGate = Exclude<LocationPlan, "trial">;
 
 const planAccessRank: Record<LocationPlan, number> = {
@@ -34,6 +38,7 @@ export const featureMinimumPlan: Record<PlanFeature, FeaturePlanGate> = {
   multiLocationDashboard: "business",
 };
 
+// Funcțiile incluse în fiecare plan (în prezent toate planurile au aceleași funcții, mai puțin tabloul pentru mai multe locații).
 export const standardFeatures: PlanFeature[] = [
   "calendar",
   "bookings",
@@ -53,6 +58,7 @@ export const businessFeatures: PlanFeature[] = [
   "multiLocationDashboard",
 ];
 
+// Limitele implicite ale planului (null = nelimitat; maximum 2 manageri) și contoarele de utilizare goale.
 export const defaultPlanLimits: PlanLimits = {
   maxMembers: null,
   maxManagers: 2,
@@ -70,6 +76,7 @@ export const emptyLocationUsage: LocationUsage = {
   memberCount: 0,
 };
 
+// Rezultatul calculului de acces: plan, stare, funcții, dacă se poate scrie, mesajul de afișat și zilele rămase.
 export interface LocationLicenseAccess {
   plan: LocationPlan;
   planLabel: string;
@@ -83,6 +90,7 @@ export interface LocationLicenseAccess {
   daysRemaining: number | null;
 }
 
+// Normalizează contoarele și limitele citite din Firestore (valori lipsă sau invalide devin 0/implicit).
 export function normalizeLocationUsage(value: unknown): LocationUsage {
   const data = typeof value === "object" && value !== null ? value as Partial<Record<keyof LocationUsage, unknown>> : {};
 
@@ -108,6 +116,7 @@ export function normalizePlanLimits(value: unknown): PlanLimits {
   };
 }
 
+// Acceptă și numele vechi ale planurilor (plus, enterprise) și le mapează pe cele curente.
 export function normalizeLocationPlan(value: unknown): LocationPlan {
   if (value === "pro" || value === "plus") {
     return "pro";
@@ -124,6 +133,7 @@ export function normalizeLocationPlan(value: unknown): LocationPlan {
   return value === "standard" ? "standard" : defaultLocationPlan;
 }
 
+// Stare de facturare necunoscută se tratează ca perioadă de probă.
 export function normalizeBillingStatus(value: unknown): BillingStatus {
   if (
     value === "active" ||
@@ -138,6 +148,7 @@ export function normalizeBillingStatus(value: unknown): BillingStatus {
   return defaultBillingStatus;
 }
 
+// Calculează sfârșitul perioadei de probă (14 zile) și al unui abonament anual (365 zile).
 export function trialEndsAtDate(now = new Date()) {
   return new Date(now.getTime() + trialDays * 24 * 60 * 60 * 1000);
 }
@@ -146,6 +157,7 @@ export function subscriptionEndsAtDate(now = new Date()) {
   return new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000);
 }
 
+// Sfârșitul probei unei locații: câmpul explicit sau data creării plus durata probei.
 function trialEndsAtFromLocation(location?: LocationItem | null) {
   const explicitTrialEnd = dateFromFirestoreValue(location?.trialEndsAt);
 
@@ -158,6 +170,7 @@ function trialEndsAtFromLocation(location?: LocationItem | null) {
   return createdAt ? trialEndsAtDate(createdAt) : null;
 }
 
+// Câmpurile de facturare pentru o locație nouă și pentru una creată dintr-o licență.
 export function initialLocationBillingFields(now = new Date()) {
   return {
     plan: defaultLocationPlan,
@@ -187,6 +200,7 @@ export function locationBillingFieldsFromLicense(data: Record<string, unknown>, 
   };
 }
 
+// Funcțiile pe care le are un plan și verificarea dacă un plan include o funcție.
 export function featuresForPlan(plan: LocationPlan): PlanFeature[] {
   const normalizedPlan = normalizeLocationPlan(plan);
 
@@ -208,6 +222,7 @@ export function planIncludesFeature(plan: LocationPlan, feature: PlanFeature) {
   return planAccessRank[normalizedPlan] >= planAccessRank[minimumPlan];
 }
 
+// Etichetele afișate pentru plan și pentru starea de facturare.
 export function planLabel(plan: LocationPlan, language: SupportedLocale = "ro") {
   if (plan === "trial") {
     return appText(language, "license.planTrial");
@@ -248,6 +263,7 @@ export function billingStatusLabel(status: BillingStatus, language: SupportedLoc
   return appText(language, "license.statusCanceled");
 }
 
+// Transformă Timestamp-ul Firestore, un Date sau {seconds} într-un Date; valorile invalide dau null.
 export function dateFromFirestoreValue(value: unknown): Date | null {
   if (!value) {
     return null;
@@ -273,6 +289,7 @@ export function dateFromFirestoreValue(value: unknown): Date | null {
   return null;
 }
 
+// Data unei cereri din comunitate în format scurt, în română.
 /** "12 sept. 2026, 14:30" from a Firestore Timestamp/Date/`{seconds}` value. */
 export function communityDateLabel(value: unknown): string {
   const date = dateFromFirestoreValue(value);
@@ -290,6 +307,7 @@ export function communityDateLabel(value: unknown): string {
   });
 }
 
+// Calculează accesul locației: scrierea este blocată dacă proba/abonamentul au expirat sau starea de facturare este blocată.
 export function locationLicenseAccess(location?: LocationItem | null, now = new Date(), language: SupportedLocale = "ro"): LocationLicenseAccess {
   const plan = normalizeLocationPlan(location?.plan);
   const status = normalizeBillingStatus(location?.billingStatus);
@@ -321,10 +339,12 @@ export function locationLicenseAccess(location?: LocationItem | null, now = new 
   };
 }
 
+// Verifică dacă accesul curent include o funcție.
 export function hasPlanFeature(access: LocationLicenseAccess, feature: PlanFeature) {
   return planIncludesFeature(access.plan, feature) && access.features.includes(feature);
 }
 
+// Normalizează documentele de abonament și de licență din Firestore.
 export function normalizeLocationSubscription(id: string, data: Record<string, unknown>): LocationSubscription {
   return {
     id,
@@ -367,6 +387,7 @@ export function normalizeLicenseCode(id: string, data: Record<string, unknown>):
   };
 }
 
+// Funcții mici de curățare a numerelor: contor ≥ 0, limită ≥ 0, limită opțională (null = nelimitat).
 function normalizeCounter(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) && value > 0 ? Math.floor(value) : 0;
 }

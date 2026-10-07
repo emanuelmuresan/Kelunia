@@ -1,5 +1,8 @@
+// Deblocarea locală cu biometrie: Capacitor (Android/iOS) sau WebAuthn în browser.
+// Biometria doar deblochează ecranul pe dispozitiv; ea nu autentifică utilizatorul față de server, iar PIN-ul este gestionat prin funcții cloud.
 import { Capacitor, registerPlugin } from "@capacitor/core";
 
+// Pluginul nativ de biometrie și marcajul păstrat local când se folosește varianta nativă.
 type NativeBiometricPlugin = {
   isAvailable: () => Promise<{ isAvailable?: boolean; available?: boolean }>;
   verifyIdentity: (options?: {
@@ -15,10 +18,12 @@ const nativeBiometricMarker = "native";
 
 const biometricKeyPrefix = "kelunia-biometric-credential:";
 
+// Cheia din localStorage în care se reține credențiala biometrică a fiecărui utilizator.
 function biometricStorageKey(uid: string) {
   return `${biometricKeyPrefix}${uid}`;
 }
 
+// Dacă dispozitivul nativ are biometrie disponibilă.
 async function canUseNativeBiometrics() {
   if (typeof window === "undefined" || !Capacitor.isNativePlatform()) {
     return false;
@@ -32,6 +37,7 @@ async function canUseNativeBiometrics() {
   }
 }
 
+// Cere amprenta/fața prin pluginul nativ.
 async function verifyNativeBiometrics() {
   try {
     await NativeBiometric.verifyIdentity({
@@ -47,12 +53,14 @@ async function verifyNativeBiometrics() {
   }
 }
 
+// Provocare aleatorie pentru WebAuthn.
 function randomChallenge() {
   const challenge = new Uint8Array(32);
   crypto.getRandomValues(challenge);
   return challenge;
 }
 
+// Conversii între bufere binare și text base64url, pentru a stoca identificatorul credenței.
 function bufferToBase64Url(buffer: ArrayBuffer) {
   const bytes = Array.from(new Uint8Array(buffer));
   return btoa(String.fromCharCode(...bytes))
@@ -73,6 +81,7 @@ function base64UrlToBuffer(value: string) {
   return bytes.buffer;
 }
 
+// Dacă browserul are un autentificator de platformă (Face ID, Windows Hello etc.).
 async function canUseWebBiometrics() {
   if (typeof window === "undefined" || !("PublicKeyCredential" in window) || !navigator.credentials) {
     return false;
@@ -85,10 +94,12 @@ async function canUseWebBiometrics() {
   }
 }
 
+// Biometria este disponibilă fie nativ, fie în browser.
 export async function canUsePlatformBiometrics() {
   return (await canUseNativeBiometrics()) || (await canUseWebBiometrics());
 }
 
+// Activează biometria: verifică nativ sau creează o credențială WebAuthn și îi reține identificatorul.
 export async function registerBiometricCredential(uid: string, label: string) {
   if (await canUseNativeBiometrics()) {
     const verified = await verifyNativeBiometrics();
@@ -139,6 +150,7 @@ export async function registerBiometricCredential(uid: string, label: string) {
   }
 }
 
+// Verifică biometria la deblocare, cu varianta nativă sau cu credențiala WebAuthn reținută.
 export async function verifyBiometricCredential(uid: string) {
   const credentialId = window.localStorage.getItem(biometricStorageKey(uid));
 
@@ -176,6 +188,7 @@ export async function verifyBiometricCredential(uid: string) {
   }
 }
 
+// Șterge credențiala reținută (la dezactivare sau deconectare).
 export function clearBiometricCredential(uid: string) {
   if (typeof window !== "undefined") {
     window.localStorage.removeItem(biometricStorageKey(uid));

@@ -1,5 +1,8 @@
+// Notificări locale: reguli pentru momentele de reamintire (minute, ore, zile înainte), permisiuni și notificări native Capacitor.
+// Un moment de notificare se păstrează ca text scurt: „15m”, „2h”, „7d”.
 import { Capacitor, registerPlugin } from "@capacitor/core";
 
+// Tipurile pluginului nativ LocalNotifications (programare și acțiunea de atingere a notificării).
 type LocalNotificationSchedule = {
   notifications: Array<{
     id: number;
@@ -25,8 +28,10 @@ type LocalNotificationsPlugin = {
   schedule: (options: LocalNotificationSchedule) => Promise<unknown>;
 };
 
+// Pluginul nativ; pe web nu face nimic.
 export const LocalNotifications = registerPlugin<LocalNotificationsPlugin>("LocalNotifications");
 
+// Un moment de notificare: valoare + unitate.
 export type NotificationOffsetUnit = "minutes" | "hours" | "days";
 
 export type NotificationOffsetRule = {
@@ -34,6 +39,7 @@ export type NotificationOffsetRule = {
   unit: NotificationOffsetUnit;
 };
 
+// Transformă un moment în cheia text („15m”, „2h”, „7d”).
 export function notificationOffsetToKey(offset: NotificationOffsetRule) {
   if (offset.unit === "minutes") {
     return `${offset.value}m`;
@@ -42,10 +48,12 @@ export function notificationOffsetToKey(offset: NotificationOffsetRule) {
   return `${offset.value}${offset.unit === "hours" ? "h" : "d"}`;
 }
 
+// Cheia din localStorage care reține că o notificare a fost deja afișată (evită repetările).
 export function notificationStorageKey(uid: string, bookingId: string, offset: NotificationOffsetRule) {
   return `kelunia-notified:${uid}:${bookingId}:${notificationOffsetToKey(offset)}`;
 }
 
+// Formatul vechi: zile întregi între 1 și 30, fără dubluri, maximum 5, în ordine crescătoare.
 export function normalizeNotificationOffsets(value: unknown) {
   if (!Array.isArray(value)) {
     return [];
@@ -58,6 +66,7 @@ export function normalizeNotificationOffsets(value: unknown) {
     .slice(0, 5);
 }
 
+// Formatul curent: acceptă numere (zile) și texte „15m/2h/7d”, cu limite (120 minute, 48 ore, 30 zile); maximum 5, de la cel mai apropiat.
 export function normalizeNotificationOffsetRules(value: unknown) {
   if (!Array.isArray(value)) {
     return [];
@@ -104,6 +113,7 @@ export function normalizeNotificationOffsetRules(value: unknown) {
     .slice(0, 5);
 }
 
+// Momentul de notificare în milisecunde, pentru sortare și programare.
 export function notificationOffsetToMs(offset: NotificationOffsetRule) {
   if (offset.unit === "minutes") {
     return offset.value * 60 * 1000;
@@ -113,6 +123,7 @@ export function notificationOffsetToMs(offset: NotificationOffsetRule) {
   return hours * 60 * 60 * 1000;
 }
 
+// Titlul notificării, în funcție de cât timp mai este până la programare.
 export function notificationTitle(offset: NotificationOffsetRule) {
   if (offset.unit === "minutes") {
     if (offset.value === 1) {
@@ -141,6 +152,7 @@ export function notificationTitle(offset: NotificationOffsetRule) {
   return `Programare peste ${offset.value} zile`;
 }
 
+// Id numeric stabil pentru notificarea nativă, derivat din utilizator, rezervare și moment (același id înlocuiește notificarea veche).
 export function nativeNotificationId(uid: string, bookingId: string, offset: NotificationOffsetRule) {
   const input = `${uid}:${bookingId}:${notificationOffsetToKey(offset)}`;
   let hash = 0;
@@ -152,10 +164,12 @@ export function nativeNotificationId(uid: string, bookingId: string, offset: Not
   return Math.abs(hash) || 1;
 }
 
+// Notificările native există doar în aplicația Capacitor.
 export function canUseNativeNotifications() {
   return typeof window !== "undefined" && Capacitor.isNativePlatform();
 }
 
+// Cere permisiunea de notificare: întâi cea nativă, apoi cea a browserului; returnează true dacă a fost acordată.
 export async function requestKeluniaNotificationPermission() {
   if (canUseNativeNotifications()) {
     try {
@@ -180,6 +194,7 @@ export async function requestKeluniaNotificationPermission() {
   return permission === "granted";
 }
 
+// Starea permisiunii: acordată, refuzată, neîntrebată sau neacceptată pe acest dispozitiv.
 export type KeluniaNotificationPermission = "granted" | "denied" | "default" | "unsupported";
 
 export async function getKeluniaNotificationPermission(): Promise<KeluniaNotificationPermission> {

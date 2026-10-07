@@ -1,3 +1,4 @@
+// Asocierea dintre limba interfeței și localizarea folosită la formatarea datelor (toLocaleDateString).
 import type { SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 
 export const dateLocales: Record<SupportedLocale, string> = {

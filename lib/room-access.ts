@@ -1,14 +1,19 @@
+// Accesul pe camere: un utilizator poate vedea toate camerele sau doar o listă aleasă de manager (roomAccess + allowedRoomIds).
+// Managerii și proprietarul văd mereu tot.
 import type { Booking, RoomAccessMode, RoomItem } from "@/lib/types/domain";
 
+// Câmpurile din profil/codul de acces care descriu accesul.
 export type RoomAccessProfile = {
   roomAccess?: RoomAccessMode | string;
   allowedRoomIds?: unknown;
 };
 
+// Orice valoare diferită de „selected” înseamnă acces la toate camerele.
 export function normalizeRoomAccessMode(value: unknown): RoomAccessMode {
   return value === "selected" ? "selected" : "all";
 }
 
+// Lista de id-uri de camere: fără goluri și fără dubluri.
 export function normalizeAllowedRoomIds(value: unknown): string[] {
   if (!Array.isArray(value)) {
     return [];
@@ -23,6 +28,7 @@ export function normalizeAllowedRoomIds(value: unknown): string[] {
   );
 }
 
+// Accesul efectiv: „selected” fără nicio cameră se tratează ca acces la toate.
 export function normalizeRoomAccess(profile: RoomAccessProfile | null | undefined) {
   const roomAccess = normalizeRoomAccessMode(profile?.roomAccess);
   const allowedRoomIds = normalizeAllowedRoomIds(profile?.allowedRoomIds);
@@ -34,6 +40,7 @@ export function normalizeRoomAccess(profile: RoomAccessProfile | null | undefine
   return { roomAccess: "all" as const, allowedRoomIds: [] };
 }
 
+// Camerele pe care utilizatorul are voie să le vadă.
 export function filterRoomsByAccess(
   rooms: RoomItem[],
   profile: RoomAccessProfile | null | undefined,
@@ -53,6 +60,7 @@ export function filterRoomsByAccess(
   return rooms.filter((room) => allowed.has(room.id));
 }
 
+// Textul scurt care descrie accesul (ex. „Sala 1, Sala 2 +1”).
 export function roomAccessLabel(profile: RoomAccessProfile | null | undefined, rooms: RoomItem[]) {
   const access = normalizeRoomAccess(profile);
 
@@ -74,6 +82,7 @@ export function roomAccessLabel(profile: RoomAccessProfile | null | undefined, r
   return `${names.slice(0, 2).join(", ")} +${names.length - 2}`;
 }
 
+// O rezervare este vizibilă dacă țintește o cameră permisă (după id sau, la rezervările vechi, după nume).
 export function bookingMatchesRoomAccess(
   booking: Booking,
   rooms: RoomItem[],

@@ -1,3 +1,4 @@
+// Ajutoare pentru locații: identificatorul documentului și transformarea datelor din Firestore în obiectul LocationItem.
 import { defaultLocationName } from "@/lib/config/app";
 import {
   normalizeBillingStatus,
@@ -7,6 +8,7 @@ import {
 } from "@/lib/licensing";
 import type { LocationItem } from "@/lib/types/domain";
 
+// Transformă un text într-un identificator simplu (fără diacritice, litere mici, cratime).
 export function normalizeLocationIdentity(value: string) {
   return value
     .normalize("NFD")
@@ -17,6 +19,7 @@ export function normalizeLocationIdentity(value: string) {
     .slice(0, 120);
 }
 
+// Hash scurt și stabil, pentru a diferenția adrese care ar produce același identificator.
 export function stableHash(value: string) {
   let hash = 0;
 
@@ -27,6 +30,7 @@ export function stableHash(value: string) {
   return hash.toString(36);
 }
 
+// Id-ul documentului locației: după place_id-ul Google când există, altfel după adresă sau nume.
 export function locationDocumentId(placeId: string, address: string, name: string) {
   if (placeId.trim()) {
     return `place_${normalizeLocationIdentity(placeId)}`;
@@ -36,6 +40,7 @@ export function locationDocumentId(placeId: string, address: string, name: strin
   return `address_${identity}_${stableHash(address || name || defaultLocationName)}`;
 }
 
+// Normalizează documentul din Firestore: valori implicite, plan, facturare, utilizare și programarea închiderii.
 export function normalizeLocation(id: string, data: Record<string, unknown>, fallback: Partial<LocationItem> = {}): LocationItem {
   return {
     id,

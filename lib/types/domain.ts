@@ -1,3 +1,5 @@
+// Tipurile de date ale aplicației: documentele din Firestore (după normalizare), formularele și stările interfeței.
+// Câmpurile marcate cu unknown sunt Timestamp-uri Firestore sau Date, citite defensiv.
 import type { AppLanguage, UserRole } from "@/context/AuthContext";
 import type { AuditAction, AuditEntityType } from "@/lib/audit";
 
@@ -17,6 +19,7 @@ export type PersonalDraft = {
   language: AppLanguage;
 };
 
+// Stări de interfață: vederea activă, modul calendarului, filtrarea și sortarea listei, tipul de spațiu, PIN/biometrie, harta.
 export type AppView = "calendar" | "fixed" | "list" | "settings";
 export type CalendarMode = "month" | "week" | "day" | "year";
 export type ListFilter = "future" | "past" | "all";
@@ -25,7 +28,9 @@ export type SpaceKind = "room" | "group";
 export type PinIntent = "pin" | "biometrics";
 export type MapsStatus = "off" | "loading" | "ready" | "error";
 export type RoomAccessMode = "all" | "selected";
+// Țintele scrierilor (formular, setări, grup, spațiu...), folosite ca să se afișeze mesajul „offline” în fereastra potrivită.
 export type WriteTarget = "form" | "settings" | "group" | "space" | "fixed" | "codes" | "location" | "locationSetup" | "password";
+// Funcțiile disponibile în planurile de licență.
 export type PlanFeature =
   | "calendar"
   | "bookings"
@@ -36,6 +41,7 @@ export type PlanFeature =
   | "multiLocationDashboard"
   | "auditLogs";
 
+// Tipurile minime pentru Google Places Autocomplete (adresa locației), fără a depinde de pachetul complet de tipuri.
 export interface GooglePlace {
   formatted_address?: string;
   name?: string;
@@ -60,6 +66,7 @@ export interface GooglePlacesWindow extends Window {
   };
 }
 
+// Locația: nume, adresă, plan, facturare, utilizare, limite și programarea închiderii.
 export interface LocationItem {
   id: string;
   name: string;
@@ -78,9 +85,11 @@ export interface LocationItem {
   closureScheduledFor?: unknown;
 }
 
+// Planurile și starea de facturare ale unei locații.
 export type LocationPlan = "trial" | "standard" | "pro" | "business";
 export type BillingStatus = "trialing" | "active" | "past_due" | "paused" | "canceled" | "expired";
 
+// Contoare de utilizare ale locației (rezervări, camere, grupuri, programe fixe, coduri, membri).
 export interface LocationUsage {
   bookingCount: number;
   roomCount: number;
@@ -90,6 +99,7 @@ export interface LocationUsage {
   memberCount: number;
 }
 
+// Cererile din comunitate (formularul public) și newsletter-ul, gestionate de proprietar.
 export type CommunityApplicationStatus = "new" | "reviewed" | "replied" | "approved" | "declined";
 export type NewsletterCampaignStatus = "pending" | "sending" | "sent" | "partial" | "failed";
 
@@ -153,6 +163,7 @@ export interface NewsletterCampaign {
   errorMessage?: string;
 }
 
+// Limitele unui plan; null înseamnă nelimitat.
 export interface PlanLimits {
   maxMembers: number | null;
   maxManagers: number;
@@ -161,8 +172,10 @@ export interface PlanLimits {
   maxActiveBookings: number | null;
 }
 
+// Numele unui contor de utilizare.
 export type LocationCounterName = keyof LocationUsage;
 
+// Abonamentul unei locații la furnizorul de plăți.
 export interface LocationSubscription {
   id: string;
   locationId: string;
@@ -180,6 +193,7 @@ export interface LocationSubscription {
   updatedBy?: string;
 }
 
+// Starea ferestrelor de editare pentru spații (cameră/grup) și pentru locație.
 export interface SpaceEditor {
   kind: SpaceKind;
   id: string | null;
@@ -196,6 +210,7 @@ export interface LocationEditor {
   durationDays: string;
 }
 
+// Rezervarea așa cum e citită din Firestore și forma ei din formular, cu opțiunile de notificare.
 export interface Booking {
   id: string;
   group: string;
@@ -241,6 +256,7 @@ export interface BookingForm {
   notifyNowScope: "group" | "location";
 }
 
+// Camerele și grupurile; activeUntil este data până la care pot fi alese.
 export interface RoomItem {
   id: string;
   name: string;
@@ -254,6 +270,7 @@ export interface GroupItem {
   activeUntil?: string;
 }
 
+// Programul fix săptămânal și ciorna lui din formular (dayIndex: 0 = luni).
 export interface FixedSchedule {
   id: string;
   dayIndex: number;
@@ -273,6 +290,7 @@ export interface FixedScheduleDraft {
   title: string;
 }
 
+// Utilizatorii gestionați într-o locație și codurile de acces/invitațiile ei.
 export interface ManagedUser {
   id: string;
   email: string;
@@ -306,6 +324,7 @@ export interface LocationCode {
   lastInviteEmailSentTo?: string;
 }
 
+// Codurile de licență create de proprietar pentru conturile noi de manager.
 export interface LicenseCodeItem {
   id: string;
   code: string;
@@ -325,6 +344,7 @@ export interface LicenseCodeItem {
   createdAt?: unknown;
 }
 
+// O înregistrare din istoricul de modificări (audit).
 export interface AuditLogItem {
   id: string;
   locationId: string;

@@ -1,5 +1,8 @@
+// Catalogul textelor interfeței în șase limbi (ro, en, es, it, fr, pt) și funcțiile de acces la ele.
+// Cheile au forma „zonă.nume” și sunt aceleași în toate limbile; româna este limba de rezervă.
 export type SupportedLocale = "ro" | "en" | "es" | "it" | "fr" | "pt";
 
+// O intrare din catalog, folosită de pagina de traduceri a proprietarului (o linie pe cheie, cu textul în fiecare limbă).
 export type AppCopyEntry = {
   area: string;
   key: string;
@@ -11,6 +14,7 @@ export type AppCopyEntry = {
   pt: string;
 };
 
+// Limbile disponibile în selectorul de limbă.
 export const supportedLocales: Array<{ code: SupportedLocale; label: string }> = [
   { code: "ro", label: "Română" },
   { code: "en", label: "English" },
@@ -20,16 +24,22 @@ export const supportedLocales: Array<{ code: SupportedLocale; label: string }> =
   { code: "pt", label: "Português" },
 ];
 
+// Orice valoare necunoscută devine română.
 export function normalizeSupportedLocale(value: unknown): SupportedLocale {
   return supportedLocales.some((locale) => locale.code === value) ? value as SupportedLocale : "ro";
 }
 
+// Numele afișat al unei limbi.
 export function localeLabel(value: SupportedLocale) {
   return supportedLocales.find((locale) => locale.code === value)?.label ?? "Română";
 }
 
+// Textele interfeței, grupate pe limbă; în fiecare limbă cheile sunt grupate pe zone (action, auth, booking, settings, msg...).
+// Pentru o cheie nouă se adaugă textul în toate cele șase limbi, altfel în limba respectivă se afișează româna.
 const uiCopy = {
+  // Textele în limba română.
   ro: {
+    // Zona „action” - acțiuni generale (butoane).
     "action.backHome": "Acasă",
     "action.cancel": "Renunță",
     "action.delete": "Șterge",
@@ -41,6 +51,7 @@ const uiCopy = {
     "action.generate": "Generează",
     "action.generating": "Se generează...",
     "action.send": "Trimite",
+    // Zona „access” - coduri de acces: utilizări și expirare.
     "access.closeKeepsHistory": "Oprește păstrează codul în istoric, dar nu mai poate fi folosit. Șterge îl ascunde din lista activă și îl scoate din evidența curentă.",
     "access.codesShown": "{{count}} coduri afișate",
     "access.createCode": "Cod nou",
@@ -59,6 +70,7 @@ const uiCopy = {
     "access.historyCodes": "Istoric",
     "access.noActiveCodes": "Nu există coduri active. Apasă pe Cod nou ca să generezi unul.",
     "access.noHistoryCodes": "Istoricul este gol — aici apar codurile expirate sau folosite complet.",
+    // Zona „license” - licență și plan: stări și mesaje.
     "license.available": "Disponibile",
     "license.billingStatus": "Status billing",
     "license.client": "Client",
@@ -81,6 +93,7 @@ const uiCopy = {
     "license.total": "Total",
     "license.used": "Folosite",
     "license.stopped": "Oprite",
+    // Zona „audit” - istoricul de modificări.
     "audit.empty": "Nu există încă modificări înregistrate pentru locația curentă.",
     "audit.lastChanges": "Ultimele modificări",
     "audit.limitNote": "Ultimele 50 de schimbări pentru locația curentă.",
@@ -88,6 +101,7 @@ const uiCopy = {
     "audit.reload": "Reîncarcă",
     "audit.title": "Istoric",
     "audit.user": "Utilizator",
+    // Zona „auth” - autentificare: titluri, câmpuri și mesaje.
     "auth.accessCode": "Cod acces",
     "auth.accessCodeHelp": "Dacă acesta este cod de licență, vei deschide locația după ce intri în cont. Dacă este cod primit de la administrator, locația este aleasă automat.",
     "auth.accessCodePlaceholder": "codul primit de la administrator sau la licența locației",
@@ -120,6 +134,7 @@ const uiCopy = {
     "auth.trialSubmit": "Începe trial",
     "auth.type": "Tip cont",
     "auth.verificationSent": "Ți-am trimis un email de verificare. Confirmă adresa, apoi intră în cont.",
+    // Zona „booking” - rezervări: formular, detalii și notificări.
     "booking.group": "Grup",
     "booking.add": "Adaugă",
     "booking.audience": "Cui trimiți",
@@ -162,6 +177,7 @@ const uiCopy = {
     "booking.time": "Orar",
     "booking.updatedBy": "Ultima editare",
     "booking.update": "Actualizează programarea",
+    // Zona „calendar” - calendar: vederi și bară de unelte.
     "calendar.day": "Zi",
     "calendar.month": "Lună",
     "calendar.next": "Perioada următoare",
@@ -170,6 +186,7 @@ const uiCopy = {
     "calendar.today": "Azi",
     "calendar.week": "Săptămână",
     "calendar.year": "An",
+    // Zona „fixed” - programul fix.
     "fixed.add": "Adaugă programare fixă",
     "fixed.chooseDay": "Alege ziua",
     "fixed.day": "Zi",
@@ -183,6 +200,7 @@ const uiCopy = {
     "common.language": "Limba",
     "loading.calendar": "Se pregătește calendarul...",
     "loading.generic": "Se încarcă...",
+    // Zona „list” - lista de rezervări.
     "list.all": "Toate",
     "list.ascending": "Crescător",
     "list.descending": "Descrescător",
@@ -196,20 +214,24 @@ const uiCopy = {
     "list.past": "Trecute",
     "list.previous": "Înapoi",
     "list.results": "{{count}} rezultate",
+    // Zona „nav” - navigare.
     "nav.aria": "Navigare",
     "nav.calendar": "Calendar",
     "nav.fixed": "Programări fixe",
     "nav.list": "Listă programări",
     "nav.settings": "Setări",
+    // Zona „public” - pagina publică.
     "public.feature.calendar": "Calendar",
     "public.feature.locations": "Locații",
     "public.feature.bookings": "Rezervări",
     "public.subtitle": "Organizează săli, grupuri și rezervări într-un singur loc, cu acces simplu pentru fiecare rol și o vedere clară asupra săptămânii.",
     "public.title": "Un calendar liniștit pentru locuri folosite cu grijă.",
+    // Zona „role” - roluri.
     "role.administrator": "Administrator",
     "role.collaborator": "Colaborator",
     "role.guest": "Oaspete",
     "role.owner": "Proprietar",
+    // Zona „settings” - setări.
     "settings.personal": "Setări personale",
     "settings.access": "Acces",
     "settings.accessCodes": "Coduri de acces",
@@ -234,6 +256,7 @@ const uiCopy = {
     "settings.reportProblemHint": "Ceva nu merge cum trebuie? Spune-ne și verificăm.",
     "auth.unverifiedResent": "Emailul nu este verificat. Ți-am retrimis emailul de verificare. Verifică inbox-ul și Spam/Promotions.",
     "auth.unverifiedAlreadySent": "Emailul nu este verificat, iar emailul de verificare a fost trimis deja de curând. Verifică inbox-ul și Spam/Promotions; dacă nu apare, încearcă din nou peste câteva minute.",
+    // Zona „closure” - închiderea locației.
     "closure.title": "Închidere locație",
     "closure.rowStatus": "Stare",
     "closure.statusOpen": "Deschisă",
@@ -247,21 +270,25 @@ const uiCopy = {
     "closure.reopenMessage": "Redeschizi locația? Revine la starea de dinainte.",
     "closure.reopenAction": "Redeschide",
     "closure.banner": "Această locație se închide pe {{date}}. Până atunci aplicația este doar în citire; după aceea datele și conturile se șterg definitiv.",
+    // Zona „msg” - mesaje afișate din hook-uri și pagini (notificări mici, erori).
     "msg.closureRequested": "Locația se închide. Utilizatorii au fost anunțați prin email.",
     "msg.closureCancelled": "Locația a fost redeschisă.",
     "msg.closureFailed": "Locația nu a putut fi închisă. Încearcă din nou.",
     "msg.closureNameMismatch": "Numele scris nu se potrivește cu numele locației.",
     "msg.reopenFailed": "Locația nu a putut fi redeschisă. Încearcă din nou.",
     "settings.colorHex": "Cod culoare (#RRGGBB)",
+    // Zona „msg” - mesaje afișate din hook-uri și pagini (notificări mici, erori).
     "msg.selfRoleChange": "Nu îți poți schimba singur rolul. Cere altui administrator să o facă.",
     "msg.confirmDemoteAdmin": "Retragi drepturile de administrator ale lui {{name}}? Nu va mai putea gestiona locația.",
     "msg.demoteAction": "Retrage drepturile",
     "msg.cannotRemoveSelf": "Contul tău nu se șterge de aici. Folosește Setări → Șterge contul.",
+    // Zona „settings” - setări.
     "settings.selfRoleLocked": "Acesta este contul tău. Rolul îl poate schimba doar alt administrator.",
     "settings.lastAdminDeleteBlocked": "Ești singurul administrator al acestei locații. Numește mai întâi alt administrator (Utilizatori → Modifică) înainte să îți ștergi contul; altfel locația rămâne fără administrator.",
     "settings.tickerTextColor": "Culoarea textului",
     "settings.tickerTextAuto": "Automată (alb pe culori închise, negru pe culori deschise)",
     "settings.tickerAuto": "Automată",
+    // Zona „invite” - invitații (email și text de partajat).
     "invite.defaultIntro": "Ai primit o invitație pentru Kelunia, locația {{location}}.",
     "invite.location": "Locație",
     "invite.role": "Rol",
@@ -281,6 +308,7 @@ const uiCopy = {
     "invite.composerBody": "Deschide linkul din email, creează contul sau intră în cont, apoi Kelunia va folosi codul pentru a te conecta la locația potrivită.",
     "invite.language": "Limba invitației",
     "msg.offline": "Ești offline. Poți vedea datele deja încărcate, dar modificările se fac când revine internetul.",
+    // Zona „license” - licență și plan: stări și mesaje.
     "license.planTrial": "Trial",
     "license.statusActive": "Activ",
     "license.statusPastDue": "Plată întârziată",
@@ -288,6 +316,7 @@ const uiCopy = {
     "license.statusExpired": "Expirat",
     "license.statusCanceled": "Anulat",
     "license.readOnlyMessage": "Licența {{plan}} este {{status}}. Datele rămân vizibile, dar modificările sunt oprite până la reactivare.",
+    // Zona „msg” - mesaje afișate din hook-uri și pagini (notificări mici, erori).
     "msg.undo": "Anulează",
     "msg.undoFailed": "Anularea ștergerii nu a reușit. Reîncarcă și încearcă din nou.",
     "msg.notifDenied": "Notificările nu au fost permise pe acest dispozitiv.",
@@ -392,6 +421,7 @@ const uiCopy = {
     "msg.signOutAction": "Ieși din cont",
     "msg.pinReset": "PIN-ul a fost resetat din motive de securitate. Activează din nou „Blocare cu PIN” din Setări și alege un cod nou.",
     "action.deactivate": "Dezactivează",
+    // Zona „access” - coduri de acces: utilizări și expirare.
     "access.usageOff": "Oprit",
     "access.usesMany": "{{count}} folosiri",
     "access.usesOf": "{{used}}/{{max}} folosiri",
@@ -400,6 +430,7 @@ const uiCopy = {
     "access.extend": "Prelungește",
     "access.sendEmail": "Email",
     "access.copyMessage": "Mesaj",
+    // Zona „settings” - setări.
     "settings.codesCount": "{{count}} coduri",
     "settings.usersCount": "{{count}} conturi",
     "settings.licenseExpired": "Expirată",
@@ -410,13 +441,16 @@ const uiCopy = {
     "settings.licenseExpiresInDays": "Expiră în {{days}} zile",
     "report.thanks": "Mulțumim — raportul a fost trimis administratorului.",
     "report.placeholder": "Descrie pe scurt ce făceai și ce nu a mers.",
+    // Zona „settings” - setări.
     "settings.spacePlaceholderRoom": "ex. Sala mică",
     "settings.spacePlaceholderGroup": "ex. Grupa 1",
     "settings.locationPlaceholder": "ex. Kelunia București",
+    // Zona „confirm” - confirmări.
     "confirm.discardChanges": "Ai modificări nesalvate. Le pierzi?",
     "confirm.discardAction": "Renunț la modificări",
     "confirm.keepEditing": "Continuă editarea",
     "action.confirm": "Confirmă",
+    // Zona „settings” - setări.
     "settings.showPage": "Afișează pagina {{page}}",
     "settings.notifMoments": "{{count}} momente",
     "settings.notifNewBookingsShort": "Programări noi",
@@ -445,6 +479,7 @@ const uiCopy = {
     "settings.tickerSaveFailed": "Setările nu au putut fi salvate pe acest dispozitiv.",
     "calendar.tickerEmpty": "Nu sunt programări active pentru următoarele {{days}} zile.",
     "calendar.tickerEmptyOne": "Nu sunt programări active pentru ziua următoare.",
+    // Zona „settings” - setări.
     "settings.notifDevice": "Acest dispozitiv",
     "settings.notifStatusGranted": "Notificări activate",
     "settings.notifStatusDenied": "Blocate în browser sau în setările telefonului",
@@ -460,9 +495,11 @@ const uiCopy = {
     "settings.notifAddMoment": "+ Adaugă un moment",
     "settings.notifRemoveMoment": "Șterge momentul",
     "settings.notifFootnote": "Reminderele se calculează pe acest dispozitiv. Permisiunea de notificări se dă separat pe fiecare dispozitiv.",
+    // Zona „booking” - rezervări: formular, detalii și notificări.
     "booking.notifyToGroup": "Trimite notificare la toți din {{label}}",
     "booking.notifyToLocation": "Trimite notificare la toți din locație",
     "booking.audienceLocation": "Toți din locație",
+    // Zona „settings” - setări.
     "settings.temporary": "Provizoriu (până la o dată)",
     "settings.activeUntil": "Valabil până la",
     "settings.temporaryHint": "Dispare din alegeri la miezul nopții după această dată. Programările existente rămân.",
@@ -524,7 +561,9 @@ const uiCopy = {
     "settings.users": "Utilizatori",
     "settings.validity": "Valabilitate",
   },
+  // Textele în limba engleză.
   en: {
+    // Zona „action” - acțiuni generale (butoane).
     "action.backHome": "Home",
     "action.cancel": "Cancel",
     "action.delete": "Delete",
@@ -536,6 +575,7 @@ const uiCopy = {
     "action.generate": "Generate",
     "action.generating": "Generating...",
     "action.send": "Send",
+    // Zona „access” - coduri de acces: utilizări și expirare.
     "access.closeKeepsHistory": "Stop keeps the code in history, but it can no longer be used. Delete hides it from the active list and removes it from the current records.",
     "access.codesShown": "{{count}} codes shown",
     "access.createCode": "New code",
@@ -554,6 +594,7 @@ const uiCopy = {
     "access.historyCodes": "History",
     "access.noActiveCodes": "There are no active codes. Press \"New code\" to generate one.",
     "access.noHistoryCodes": "History is empty — expired or fully used codes show up here.",
+    // Zona „license” - licență și plan: stări și mesaje.
     "license.available": "Available",
     "license.billingStatus": "Billing status",
     "license.client": "Client",
@@ -576,6 +617,7 @@ const uiCopy = {
     "license.total": "Total",
     "license.used": "Used",
     "license.stopped": "Stopped",
+    // Zona „audit” - istoricul de modificări.
     "audit.empty": "There are no recorded changes for the current location yet.",
     "audit.lastChanges": "Latest changes",
     "audit.limitNote": "The latest 50 changes for the current location.",
@@ -583,6 +625,7 @@ const uiCopy = {
     "audit.reload": "Reload",
     "audit.title": "History",
     "audit.user": "User",
+    // Zona „auth” - autentificare: titluri, câmpuri și mesaje.
     "auth.accessCode": "Access code",
     "auth.accessCodeHelp": "If this is a license code, you will open the location after signing in. If it is a code received from an administrator, the location is selected automatically.",
     "auth.accessCodePlaceholder": "code received from the administrator or the location license",
@@ -615,6 +658,7 @@ const uiCopy = {
     "auth.trialSubmit": "Start trial",
     "auth.type": "Account type",
     "auth.verificationSent": "I sent you a verification email. Confirm the address, then sign in.",
+    // Zona „booking” - rezervări: formular, detalii și notificări.
     "booking.group": "Group",
     "booking.add": "Add",
     "booking.audience": "Who to notify",
@@ -657,6 +701,7 @@ const uiCopy = {
     "booking.time": "Time",
     "booking.updatedBy": "Last edited",
     "booking.update": "Update booking",
+    // Zona „calendar” - calendar: vederi și bară de unelte.
     "calendar.day": "Day",
     "calendar.month": "Month",
     "calendar.next": "Next period",
@@ -665,6 +710,7 @@ const uiCopy = {
     "calendar.today": "Today",
     "calendar.week": "Week",
     "calendar.year": "Year",
+    // Zona „fixed” - programul fix.
     "fixed.add": "Add recurring booking",
     "fixed.chooseDay": "Choose day",
     "fixed.day": "Day",
@@ -678,6 +724,7 @@ const uiCopy = {
     "common.language": "Language",
     "loading.calendar": "Preparing the calendar...",
     "loading.generic": "Loading...",
+    // Zona „list” - lista de rezervări.
     "list.all": "All",
     "list.ascending": "Ascending",
     "list.descending": "Descending",
@@ -691,20 +738,24 @@ const uiCopy = {
     "list.past": "Past",
     "list.previous": "Back",
     "list.results": "{{count}} results",
+    // Zona „nav” - navigare.
     "nav.aria": "Navigation",
     "nav.calendar": "Calendar",
     "nav.fixed": "Recurring bookings",
     "nav.list": "Booking list",
     "nav.settings": "Settings",
+    // Zona „public” - pagina publică.
     "public.feature.calendar": "Calendar",
     "public.feature.locations": "Locations",
     "public.feature.bookings": "Bookings",
     "public.subtitle": "Organize rooms, groups and bookings in one place, with simple access for each role and a clear view of the week.",
     "public.title": "A calm calendar for shared spaces cared for well.",
+    // Zona „role” - roluri.
     "role.administrator": "Administrator",
     "role.collaborator": "Collaborator",
     "role.guest": "Guest",
     "role.owner": "Owner",
+    // Zona „settings” - setări.
     "settings.personal": "Personal settings",
     "settings.access": "Access",
     "settings.accessCodes": "Access codes",
@@ -729,6 +780,7 @@ const uiCopy = {
     "settings.reportProblemHint": "Something not working right? Tell us and we will look into it.",
     "auth.unverifiedResent": "Your email is not verified. We sent the verification email again. Check your inbox and Spam/Promotions.",
     "auth.unverifiedAlreadySent": "Your email is not verified and a verification email was sent a moment ago. Check your inbox and Spam/Promotions; if it is not there, try again in a few minutes.",
+    // Zona „closure” - închiderea locației.
     "closure.title": "Close location",
     "closure.rowStatus": "Status",
     "closure.statusOpen": "Open",
@@ -742,21 +794,25 @@ const uiCopy = {
     "closure.reopenMessage": "Reopen the location? It goes back to how it was before.",
     "closure.reopenAction": "Reopen",
     "closure.banner": "This location closes on {{date}}. Until then the app is read-only; afterwards the data and accounts are permanently deleted.",
+    // Zona „msg” - mesaje afișate din hook-uri și pagini (notificări mici, erori).
     "msg.closureRequested": "The location is closing. Users were notified by email.",
     "msg.closureCancelled": "The location was reopened.",
     "msg.closureFailed": "The location could not be closed. Try again.",
     "msg.closureNameMismatch": "The name you typed does not match the location name.",
     "msg.reopenFailed": "The location could not be reopened. Try again.",
     "settings.colorHex": "Colour code (#RRGGBB)",
+    // Zona „msg” - mesaje afișate din hook-uri și pagini (notificări mici, erori).
     "msg.selfRoleChange": "You cannot change your own role. Ask another administrator to do it.",
     "msg.confirmDemoteAdmin": "Remove the administrator rights of {{name}}? They will no longer be able to manage the location.",
     "msg.demoteAction": "Remove rights",
     "msg.cannotRemoveSelf": "Your own account cannot be removed from here. Use Settings → Delete account.",
+    // Zona „settings” - setări.
     "settings.selfRoleLocked": "This is your account. Only another administrator can change your role.",
     "settings.lastAdminDeleteBlocked": "You are the only administrator of this location. First appoint another administrator (Users → Edit) before deleting your account; otherwise the location is left without an administrator.",
     "settings.tickerTextColor": "Text color",
     "settings.tickerTextAuto": "Automatic (white on dark colors, black on light colors)",
     "settings.tickerAuto": "Automatic",
+    // Zona „invite” - invitații (email și text de partajat).
     "invite.defaultIntro": "You have received an invitation to Kelunia, location {{location}}.",
     "invite.location": "Location",
     "invite.role": "Role",
@@ -776,6 +832,7 @@ const uiCopy = {
     "invite.composerBody": "Open the link in the email, create your account or sign in, and Kelunia will use the code to connect you to the right location.",
     "invite.language": "Invitation language",
     "msg.offline": "You are offline. You can view the data already loaded, but changes can be made once the internet is back.",
+    // Zona „license” - licență și plan: stări și mesaje.
     "license.planTrial": "Trial",
     "license.statusActive": "Active",
     "license.statusPastDue": "Payment overdue",
@@ -783,6 +840,7 @@ const uiCopy = {
     "license.statusExpired": "Expired",
     "license.statusCanceled": "Canceled",
     "license.readOnlyMessage": "The {{plan}} license is {{status}}. The data stays visible, but changes are disabled until reactivation.",
+    // Zona „msg” - mesaje afișate din hook-uri și pagini (notificări mici, erori).
     "msg.undo": "Undo",
     "msg.undoFailed": "Undoing the deletion failed. Reload and try again.",
     "msg.notifDenied": "Notifications were not allowed on this device.",
@@ -887,6 +945,7 @@ const uiCopy = {
     "msg.signOutAction": "Sign out",
     "msg.pinReset": "The PIN was reset for security reasons. Turn on PIN lock again in Settings and choose a new code.",
     "action.deactivate": "Deactivate",
+    // Zona „access” - coduri de acces: utilizări și expirare.
     "access.usageOff": "Off",
     "access.usesMany": "{{count}} uses",
     "access.usesOf": "{{used}}/{{max}} uses",
@@ -895,6 +954,7 @@ const uiCopy = {
     "access.extend": "Extend",
     "access.sendEmail": "Email",
     "access.copyMessage": "Message",
+    // Zona „settings” - setări.
     "settings.codesCount": "{{count}} codes",
     "settings.usersCount": "{{count}} accounts",
     "settings.licenseExpired": "Expired",
@@ -905,13 +965,16 @@ const uiCopy = {
     "settings.licenseExpiresInDays": "Expires in {{days}} days",
     "report.thanks": "Thank you — the report was sent to the administrator.",
     "report.placeholder": "Briefly describe what you were doing and what went wrong.",
+    // Zona „settings” - setări.
     "settings.spacePlaceholderRoom": "e.g. Small room",
     "settings.spacePlaceholderGroup": "e.g. Group 1",
     "settings.locationPlaceholder": "e.g. Kelunia Bucharest",
+    // Zona „confirm” - confirmări.
     "confirm.discardChanges": "You have unsaved changes. Discard them?",
     "confirm.discardAction": "Discard changes",
     "confirm.keepEditing": "Keep editing",
     "action.confirm": "Confirm",
+    // Zona „settings” - setări.
     "settings.showPage": "Show the {{page}} page",
     "settings.notifMoments": "{{count}} times",
     "settings.notifNewBookingsShort": "New bookings",
@@ -940,6 +1003,7 @@ const uiCopy = {
     "settings.tickerSaveFailed": "Settings could not be saved on this device.",
     "calendar.tickerEmpty": "No active bookings for the next {{days}} days.",
     "calendar.tickerEmptyOne": "No active bookings for the next day.",
+    // Zona „settings” - setări.
     "settings.notifDevice": "This device",
     "settings.notifStatusGranted": "Notifications enabled",
     "settings.notifStatusDenied": "Blocked in the browser or phone settings",
@@ -955,9 +1019,11 @@ const uiCopy = {
     "settings.notifAddMoment": "+ Add a time",
     "settings.notifRemoveMoment": "Remove this time",
     "settings.notifFootnote": "Reminders are calculated on this device. Notification permission is granted separately on each device.",
+    // Zona „booking” - rezervări: formular, detalii și notificări.
     "booking.notifyToGroup": "Notify everyone in {{label}}",
     "booking.notifyToLocation": "Notify everyone at the location",
     "booking.audienceLocation": "Everyone at the location",
+    // Zona „settings” - setări.
     "settings.temporary": "Temporary (until a date)",
     "settings.activeUntil": "Valid until",
     "settings.temporaryHint": "Disappears from selection at midnight after this date. Existing bookings are kept.",
@@ -1019,7 +1085,9 @@ const uiCopy = {
     "settings.users": "Users",
     "settings.validity": "Validity",
   },
+  // Textele în limba spaniolă.
   es: {
+    // Zona „action” - acțiuni generale (butoane).
     "action.backHome": "Inicio",
     "action.cancel": "Cancelar",
     "action.delete": "Eliminar",
@@ -1031,6 +1099,7 @@ const uiCopy = {
     "action.generate": "Generar",
     "action.generating": "Generando...",
     "action.send": "Enviar",
+    // Zona „access” - coduri de acces: utilizări și expirare.
     "access.closeKeepsHistory": "Detener mantiene el código en el historial, pero ya no se puede usar. Eliminar lo oculta de la lista activa y lo quita del registro actual.",
     "access.codesShown": "{{count}} códigos mostrados",
     "access.createCode": "Código nuevo",
@@ -1049,6 +1118,7 @@ const uiCopy = {
     "access.historyCodes": "Historial",
     "access.noActiveCodes": "No hay códigos activos. Pulsa \"Código nuevo\" para generar uno.",
     "access.noHistoryCodes": "El historial está vacío: aquí aparecen los códigos caducados o agotados.",
+    // Zona „license” - licență și plan: stări și mesaje.
     "license.available": "Disponibles",
     "license.billingStatus": "Estado de facturación",
     "license.client": "Cliente",
@@ -1071,6 +1141,7 @@ const uiCopy = {
     "license.total": "Total",
     "license.used": "Usadas",
     "license.stopped": "Detenidas",
+    // Zona „audit” - istoricul de modificări.
     "audit.empty": "Todavía no hay cambios registrados para la ubicación actual.",
     "audit.lastChanges": "Últimos cambios",
     "audit.limitNote": "Los últimos 50 cambios de la ubicación actual.",
@@ -1078,6 +1149,7 @@ const uiCopy = {
     "audit.reload": "Recargar",
     "audit.title": "Historial",
     "audit.user": "Usuario",
+    // Zona „auth” - autentificare: titluri, câmpuri și mesaje.
     "auth.accessCode": "Código de acceso",
     "auth.accessCodeHelp": "Si este es un código de licencia, abrirás la ubicación después de iniciar sesión. Si es un código recibido de un administrador, la ubicación se selecciona automáticamente.",
     "auth.accessCodePlaceholder": "código recibido del administrador o de la licencia de la ubicación",
@@ -1110,6 +1182,7 @@ const uiCopy = {
     "auth.trialSubmit": "Empezar trial",
     "auth.type": "Tipo de cuenta",
     "auth.verificationSent": "Te he enviado un email de verificación. Confirma la dirección y luego entra en la cuenta.",
+    // Zona „booking” - rezervări: formular, detalii și notificări.
     "booking.group": "Grupo",
     "booking.add": "Añadir",
     "booking.audience": "A quién notificar",
@@ -1152,6 +1225,7 @@ const uiCopy = {
     "booking.time": "Horario",
     "booking.updatedBy": "Última edición",
     "booking.update": "Actualizar reserva",
+    // Zona „calendar” - calendar: vederi și bară de unelte.
     "calendar.day": "Día",
     "calendar.month": "Mes",
     "calendar.next": "Periodo siguiente",
@@ -1160,6 +1234,7 @@ const uiCopy = {
     "calendar.today": "Hoy",
     "calendar.week": "Semana",
     "calendar.year": "Año",
+    // Zona „fixed” - programul fix.
     "fixed.add": "Añadir reserva fija",
     "fixed.chooseDay": "Elegir día",
     "fixed.day": "Día",
@@ -1173,6 +1248,7 @@ const uiCopy = {
     "common.language": "Idioma",
     "loading.calendar": "Preparando el calendario...",
     "loading.generic": "Cargando...",
+    // Zona „list” - lista de rezervări.
     "list.all": "Todas",
     "list.ascending": "Ascendente",
     "list.descending": "Descendente",
@@ -1186,20 +1262,24 @@ const uiCopy = {
     "list.past": "Pasadas",
     "list.previous": "Atrás",
     "list.results": "{{count}} resultados",
+    // Zona „nav” - navigare.
     "nav.aria": "Navegación",
     "nav.calendar": "Calendario",
     "nav.fixed": "Reservas fijas",
     "nav.list": "Lista de reservas",
     "nav.settings": "Ajustes",
+    // Zona „public” - pagina publică.
     "public.feature.calendar": "Calendario",
     "public.feature.locations": "Ubicaciones",
     "public.feature.bookings": "Reservas",
     "public.subtitle": "Organiza salas, grupos y reservas en un solo lugar, con acceso simple para cada rol y una vista clara de la semana.",
     "public.title": "Un calendario tranquilo para espacios compartidos bien cuidados.",
+    // Zona „role” - roluri.
     "role.administrator": "Administrador",
     "role.collaborator": "Colaborador",
     "role.guest": "Invitado",
     "role.owner": "Propietario",
+    // Zona „settings” - setări.
     "settings.personal": "Ajustes personales",
     "settings.access": "Acceso",
     "settings.accessCodes": "Códigos de acceso",
@@ -1224,6 +1304,7 @@ const uiCopy = {
     "settings.reportProblemHint": "¿Algo no funciona bien? Cuéntanoslo y lo revisamos.",
     "auth.unverifiedResent": "El email no está verificado. Hemos reenviado el email de verificación. Revisa la bandeja de entrada y Spam/Promociones.",
     "auth.unverifiedAlreadySent": "El email no está verificado y ya se envió un email de verificación hace un momento. Revisa la bandeja de entrada y Spam/Promociones; si no aparece, inténtalo de nuevo en unos minutos.",
+    // Zona „closure” - închiderea locației.
     "closure.title": "Cierre de ubicación",
     "closure.rowStatus": "Estado",
     "closure.statusOpen": "Abierta",
@@ -1237,21 +1318,25 @@ const uiCopy = {
     "closure.reopenMessage": "¿Reabrir la ubicación? Vuelve a como estaba antes.",
     "closure.reopenAction": "Reabrir",
     "closure.banner": "Esta ubicación se cierra el {{date}}. Hasta entonces la aplicación es de solo lectura; después, los datos y las cuentas se eliminan definitivamente.",
+    // Zona „msg” - mesaje afișate din hook-uri și pagini (notificări mici, erori).
     "msg.closureRequested": "La ubicación se cierra. Se avisó a los usuarios por email.",
     "msg.closureCancelled": "La ubicación se reabrió.",
     "msg.closureFailed": "No se pudo cerrar la ubicación. Inténtalo de nuevo.",
     "msg.closureNameMismatch": "El nombre escrito no coincide con el de la ubicación.",
     "msg.reopenFailed": "No se pudo reabrir la ubicación. Inténtalo de nuevo.",
     "settings.colorHex": "Código de color (#RRGGBB)",
+    // Zona „msg” - mesaje afișate din hook-uri și pagini (notificări mici, erori).
     "msg.selfRoleChange": "No puedes cambiar tu propio rol. Pide a otro administrador que lo haga.",
     "msg.confirmDemoteAdmin": "¿Retirar los derechos de administrador de {{name}}? Ya no podrá gestionar la ubicación.",
     "msg.demoteAction": "Retirar derechos",
     "msg.cannotRemoveSelf": "Tu propia cuenta no se elimina desde aquí. Usa Ajustes → Eliminar cuenta.",
+    // Zona „settings” - setări.
     "settings.selfRoleLocked": "Esta es tu cuenta. Solo otro administrador puede cambiar tu rol.",
     "settings.lastAdminDeleteBlocked": "Eres el único administrador de esta ubicación. Nombra primero a otro administrador (Usuarios → Editar) antes de eliminar tu cuenta; si no, la ubicación se queda sin administrador.",
     "settings.tickerTextColor": "Color del texto",
     "settings.tickerTextAuto": "Automático (blanco sobre colores oscuros, negro sobre colores claros)",
     "settings.tickerAuto": "Automático",
+    // Zona „invite” - invitații (email și text de partajat).
     "invite.defaultIntro": "Has recibido una invitación a Kelunia, ubicación {{location}}.",
     "invite.location": "Ubicación",
     "invite.role": "Rol",
@@ -1271,6 +1356,7 @@ const uiCopy = {
     "invite.composerBody": "Abre el enlace del email, crea tu cuenta o inicia sesión, y Kelunia usará el código para conectarte a la ubicación correcta.",
     "invite.language": "Idioma de la invitación",
     "msg.offline": "Estás sin conexión. Puedes ver los datos ya cargados, pero los cambios se hacen cuando vuelva internet.",
+    // Zona „license” - licență și plan: stări și mesaje.
     "license.planTrial": "Prueba",
     "license.statusActive": "Activo",
     "license.statusPastDue": "Pago atrasado",
@@ -1278,6 +1364,7 @@ const uiCopy = {
     "license.statusExpired": "Caducado",
     "license.statusCanceled": "Cancelado",
     "license.readOnlyMessage": "La licencia {{plan}} está {{status}}. Los datos siguen visibles, pero los cambios están desactivados hasta la reactivación.",
+    // Zona „msg” - mesaje afișate din hook-uri și pagini (notificări mici, erori).
     "msg.undo": "Deshacer",
     "msg.undoFailed": "No se pudo deshacer la eliminación. Recarga e inténtalo de nuevo.",
     "msg.notifDenied": "No se permitieron las notificaciones en este dispositivo.",
@@ -1382,6 +1469,7 @@ const uiCopy = {
     "msg.signOutAction": "Cerrar sesión",
     "msg.pinReset": "El PIN se restableció por motivos de seguridad. Activa de nuevo el bloqueo con PIN en Ajustes y elige un código nuevo.",
     "action.deactivate": "Desactivar",
+    // Zona „access” - coduri de acces: utilizări și expirare.
     "access.usageOff": "Desactivado",
     "access.usesMany": "{{count}} usos",
     "access.usesOf": "{{used}}/{{max}} usos",
@@ -1390,6 +1478,7 @@ const uiCopy = {
     "access.extend": "Prolongar",
     "access.sendEmail": "Email",
     "access.copyMessage": "Mensaje",
+    // Zona „settings” - setări.
     "settings.codesCount": "{{count}} códigos",
     "settings.usersCount": "{{count}} cuentas",
     "settings.licenseExpired": "Caducada",
@@ -1400,13 +1489,16 @@ const uiCopy = {
     "settings.licenseExpiresInDays": "Caduca en {{days}} días",
     "report.thanks": "Gracias — el informe se envió al administrador.",
     "report.placeholder": "Describe brevemente qué hacías y qué falló.",
+    // Zona „settings” - setări.
     "settings.spacePlaceholderRoom": "p. ej. Sala pequeña",
     "settings.spacePlaceholderGroup": "p. ej. Grupo 1",
     "settings.locationPlaceholder": "p. ej. Kelunia Bucarest",
+    // Zona „confirm” - confirmări.
     "confirm.discardChanges": "Tienes cambios sin guardar. ¿Descartarlos?",
     "confirm.discardAction": "Descartar cambios",
     "confirm.keepEditing": "Seguir editando",
     "action.confirm": "Confirmar",
+    // Zona „settings” - setări.
     "settings.showPage": "Mostrar la página {{page}}",
     "settings.notifMoments": "{{count}} momentos",
     "settings.notifNewBookingsShort": "Reservas nuevas",
@@ -1435,6 +1527,7 @@ const uiCopy = {
     "settings.tickerSaveFailed": "No se pudieron guardar los ajustes en este dispositivo.",
     "calendar.tickerEmpty": "No hay reservas activas para los próximos {{days}} días.",
     "calendar.tickerEmptyOne": "No hay reservas activas para el día siguiente.",
+    // Zona „settings” - setări.
     "settings.notifDevice": "Este dispositivo",
     "settings.notifStatusGranted": "Notificaciones activadas",
     "settings.notifStatusDenied": "Bloqueadas en el navegador o en los ajustes del teléfono",
@@ -1450,9 +1543,11 @@ const uiCopy = {
     "settings.notifAddMoment": "+ Añadir un momento",
     "settings.notifRemoveMoment": "Quitar este momento",
     "settings.notifFootnote": "Los recordatorios se calculan en este dispositivo. El permiso de notificaciones se concede por separado en cada dispositivo.",
+    // Zona „booking” - rezervări: formular, detalii și notificări.
     "booking.notifyToGroup": "Notificar a todos en {{label}}",
     "booking.notifyToLocation": "Notificar a todos en la ubicación",
     "booking.audienceLocation": "Todos en la ubicación",
+    // Zona „settings” - setări.
     "settings.temporary": "Temporal (hasta una fecha)",
     "settings.activeUntil": "Válido hasta",
     "settings.temporaryHint": "Desaparece de la selección a medianoche después de esta fecha. Las reservas existentes se conservan.",
@@ -1514,7 +1609,9 @@ const uiCopy = {
     "settings.users": "Usuarios",
     "settings.validity": "Validez",
   },
+  // Textele în limba italiană.
   it: {
+    // Zona „action” - acțiuni generale (butoane).
     "action.backHome": "Home",
     "action.cancel": "Annulla",
     "action.delete": "Elimina",
@@ -1526,6 +1623,7 @@ const uiCopy = {
     "action.generate": "Genera",
     "action.generating": "Generazione...",
     "action.send": "Invia",
+    // Zona „access” - coduri de acces: utilizări și expirare.
     "access.closeKeepsHistory": "Disattiva mantiene il codice nello storico, ma non può più essere usato. Elimina lo nasconde dalla lista attiva e lo rimuove dai record correnti.",
     "access.codesShown": "{{count}} codici mostrati",
     "access.createCode": "Nuovo codice",
@@ -1544,6 +1642,7 @@ const uiCopy = {
     "access.historyCodes": "Cronologia",
     "access.noActiveCodes": "Non ci sono codici attivi. Premi \"Nuovo codice\" per generarne uno.",
     "access.noHistoryCodes": "Lo storico è vuoto: qui compaiono i codici scaduti o esauriti.",
+    // Zona „license” - licență și plan: stări și mesaje.
     "license.available": "Disponibili",
     "license.billingStatus": "Stato fatturazione",
     "license.client": "Cliente",
@@ -1566,6 +1665,7 @@ const uiCopy = {
     "license.total": "Totale",
     "license.used": "Usate",
     "license.stopped": "Disattivate",
+    // Zona „audit” - istoricul de modificări.
     "audit.empty": "Non ci sono ancora modifiche registrate per la sede corrente.",
     "audit.lastChanges": "Ultime modifiche",
     "audit.limitNote": "Le ultime 50 modifiche per la sede corrente.",
@@ -1573,6 +1673,7 @@ const uiCopy = {
     "audit.reload": "Ricarica",
     "audit.title": "Cronologia",
     "audit.user": "Utente",
+    // Zona „auth” - autentificare: titluri, câmpuri și mesaje.
     "auth.accessCode": "Codice di accesso",
     "auth.accessCodeHelp": "Se questo è un codice di licenza, aprirai la sede dopo l'accesso. Se è un codice ricevuto da un amministratore, la sede viene selezionata automaticamente.",
     "auth.accessCodePlaceholder": "codice ricevuto dall'amministratore o dalla licenza della sede",
@@ -1605,6 +1706,7 @@ const uiCopy = {
     "auth.trialSubmit": "Inizia trial",
     "auth.type": "Tipo account",
     "auth.verificationSent": "Ti ho inviato un'email di verifica. Conferma l'indirizzo, poi accedi.",
+    // Zona „booking” - rezervări: formular, detalii și notificări.
     "booking.group": "Gruppo",
     "booking.add": "Aggiungi",
     "booking.audience": "Chi notificare",
@@ -1647,6 +1749,7 @@ const uiCopy = {
     "booking.time": "Orario",
     "booking.updatedBy": "Ultima modifica",
     "booking.update": "Aggiorna prenotazione",
+    // Zona „calendar” - calendar: vederi și bară de unelte.
     "calendar.day": "Giorno",
     "calendar.month": "Mese",
     "calendar.next": "Periodo successivo",
@@ -1655,6 +1758,7 @@ const uiCopy = {
     "calendar.today": "Oggi",
     "calendar.week": "Settimana",
     "calendar.year": "Anno",
+    // Zona „fixed” - programul fix.
     "fixed.add": "Aggiungi prenotazione fissa",
     "fixed.chooseDay": "Scegli giorno",
     "fixed.day": "Giorno",
@@ -1668,6 +1772,7 @@ const uiCopy = {
     "common.language": "Lingua",
     "loading.calendar": "Preparazione del calendario...",
     "loading.generic": "Caricamento...",
+    // Zona „list” - lista de rezervări.
     "list.all": "Tutte",
     "list.ascending": "Crescente",
     "list.descending": "Decrescente",
@@ -1681,20 +1786,24 @@ const uiCopy = {
     "list.past": "Passate",
     "list.previous": "Indietro",
     "list.results": "{{count}} risultati",
+    // Zona „nav” - navigare.
     "nav.aria": "Navigazione",
     "nav.calendar": "Calendario",
     "nav.fixed": "Prenotazioni fisse",
     "nav.list": "Elenco prenotazioni",
     "nav.settings": "Impostazioni",
+    // Zona „public” - pagina publică.
     "public.feature.calendar": "Calendario",
     "public.feature.locations": "Sedi",
     "public.feature.bookings": "Prenotazioni",
     "public.subtitle": "Organizza sale, gruppi e prenotazioni in un unico posto, con accesso semplice per ogni ruolo e una vista chiara della settimana.",
     "public.title": "Un calendario tranquillo per spazi condivisi curati con attenzione.",
+    // Zona „role” - roluri.
     "role.administrator": "Amministratore",
     "role.collaborator": "Collaboratore",
     "role.guest": "Ospite",
     "role.owner": "Proprietario",
+    // Zona „settings” - setări.
     "settings.personal": "Impostazioni personali",
     "settings.access": "Accesso",
     "settings.accessCodes": "Codici di accesso",
@@ -1719,6 +1828,7 @@ const uiCopy = {
     "settings.reportProblemHint": "Qualcosa non funziona? Dicci e controlliamo.",
     "auth.unverifiedResent": "L'email non è verificata. Abbiamo reinviato l'email di verifica. Controlla la posta in arrivo e Spam/Promozioni.",
     "auth.unverifiedAlreadySent": "L'email non è verificata e un'email di verifica è stata inviata poco fa. Controlla la posta in arrivo e Spam/Promozioni; se non c'è, riprova tra qualche minuto.",
+    // Zona „closure” - închiderea locației.
     "closure.title": "Chiusura della sede",
     "closure.rowStatus": "Stato",
     "closure.statusOpen": "Aperta",
@@ -1732,21 +1842,25 @@ const uiCopy = {
     "closure.reopenMessage": "Riaprire la sede? Torna come prima.",
     "closure.reopenAction": "Riapri",
     "closure.banner": "Questa sede chiude il {{date}}. Fino ad allora l'app è in sola lettura; dopo, i dati e gli account vengono eliminati definitivamente.",
+    // Zona „msg” - mesaje afișate din hook-uri și pagini (notificări mici, erori).
     "msg.closureRequested": "La sede sta chiudendo. Gli utenti sono stati avvisati via email.",
     "msg.closureCancelled": "La sede è stata riaperta.",
     "msg.closureFailed": "Impossibile chiudere la sede. Riprova.",
     "msg.closureNameMismatch": "Il nome scritto non corrisponde a quello della sede.",
     "msg.reopenFailed": "Impossibile riaprire la sede. Riprova.",
     "settings.colorHex": "Codice colore (#RRGGBB)",
+    // Zona „msg” - mesaje afișate din hook-uri și pagini (notificări mici, erori).
     "msg.selfRoleChange": "Non puoi cambiare il tuo ruolo. Chiedi a un altro amministratore di farlo.",
     "msg.confirmDemoteAdmin": "Rimuovere i diritti di amministratore di {{name}}? Non potrà più gestire la sede.",
     "msg.demoteAction": "Rimuovi i diritti",
     "msg.cannotRemoveSelf": "Il tuo account non si elimina da qui. Usa Impostazioni → Elimina account.",
+    // Zona „settings” - setări.
     "settings.selfRoleLocked": "Questo è il tuo account. Solo un altro amministratore può cambiare il tuo ruolo.",
     "settings.lastAdminDeleteBlocked": "Sei l'unico amministratore di questa sede. Nomina prima un altro amministratore (Utenti → Modifica) prima di eliminare il tuo account; altrimenti la sede resta senza amministratore.",
     "settings.tickerTextColor": "Colore del testo",
     "settings.tickerTextAuto": "Automatico (bianco su colori scuri, nero su colori chiari)",
     "settings.tickerAuto": "Automatico",
+    // Zona „invite” - invitații (email și text de partajat).
     "invite.defaultIntro": "Hai ricevuto un invito a Kelunia, sede {{location}}.",
     "invite.location": "Sede",
     "invite.role": "Ruolo",
@@ -1766,6 +1880,7 @@ const uiCopy = {
     "invite.composerBody": "Apri il link nell'email, crea l'account o accedi, e Kelunia userà il codice per collegarti alla sede giusta.",
     "invite.language": "Lingua dell'invito",
     "msg.offline": "Sei offline. Puoi vedere i dati già caricati, ma le modifiche si fanno quando torna internet.",
+    // Zona „license” - licență și plan: stări și mesaje.
     "license.planTrial": "Prova",
     "license.statusActive": "Attivo",
     "license.statusPastDue": "Pagamento in ritardo",
@@ -1773,6 +1888,7 @@ const uiCopy = {
     "license.statusExpired": "Scaduto",
     "license.statusCanceled": "Annullato",
     "license.readOnlyMessage": "La licenza {{plan}} è {{status}}. I dati restano visibili, ma le modifiche sono disattivate fino alla riattivazione.",
+    // Zona „msg” - mesaje afișate din hook-uri și pagini (notificări mici, erori).
     "msg.undo": "Annulla",
     "msg.undoFailed": "Impossibile annullare l'eliminazione. Ricarica e riprova.",
     "msg.notifDenied": "Le notifiche non sono state consentite su questo dispositivo.",
@@ -1877,6 +1993,7 @@ const uiCopy = {
     "msg.signOutAction": "Esci",
     "msg.pinReset": "Il PIN è stato reimpostato per motivi di sicurezza. Riattiva il blocco con PIN nelle Impostazioni e scegli un nuovo codice.",
     "action.deactivate": "Disattiva",
+    // Zona „access” - coduri de acces: utilizări și expirare.
     "access.usageOff": "Disattivato",
     "access.usesMany": "{{count}} utilizzi",
     "access.usesOf": "{{used}}/{{max}} utilizzi",
@@ -1885,6 +2002,7 @@ const uiCopy = {
     "access.extend": "Prolunga",
     "access.sendEmail": "Email",
     "access.copyMessage": "Messaggio",
+    // Zona „settings” - setări.
     "settings.codesCount": "{{count}} codici",
     "settings.usersCount": "{{count}} account",
     "settings.licenseExpired": "Scaduta",
@@ -1895,13 +2013,16 @@ const uiCopy = {
     "settings.licenseExpiresInDays": "Scade tra {{days}} giorni",
     "report.thanks": "Grazie — la segnalazione è stata inviata all'amministratore.",
     "report.placeholder": "Descrivi brevemente cosa stavi facendo e cosa non ha funzionato.",
+    // Zona „settings” - setări.
     "settings.spacePlaceholderRoom": "es. Sala piccola",
     "settings.spacePlaceholderGroup": "es. Gruppo 1",
     "settings.locationPlaceholder": "es. Kelunia Bucarest",
+    // Zona „confirm” - confirmări.
     "confirm.discardChanges": "Hai modifiche non salvate. Vuoi scartarle?",
     "confirm.discardAction": "Scarta le modifiche",
     "confirm.keepEditing": "Continua a modificare",
     "action.confirm": "Conferma",
+    // Zona „settings” - setări.
     "settings.showPage": "Mostra la pagina {{page}}",
     "settings.notifMoments": "{{count}} momenti",
     "settings.notifNewBookingsShort": "Nuove prenotazioni",
@@ -1930,6 +2051,7 @@ const uiCopy = {
     "settings.tickerSaveFailed": "Impossibile salvare le impostazioni su questo dispositivo.",
     "calendar.tickerEmpty": "Nessuna prenotazione attiva per i prossimi {{days}} giorni.",
     "calendar.tickerEmptyOne": "Nessuna prenotazione attiva per il giorno successivo.",
+    // Zona „settings” - setări.
     "settings.notifDevice": "Questo dispositivo",
     "settings.notifStatusGranted": "Notifiche attive",
     "settings.notifStatusDenied": "Bloccate nel browser o nelle impostazioni del telefono",
@@ -1945,9 +2067,11 @@ const uiCopy = {
     "settings.notifAddMoment": "+ Aggiungi un momento",
     "settings.notifRemoveMoment": "Rimuovi questo momento",
     "settings.notifFootnote": "I promemoria sono calcolati su questo dispositivo. Il permesso per le notifiche si concede separatamente su ogni dispositivo.",
+    // Zona „booking” - rezervări: formular, detalii și notificări.
     "booking.notifyToGroup": "Notifica a tutti in {{label}}",
     "booking.notifyToLocation": "Notifica a tutti nella sede",
     "booking.audienceLocation": "Tutti nella sede",
+    // Zona „settings” - setări.
     "settings.temporary": "Temporaneo (fino a una data)",
     "settings.activeUntil": "Valido fino al",
     "settings.temporaryHint": "Scompare dalla selezione a mezzanotte dopo questa data. Le prenotazioni esistenti restano.",
@@ -2009,7 +2133,9 @@ const uiCopy = {
     "settings.users": "Utenti",
     "settings.validity": "Validità",
   },
+  // Textele în limba franceză.
   fr: {
+    // Zona „action” - acțiuni generale (butoane).
     "action.backHome": "Accueil",
     "action.cancel": "Annuler",
     "action.delete": "Supprimer",
@@ -2021,6 +2147,7 @@ const uiCopy = {
     "action.generate": "Générer",
     "action.generating": "Génération...",
     "action.send": "Envoyer",
+    // Zona „access” - coduri de acces: utilizări și expirare.
     "access.closeKeepsHistory": "Arrêter conserve le code dans l'historique, mais il ne peut plus être utilisé. Supprimer le masque de la liste active et le retire des enregistrements actuels.",
     "access.codesShown": "{{count}} codes affichés",
     "access.createCode": "Nouveau code",
@@ -2039,6 +2166,7 @@ const uiCopy = {
     "access.historyCodes": "Historique",
     "access.noActiveCodes": "Aucun code actif. Appuie sur « Nouveau code » pour en générer un.",
     "access.noHistoryCodes": "L'historique est vide : les codes expirés ou épuisés apparaissent ici.",
+    // Zona „license” - licență și plan: stări și mesaje.
     "license.available": "Disponibles",
     "license.billingStatus": "Statut de facturation",
     "license.client": "Client",
@@ -2061,6 +2189,7 @@ const uiCopy = {
     "license.total": "Total",
     "license.used": "Utilisées",
     "license.stopped": "Arrêtées",
+    // Zona „audit” - istoricul de modificări.
     "audit.empty": "Aucune modification enregistrée pour le lieu actuel pour le moment.",
     "audit.lastChanges": "Dernières modifications",
     "audit.limitNote": "Les 50 dernières modifications pour le lieu actuel.",
@@ -2068,6 +2197,7 @@ const uiCopy = {
     "audit.reload": "Recharger",
     "audit.title": "Historique",
     "audit.user": "Utilisateur",
+    // Zona „auth” - autentificare: titluri, câmpuri și mesaje.
     "auth.accessCode": "Code d'accès",
     "auth.accessCodeHelp": "S'il s'agit d'un code de licence, vous ouvrirez le lieu après la connexion. S'il s'agit d'un code reçu d'un administrateur, le lieu est sélectionné automatiquement.",
     "auth.accessCodePlaceholder": "code reçu de l'administrateur ou de la licence du lieu",
@@ -2100,6 +2230,7 @@ const uiCopy = {
     "auth.trialSubmit": "Commencer le trial",
     "auth.type": "Type de compte",
     "auth.verificationSent": "Je vous ai envoyé un email de vérification. Confirmez l'adresse, puis connectez-vous.",
+    // Zona „booking” - rezervări: formular, detalii și notificări.
     "booking.group": "Groupe",
     "booking.add": "Ajouter",
     "booking.audience": "Qui notifier",
@@ -2142,6 +2273,7 @@ const uiCopy = {
     "booking.time": "Horaire",
     "booking.updatedBy": "Dernière modification",
     "booking.update": "Mettre à jour la réservation",
+    // Zona „calendar” - calendar: vederi și bară de unelte.
     "calendar.day": "Jour",
     "calendar.month": "Mois",
     "calendar.next": "Période suivante",
@@ -2150,6 +2282,7 @@ const uiCopy = {
     "calendar.today": "Aujourd'hui",
     "calendar.week": "Semaine",
     "calendar.year": "Année",
+    // Zona „fixed” - programul fix.
     "fixed.add": "Ajouter une réservation fixe",
     "fixed.chooseDay": "Choisir le jour",
     "fixed.day": "Jour",
@@ -2163,6 +2296,7 @@ const uiCopy = {
     "common.language": "Langue",
     "loading.calendar": "Préparation du calendrier...",
     "loading.generic": "Chargement...",
+    // Zona „list” - lista de rezervări.
     "list.all": "Toutes",
     "list.ascending": "Croissant",
     "list.descending": "Décroissant",
@@ -2176,20 +2310,24 @@ const uiCopy = {
     "list.past": "Passées",
     "list.previous": "Retour",
     "list.results": "{{count}} résultats",
+    // Zona „nav” - navigare.
     "nav.aria": "Navigation",
     "nav.calendar": "Calendrier",
     "nav.fixed": "Réservations fixes",
     "nav.list": "Liste des réservations",
     "nav.settings": "Paramètres",
+    // Zona „public” - pagina publică.
     "public.feature.calendar": "Calendrier",
     "public.feature.locations": "Lieux",
     "public.feature.bookings": "Réservations",
     "public.subtitle": "Organisez les salles, les groupes et les réservations au même endroit, avec un accès simple pour chaque rôle et une vue claire de la semaine.",
     "public.title": "Un calendrier calme pour des espaces partagés bien entretenus.",
+    // Zona „role” - roluri.
     "role.administrator": "Administrateur",
     "role.collaborator": "Collaborateur",
     "role.guest": "Invité",
     "role.owner": "Propriétaire",
+    // Zona „settings” - setări.
     "settings.personal": "Paramètres personnels",
     "settings.access": "Accès",
     "settings.accessCodes": "Codes d'accès",
@@ -2214,6 +2352,7 @@ const uiCopy = {
     "settings.reportProblemHint": "Quelque chose ne fonctionne pas ? Dites-le-nous et nous vérifions.",
     "auth.unverifiedResent": "L'e-mail n'est pas vérifié. Nous avons renvoyé l'e-mail de vérification. Consultez votre boîte de réception et les spams/promotions.",
     "auth.unverifiedAlreadySent": "L'e-mail n'est pas vérifié et un e-mail de vérification vient d'être envoyé. Consultez votre boîte de réception et les spams/promotions ; s'il n'y est pas, réessayez dans quelques minutes.",
+    // Zona „closure” - închiderea locației.
     "closure.title": "Fermeture du lieu",
     "closure.rowStatus": "État",
     "closure.statusOpen": "Ouvert",
@@ -2227,21 +2366,25 @@ const uiCopy = {
     "closure.reopenMessage": "Rouvrir le lieu ? Il revient à son état précédent.",
     "closure.reopenAction": "Rouvrir",
     "closure.banner": "Ce lieu ferme le {{date}}. D'ici là l'application est en lecture seule ; ensuite les données et les comptes sont définitivement supprimés.",
+    // Zona „msg” - mesaje afișate din hook-uri și pagini (notificări mici, erori).
     "msg.closureRequested": "Le lieu ferme. Les utilisateurs ont été prévenus par e-mail.",
     "msg.closureCancelled": "Le lieu a été rouvert.",
     "msg.closureFailed": "Le lieu n'a pas pu être fermé. Réessayez.",
     "msg.closureNameMismatch": "Le nom saisi ne correspond pas à celui du lieu.",
     "msg.reopenFailed": "Le lieu n'a pas pu être rouvert. Réessayez.",
     "settings.colorHex": "Code couleur (#RRGGBB)",
+    // Zona „msg” - mesaje afișate din hook-uri și pagini (notificări mici, erori).
     "msg.selfRoleChange": "Vous ne pouvez pas changer votre propre rôle. Demandez à un autre administrateur de le faire.",
     "msg.confirmDemoteAdmin": "Retirer les droits d'administrateur de {{name}} ? Cette personne ne pourra plus gérer le lieu.",
     "msg.demoteAction": "Retirer les droits",
     "msg.cannotRemoveSelf": "Votre propre compte ne se supprime pas ici. Utilisez Réglages → Supprimer le compte.",
+    // Zona „settings” - setări.
     "settings.selfRoleLocked": "Ceci est votre compte. Seul un autre administrateur peut changer votre rôle.",
     "settings.lastAdminDeleteBlocked": "Vous êtes le seul administrateur de ce lieu. Nommez d'abord un autre administrateur (Utilisateurs → Modifier) avant de supprimer votre compte ; sinon le lieu reste sans administrateur.",
     "settings.tickerTextColor": "Couleur du texte",
     "settings.tickerTextAuto": "Automatique (blanc sur les couleurs sombres, noir sur les couleurs claires)",
     "settings.tickerAuto": "Automatique",
+    // Zona „invite” - invitații (email și text de partajat).
     "invite.defaultIntro": "Vous avez reçu une invitation à Kelunia, lieu {{location}}.",
     "invite.location": "Lieu",
     "invite.role": "Rôle",
@@ -2261,6 +2404,7 @@ const uiCopy = {
     "invite.composerBody": "Ouvrez le lien dans l'e-mail, créez votre compte ou connectez-vous, puis Kelunia utilisera le code pour vous connecter au bon lieu.",
     "invite.language": "Langue de l'invitation",
     "msg.offline": "Vous êtes hors ligne. Vous pouvez voir les données déjà chargées, mais les modifications se font au retour d'internet.",
+    // Zona „license” - licență și plan: stări și mesaje.
     "license.planTrial": "Essai",
     "license.statusActive": "Actif",
     "license.statusPastDue": "Paiement en retard",
@@ -2268,6 +2412,7 @@ const uiCopy = {
     "license.statusExpired": "Expiré",
     "license.statusCanceled": "Annulé",
     "license.readOnlyMessage": "La licence {{plan}} est {{status}}. Les données restent visibles, mais les modifications sont désactivées jusqu'à la réactivation.",
+    // Zona „msg” - mesaje afișate din hook-uri și pagini (notificări mici, erori).
     "msg.undo": "Annuler",
     "msg.undoFailed": "L'annulation de la suppression a échoué. Rechargez et réessayez.",
     "msg.notifDenied": "Les notifications n'ont pas été autorisées sur cet appareil.",
@@ -2372,6 +2517,7 @@ const uiCopy = {
     "msg.signOutAction": "Se déconnecter",
     "msg.pinReset": "Le code PIN a été réinitialisé pour des raisons de sécurité. Réactivez le verrouillage par PIN dans les Réglages et choisissez un nouveau code.",
     "action.deactivate": "Désactiver",
+    // Zona „access” - coduri de acces: utilizări și expirare.
     "access.usageOff": "Désactivé",
     "access.usesMany": "{{count}} utilisations",
     "access.usesOf": "{{used}}/{{max}} utilisations",
@@ -2380,6 +2526,7 @@ const uiCopy = {
     "access.extend": "Prolonger",
     "access.sendEmail": "E-mail",
     "access.copyMessage": "Message",
+    // Zona „settings” - setări.
     "settings.codesCount": "{{count}} codes",
     "settings.usersCount": "{{count}} comptes",
     "settings.licenseExpired": "Expirée",
@@ -2390,13 +2537,16 @@ const uiCopy = {
     "settings.licenseExpiresInDays": "Expire dans {{days}} jours",
     "report.thanks": "Merci — le rapport a été envoyé à l'administrateur.",
     "report.placeholder": "Décrivez brièvement ce que vous faisiez et ce qui n'a pas marché.",
+    // Zona „settings” - setări.
     "settings.spacePlaceholderRoom": "ex. Petite salle",
     "settings.spacePlaceholderGroup": "ex. Groupe 1",
     "settings.locationPlaceholder": "ex. Kelunia Bucarest",
+    // Zona „confirm” - confirmări.
     "confirm.discardChanges": "Vous avez des modifications non enregistrées. Les abandonner ?",
     "confirm.discardAction": "Abandonner les modifications",
     "confirm.keepEditing": "Continuer la modification",
     "action.confirm": "Confirmer",
+    // Zona „settings” - setări.
     "settings.showPage": "Afficher la page {{page}}",
     "settings.notifMoments": "{{count}} moments",
     "settings.notifNewBookingsShort": "Nouvelles réservations",
@@ -2425,6 +2575,7 @@ const uiCopy = {
     "settings.tickerSaveFailed": "Les réglages n'ont pas pu être enregistrés sur cet appareil.",
     "calendar.tickerEmpty": "Aucune réservation active pour les {{days}} prochains jours.",
     "calendar.tickerEmptyOne": "Aucune réservation active pour le jour suivant.",
+    // Zona „settings” - setări.
     "settings.notifDevice": "Cet appareil",
     "settings.notifStatusGranted": "Notifications activées",
     "settings.notifStatusDenied": "Bloquées dans le navigateur ou les réglages du téléphone",
@@ -2440,9 +2591,11 @@ const uiCopy = {
     "settings.notifAddMoment": "+ Ajouter un moment",
     "settings.notifRemoveMoment": "Supprimer ce moment",
     "settings.notifFootnote": "Les rappels sont calculés sur cet appareil. L'autorisation des notifications se donne séparément sur chaque appareil.",
+    // Zona „booking” - rezervări: formular, detalii și notificări.
     "booking.notifyToGroup": "Notifier tous les membres de {{label}}",
     "booking.notifyToLocation": "Notifier tout le lieu",
     "booking.audienceLocation": "Tout le lieu",
+    // Zona „settings” - setări.
     "settings.temporary": "Temporaire (jusqu'à une date)",
     "settings.activeUntil": "Valable jusqu'au",
     "settings.temporaryHint": "Disparaît de la sélection à minuit après cette date. Les réservations existantes sont conservées.",
@@ -2504,7 +2657,9 @@ const uiCopy = {
     "settings.users": "Utilisateurs",
     "settings.validity": "Validité",
   },
+  // Textele în limba portugheză.
   pt: {
+    // Zona „action” - acțiuni generale (butoane).
     "action.backHome": "Início",
     "action.cancel": "Cancelar",
     "action.delete": "Eliminar",
@@ -2516,6 +2671,7 @@ const uiCopy = {
     "action.generate": "Gerar",
     "action.generating": "A gerar...",
     "action.send": "Enviar",
+    // Zona „access” - coduri de acces: utilizări și expirare.
     "access.closeKeepsHistory": "Parar mantém o código no histórico, mas já não pode ser usado. Eliminar oculta-o da lista ativa e remove-o do registo atual.",
     "access.codesShown": "{{count}} códigos apresentados",
     "access.createCode": "Novo código",
@@ -2534,6 +2690,7 @@ const uiCopy = {
     "access.historyCodes": "Histórico",
     "access.noActiveCodes": "Não há códigos ativos. Prime \"Novo código\" para gerar um.",
     "access.noHistoryCodes": "O histórico está vazio - os códigos expirados ou esgotados aparecem aqui.",
+    // Zona „license” - licență și plan: stări și mesaje.
     "license.available": "Disponíveis",
     "license.billingStatus": "Estado de faturação",
     "license.client": "Cliente",
@@ -2556,6 +2713,7 @@ const uiCopy = {
     "license.total": "Total",
     "license.used": "Usadas",
     "license.stopped": "Paradas",
+    // Zona „audit” - istoricul de modificări.
     "audit.empty": "Ainda não há alterações registadas para a localização atual.",
     "audit.lastChanges": "Últimas alterações",
     "audit.limitNote": "As últimas 50 alterações da localização atual.",
@@ -2563,6 +2721,7 @@ const uiCopy = {
     "audit.reload": "Recarregar",
     "audit.title": "Histórico",
     "audit.user": "Utilizador",
+    // Zona „auth” - autentificare: titluri, câmpuri și mesaje.
     "auth.accessCode": "Código de acesso",
     "auth.accessCodeHelp": "Se este for um código de licença, irá abrir a localização depois de iniciar sessão. Se for um código recebido de um administrador, a localização é selecionada automaticamente.",
     "auth.accessCodePlaceholder": "código recebido do administrador ou da licença da localização",
@@ -2595,6 +2754,7 @@ const uiCopy = {
     "auth.trialSubmit": "Começar trial",
     "auth.type": "Tipo de conta",
     "auth.verificationSent": "Enviei-lhe um email de verificação. Confirme o endereço e depois entre na conta.",
+    // Zona „booking” - rezervări: formular, detalii și notificări.
     "booking.group": "Grupo",
     "booking.add": "Adicionar",
     "booking.audience": "Quem notificar",
@@ -2637,6 +2797,7 @@ const uiCopy = {
     "booking.time": "Horário",
     "booking.updatedBy": "Última edição",
     "booking.update": "Atualizar reserva",
+    // Zona „calendar” - calendar: vederi și bară de unelte.
     "calendar.day": "Dia",
     "calendar.month": "Mês",
     "calendar.next": "Período seguinte",
@@ -2645,6 +2806,7 @@ const uiCopy = {
     "calendar.today": "Hoje",
     "calendar.week": "Semana",
     "calendar.year": "Ano",
+    // Zona „fixed” - programul fix.
     "fixed.add": "Adicionar reserva fixa",
     "fixed.chooseDay": "Escolher dia",
     "fixed.day": "Dia",
@@ -2658,6 +2820,7 @@ const uiCopy = {
     "common.language": "Idioma",
     "loading.calendar": "A preparar o calendário...",
     "loading.generic": "A carregar...",
+    // Zona „list” - lista de rezervări.
     "list.all": "Todas",
     "list.ascending": "Ascendente",
     "list.descending": "Descendente",
@@ -2671,20 +2834,24 @@ const uiCopy = {
     "list.past": "Passadas",
     "list.previous": "Voltar",
     "list.results": "{{count}} resultados",
+    // Zona „nav” - navigare.
     "nav.aria": "Navegação",
     "nav.calendar": "Calendário",
     "nav.fixed": "Reservas fixas",
     "nav.list": "Lista de reservas",
     "nav.settings": "Definições",
+    // Zona „public” - pagina publică.
     "public.feature.calendar": "Calendário",
     "public.feature.locations": "Localizações",
     "public.feature.bookings": "Reservas",
     "public.subtitle": "Organize salas, grupos e reservas num só lugar, com acesso simples para cada função e uma vista clara da semana.",
     "public.title": "Um calendário calmo para espaços partilhados bem cuidados.",
+    // Zona „role” - roluri.
     "role.administrator": "Administrador",
     "role.collaborator": "Colaborador",
     "role.guest": "Convidado",
     "role.owner": "Proprietário",
+    // Zona „settings” - setări.
     "settings.personal": "Definições pessoais",
     "settings.access": "Acesso",
     "settings.accessCodes": "Códigos de acesso",
@@ -2709,6 +2876,7 @@ const uiCopy = {
     "settings.reportProblemHint": "Algo não está a funcionar bem? Diga-nos e verificamos.",
     "auth.unverifiedResent": "O email não está verificado. Reenviámos o email de verificação. Verifique a caixa de entrada e o Spam/Promoções.",
     "auth.unverifiedAlreadySent": "O email não está verificado e um email de verificação foi enviado há pouco. Verifique a caixa de entrada e o Spam/Promoções; se não estiver lá, tente novamente dentro de alguns minutos.",
+    // Zona „closure” - închiderea locației.
     "closure.title": "Encerramento do local",
     "closure.rowStatus": "Estado",
     "closure.statusOpen": "Aberto",
@@ -2722,21 +2890,25 @@ const uiCopy = {
     "closure.reopenMessage": "Reabrir o local? Volta ao estado anterior.",
     "closure.reopenAction": "Reabrir",
     "closure.banner": "Este local encerra em {{date}}. Até lá a aplicação é só de leitura; depois, os dados e as contas são eliminados definitivamente.",
+    // Zona „msg” - mesaje afișate din hook-uri și pagini (notificări mici, erori).
     "msg.closureRequested": "O local vai encerrar. Os utilizadores foram avisados por email.",
     "msg.closureCancelled": "O local foi reaberto.",
     "msg.closureFailed": "Não foi possível encerrar o local. Tente novamente.",
     "msg.closureNameMismatch": "O nome escrito não coincide com o nome do local.",
     "msg.reopenFailed": "Não foi possível reabrir o local. Tente novamente.",
     "settings.colorHex": "Código de cor (#RRGGBB)",
+    // Zona „msg” - mesaje afișate din hook-uri și pagini (notificări mici, erori).
     "msg.selfRoleChange": "Não pode alterar a sua própria função. Peça a outro administrador que o faça.",
     "msg.confirmDemoteAdmin": "Retirar os direitos de administrador de {{name}}? Deixará de poder gerir o local.",
     "msg.demoteAction": "Retirar direitos",
     "msg.cannotRemoveSelf": "A sua própria conta não se elimina aqui. Use Definições → Eliminar conta.",
+    // Zona „settings” - setări.
     "settings.selfRoleLocked": "Esta é a sua conta. Só outro administrador pode alterar a sua função.",
     "settings.lastAdminDeleteBlocked": "É o único administrador deste local. Nomeie primeiro outro administrador (Utilizadores → Editar) antes de eliminar a sua conta; caso contrário o local fica sem administrador.",
     "settings.tickerTextColor": "Cor do texto",
     "settings.tickerTextAuto": "Automático (branco em cores escuras, preto em cores claras)",
     "settings.tickerAuto": "Automático",
+    // Zona „invite” - invitații (email și text de partajat).
     "invite.defaultIntro": "Recebeu um convite para o Kelunia, local {{location}}.",
     "invite.location": "Local",
     "invite.role": "Função",
@@ -2756,6 +2928,7 @@ const uiCopy = {
     "invite.composerBody": "Abra a ligação no email, crie a sua conta ou inicie sessão, e o Kelunia usará o código para o ligar ao local certo.",
     "invite.language": "Idioma do convite",
     "msg.offline": "Está offline. Pode ver os dados já carregados, mas as alterações fazem-se quando a internet voltar.",
+    // Zona „license” - licență și plan: stări și mesaje.
     "license.planTrial": "Teste",
     "license.statusActive": "Ativo",
     "license.statusPastDue": "Pagamento em atraso",
@@ -2763,6 +2936,7 @@ const uiCopy = {
     "license.statusExpired": "Expirado",
     "license.statusCanceled": "Cancelado",
     "license.readOnlyMessage": "A licença {{plan}} está {{status}}. Os dados continuam visíveis, mas as alterações ficam desativadas até à reativação.",
+    // Zona „msg” - mesaje afișate din hook-uri și pagini (notificări mici, erori).
     "msg.undo": "Anular",
     "msg.undoFailed": "Não foi possível anular a eliminação. Recarregue e tente novamente.",
     "msg.notifDenied": "As notificações não foram permitidas neste dispositivo.",
@@ -2867,6 +3041,7 @@ const uiCopy = {
     "msg.signOutAction": "Terminar sessão",
     "msg.pinReset": "O PIN foi redefinido por motivos de segurança. Ative novamente o bloqueio com PIN nas Definições e escolha um novo código.",
     "action.deactivate": "Desativar",
+    // Zona „access” - coduri de acces: utilizări și expirare.
     "access.usageOff": "Desativado",
     "access.usesMany": "{{count}} utilizações",
     "access.usesOf": "{{used}}/{{max}} utilizações",
@@ -2875,6 +3050,7 @@ const uiCopy = {
     "access.extend": "Prolongar",
     "access.sendEmail": "E-mail",
     "access.copyMessage": "Mensagem",
+    // Zona „settings” - setări.
     "settings.codesCount": "{{count}} códigos",
     "settings.usersCount": "{{count}} contas",
     "settings.licenseExpired": "Expirada",
@@ -2885,13 +3061,16 @@ const uiCopy = {
     "settings.licenseExpiresInDays": "Expira em {{days}} dias",
     "report.thanks": "Obrigado — o relatório foi enviado ao administrador.",
     "report.placeholder": "Descreva brevemente o que estava a fazer e o que correu mal.",
+    // Zona „settings” - setări.
     "settings.spacePlaceholderRoom": "ex. Sala pequena",
     "settings.spacePlaceholderGroup": "ex. Grupo 1",
     "settings.locationPlaceholder": "ex. Kelunia Bucareste",
+    // Zona „confirm” - confirmări.
     "confirm.discardChanges": "Tem alterações por guardar. Descartá-las?",
     "confirm.discardAction": "Descartar alterações",
     "confirm.keepEditing": "Continuar a editar",
     "action.confirm": "Confirmar",
+    // Zona „settings” - setări.
     "settings.showPage": "Mostrar a página {{page}}",
     "settings.notifMoments": "{{count}} momentos",
     "settings.notifNewBookingsShort": "Novas reservas",
@@ -2920,6 +3099,7 @@ const uiCopy = {
     "settings.tickerSaveFailed": "Não foi possível guardar as definições neste dispositivo.",
     "calendar.tickerEmpty": "Não há reservas ativas para os próximos {{days}} dias.",
     "calendar.tickerEmptyOne": "Não há reservas ativas para o dia seguinte.",
+    // Zona „settings” - setări.
     "settings.notifDevice": "Este dispositivo",
     "settings.notifStatusGranted": "Notificações ativadas",
     "settings.notifStatusDenied": "Bloqueadas no navegador ou nas definições do telemóvel",
@@ -2935,9 +3115,11 @@ const uiCopy = {
     "settings.notifAddMoment": "+ Adicionar um momento",
     "settings.notifRemoveMoment": "Remover este momento",
     "settings.notifFootnote": "Os lembretes são calculados neste dispositivo. A permissão de notificações é concedida separadamente em cada dispositivo.",
+    // Zona „booking” - rezervări: formular, detalii și notificări.
     "booking.notifyToGroup": "Notificar todos em {{label}}",
     "booking.notifyToLocation": "Notificar todos no local",
     "booking.audienceLocation": "Todos no local",
+    // Zona „settings” - setări.
     "settings.temporary": "Temporário (até uma data)",
     "settings.activeUntil": "Válido até",
     "settings.temporaryHint": "Desaparece da seleção à meia-noite após esta data. As reservas existentes são mantidas.",
@@ -3001,12 +3183,15 @@ const uiCopy = {
   },
 } as const;
 
+// Cheile valide ale textelor (derivate din varianta în română).
 export type UiCopyKey = keyof typeof uiCopy.ro;
 
+// Textul unei chei în limba cerută; dacă lipsește, se folosește româna.
 export function appText(locale: SupportedLocale | undefined, key: UiCopyKey) {
   return uiCopy[locale ?? "ro"]?.[key] ?? uiCopy.ro[key];
 }
 
+// Zona (grupul) afișată în pagina de traduceri, pe baza prefixului cheii.
 function copyAreaForKey(key: string) {
   if (key.startsWith("auth.")) return "Autentificare";
   if (key.startsWith("nav.")) return "Navigare";
@@ -3019,6 +3204,7 @@ function copyAreaForKey(key: string) {
   return "General";
 }
 
+// Catalogul pentru pagina de traduceri: o intrare pentru fiecare cheie din textele de mai sus.
 const primaryAppCopyCatalog: AppCopyEntry[] = Object.keys(uiCopy.ro).map((key) => ({
   area: copyAreaForKey(key),
   key,
@@ -3030,6 +3216,7 @@ const primaryAppCopyCatalog: AppCopyEntry[] = Object.keys(uiCopy.ro).map((key) =
   pt: uiCopy.pt[key as UiCopyKey],
 }));
 
+// Intrări mai vechi, rămase doar în catalog (nu sunt în textele de mai sus).
 const legacyAppCopyCatalog: AppCopyEntry[] = [
   {
     area: "Roluri",
@@ -3293,6 +3480,7 @@ const legacyAppCopyCatalog: AppCopyEntry[] = [
   },
 ];
 
+// Catalogul final: intrările curente plus cele vechi care nu au fost înlocuite, sortate după zonă și cheie.
 const primaryKeys = new Set(primaryAppCopyCatalog.map((entry) => entry.key));
 
 export const appCopyCatalog: AppCopyEntry[] = [

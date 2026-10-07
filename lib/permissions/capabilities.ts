@@ -1,5 +1,8 @@
+// Permisiunile din interfață: ce are voie să facă un utilizator în locația curentă, derivat din rol.
+// Aceasta ajută doar interfața să ascundă butoane; securitatea reală este în firestore.rules și în funcțiile cloud.
 import type { UserRole } from "@/context/AuthContext";
 
+// Acțiunile pentru care se verifică permisiunea.
 export type Capability =
   | "booking.create"
   | "booking.update"
@@ -11,6 +14,7 @@ export type Capability =
   | "settings.manage"
   | "audit.read";
 
+// Contextul verificării: conectat, rol, proprietar, locația potrivită și locație activă pentru scriere (licență).
 export interface PermissionContext {
   signedIn: boolean;
   role: UserRole;
@@ -19,6 +23,8 @@ export interface PermissionContext {
   locationWritable: boolean;
 }
 
+// Regula: citirea auditului este pentru proprietar și manageri; rezervările pentru manageri și membri; restul pentru manageri.
+// Proprietarul platformei nu modifică datele unei locații (doar le vede), iar o licență expirată blochează scrierea.
 export function can(capability: Capability, context: PermissionContext) {
   if (!context.signedIn) {
     return false;

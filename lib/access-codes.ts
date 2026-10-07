@@ -1,3 +1,5 @@
+// Coduri de acces: normalizare din Firestore, număr maxim de utilizări, expirare, generare și textul de invitație pentru partajare.
+// Regulile de expirare trebuie să rămână în acord cu firestore.rules.
 import type { UserRole } from "@/context/AuthContext";
 import { defaultLocationName, memberAccessCodeMaxUses } from "@/lib/config/app";
 import { dateLocales } from "@/lib/date-locales";
@@ -5,6 +7,7 @@ import { appText, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 import { normalizeRoomAccess } from "@/lib/room-access";
 import type { LocationCode } from "@/lib/types/domain";
 
+// Acceptă și numele vechi ale rolurilor (superadmin, admin, viewer, user) și le mapează pe cele curente.
 export function normalizeRole(role: unknown): UserRole {
   if (role === "manager" || role === "superadmin") {
     return "manager";
@@ -21,6 +24,7 @@ export function normalizeRole(role: unknown): UserRole {
   return "guest";
 }
 
+// Câte utilizări are un cod implicit: manager 1, membru limitat, oaspete nelimitat.
 export function maxUsesForAccessRole(role: UserRole) {
   if (role === "manager") {
     return 1;
@@ -29,10 +33,12 @@ export function maxUsesForAccessRole(role: UserRole) {
   return role === "member" ? memberAccessCodeMaxUses : null;
 }
 
+// Un număr valid sau null (nelimitat).
 export function readOptionalNumber(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+// Construiește codul de acces din documentul Firestore, cu valori implicite sigure.
 export function normalizeAccessCode(id: string, data: Record<string, unknown>): LocationCode {
   const role = normalizeRole(data.role);
   const explicitMaxUses = readOptionalNumber(data.maxUses);
@@ -56,6 +62,7 @@ export function normalizeAccessCode(id: string, data: Record<string, unknown>): 
   };
 }
 
+// Textul de utilizare („2 din 10”, „oprit” etc.) în limba aleasă.
 export function accessCodeUsageLabel(item: LocationCode, language: SupportedLocale = "ro") {
   if (!item.active) {
     return appText(language, "access.usageOff");
@@ -70,10 +77,12 @@ export function accessCodeUsageLabel(item: LocationCode, language: SupportedLoca
     .replace("{{max}}", String(item.maxUses));
 }
 
+// Un cod este plin când a atins numărul maxim de utilizări.
 export function isAccessCodeFull(item: LocationCode) {
   return item.maxUses !== null && item.usedCount >= item.maxUses;
 }
 
+// Codurile create înainte de câmpul expiresAt nu expiră niciodată; doar un expiresAt în trecut le blochează.
 // Codes created before expiresAt existed carry no such field and never expire
 // (grandfathered) - matches firestore.rules' accessCodeNotExpired().
 export function isAccessCodeExpired(item: Pick<LocationCode, "expiresAt">) {
@@ -86,6 +95,7 @@ export function isAccessCodeExpired(item: Pick<LocationCode, "expiresAt">) {
   return expiresAt.toMillis() <= Date.now();
 }
 
+// Textul „expiră pe …”, sau „a expirat pe …”, în limba aleasă.
 export function accessCodeExpiryLabel(item: Pick<LocationCode, "expiresAt">, language: SupportedLocale = "ro") {
   const expiresAt = item.expiresAt as { toDate?: () => Date } | undefined;
 
@@ -97,12 +107,14 @@ export function accessCodeExpiryLabel(item: Pick<LocationCode, "expiresAt">, lan
   return appText(language, isAccessCodeExpired(item) ? "access.expiredOn" : "access.expiresOn").replace("{{date}}", label);
 }
 
+// Cheile de traducere pentru rolurile arătate în invitație.
 const roleShareKeys = {
   manager: "role.administrator",
   member: "role.collaborator",
   guest: "role.guest",
 } as const;
 
+// Data expirării într-un format lung pentru textul de invitație.
 function expiryShareDateLabel(item: Pick<LocationCode, "expiresAt">, language: SupportedLocale) {
   const expiresAt = item.expiresAt as { toDate?: () => Date } | undefined;
 
@@ -113,6 +125,7 @@ function expiryShareDateLabel(item: Pick<LocationCode, "expiresAt">, language: S
   return expiresAt.toDate().toLocaleDateString(dateLocales[language], { day: "2-digit", month: "long", year: "numeric" });
 }
 
+// Textul copiat pentru WhatsApp/SMS; este același cu emailul de invitație trimis de serverul cloud.
 // Mirrors accessInviteText() in functions/src/index.ts so the text a manager
 // copies to paste into WhatsApp/SMS reads the same as the invite email - in
 // whichever language the manager picked for the invitation.
@@ -151,6 +164,7 @@ export function buildAccessInviteShareText(
   ].filter(Boolean).join("\n");
 }
 
+// Cod nou aleatoriu de forma KEL-XXXX-XXXX-XXXX, din caractere fără confuzii (fără 0/O, 1/I), generat cu generatorul criptografic al browserului.
 export function generateAccessCode() {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   const bytes = new Uint32Array(12);

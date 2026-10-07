@@ -1,7 +1,12 @@
+// Textele paginilor legale în șase limbi (ro, en, es, it, fr, pt): confidențialitate, termeni, cookie-uri,
+// ștergere cont, rambursări și contact. Sunt afișate de components/legal/LegalDocument.tsx.
+// Aceste texte sunt conținut juridic: orice modificare trebuie revizuită, iar „updatedAt” actualizat.
 import type { SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 
+// Paginile legale existente.
 export type LegalPageKey = "privacy" | "terms" | "cookies" | "deleteAccount" | "refund" | "contact";
 
+// Structura unei pagini legale: titlu, descriere, secțiuni (text și/sau listă) și, doar la ștergerea contului, textele acțiunii.
 export type LegalPageCopy = {
   eyebrow: string;
   title: string;
@@ -31,6 +36,7 @@ export type LegalPageCopy = {
   };
 };
 
+// Data ultimei actualizări a documentelor, pe fiecare limbă.
 const updatedAt: Record<SupportedLocale, string> = {
   ro: "29 mai 2026",
   en: "May 29, 2026",
@@ -40,6 +46,7 @@ const updatedAt: Record<SupportedLocale, string> = {
   pt: "29 de maio de 2026",
 };
 
+// Texte comune tuturor paginilor (etichete, nota despre limbă și adresa de contact).
 const shared = {
   ro: {
     eyebrow: "Legal",
@@ -85,6 +92,7 @@ const shared = {
   },
 };
 
+// Politica de confidențialitate.
 export const privacyCopy: Record<SupportedLocale, LegalPageCopy> = {
   ro: {
     ...shared.ro,
@@ -196,6 +204,7 @@ export const privacyCopy: Record<SupportedLocale, LegalPageCopy> = {
   },
 };
 
+// Termeni și condiții.
 export const termsCopy: Record<SupportedLocale, LegalPageCopy> = {
   ro: { ...shared.ro, updatedAt: updatedAt.ro, title: "Termeni și condiții", description: "Acești termeni guvernează accesul și utilizarea Kelunia.", sections: [
     { title: "1. Acceptare", body: "Prin folosirea Kelunia, accepți acești termeni. Dacă folosești Kelunia pentru o organizație, confirmi că ai dreptul să acționezi în numele ei." },
@@ -277,6 +286,7 @@ export const termsCopy: Record<SupportedLocale, LegalPageCopy> = {
   ] },
 };
 
+// Politica de cookie-uri.
 export const cookiesCopy: Record<SupportedLocale, LegalPageCopy> = {
   ro: { ...shared.ro, updatedAt: updatedAt.ro, title: "Politica de cookies", description: "Această pagină explică folosirea cookie-urilor, local storage și tehnologiilor similare.", sections: [
     { title: "1. Ce sunt", body: "Cookie-urile și local storage sunt date mici salvate pe dispozitiv pentru sesiuni, preferințe și funcții esențiale." },
@@ -328,6 +338,7 @@ export const cookiesCopy: Record<SupportedLocale, LegalPageCopy> = {
   ] },
 };
 
+// Ștergerea contului: include și textele panoului cu confirmare.
 export const deleteAccountCopy: Record<SupportedLocale, LegalPageCopy> = {
   ro: { ...shared.ro, updatedAt: updatedAt.ro, title: "Ștergere cont", description: "Aici îți poți șterge contul Kelunia direct, cu confirmare explicită ca să nu se întâmple din greșeală.", deleteAccount: {
     actionEyebrow: "Acțiune cont",
@@ -407,6 +418,7 @@ export const deleteAccountCopy: Record<SupportedLocale, LegalPageCopy> = {
   ] },
 };
 
+// Politica de rambursări.
 export const refundCopy: Record<SupportedLocale, LegalPageCopy> = {
   ro: { ...shared.ro, updatedAt: updatedAt.ro, title: "Politica de rambursare", description: "Această politică explică modul în care sunt tratate trialurile, abonamentele și cererile de rambursare pentru Kelunia.", sections: [
     { title: "1. Trial gratuit", body: "Kelunia poate oferi o perioadă de test gratuit. Dacă alegi să nu continui, nu există cost pentru perioada gratuită." },
@@ -458,6 +470,7 @@ export const refundCopy: Record<SupportedLocale, LegalPageCopy> = {
   ] },
 };
 
+// Pagina de contact.
 export const contactCopy: Record<SupportedLocale, LegalPageCopy> = {
   ro: { ...shared.ro, updatedAt: updatedAt.ro, title: "Contact", description: "Ai nevoie de ajutor cu Kelunia, contul tău, o plată sau ștergerea datelor? Ne poți contacta prin email.", sections: [
     { title: "Email suport", body: "support@kelunia.com" },

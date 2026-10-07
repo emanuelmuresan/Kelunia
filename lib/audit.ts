@@ -1,5 +1,8 @@
+// Jurnalul de audit: tipurile de entități și acțiuni urmărite și scrierea înregistrărilor în colecția auditLogs.
+// Câmpul pinHash este mereu ascuns în jurnal.
 import { addDoc, collection, Timestamp, type Firestore } from "firebase/firestore";
 
+// Entitățile pentru care se păstrează istoric.
 export type AuditEntityType =
   | "booking"
   | "fixedSchedule"
@@ -13,6 +16,7 @@ export type AuditEntityType =
 
 export type AuditAction = "create" | "update" | "delete";
 
+// Forma funcției recordAuditLog din useAuditLogs, pasată hook-urilor care modifică date.
 /** Shape of the `recordAuditLog` callback exposed by useAuditLogs, passed to the
  *  editor hooks that need to log a mutation. */
 export type RecordAuditLog = (
@@ -25,6 +29,7 @@ export type RecordAuditLog = (
   auditLocationName?: string
 ) => Promise<void>;
 
+// Cine a făcut acțiunea.
 interface AuditActor {
   uid: string;
   email: string;
@@ -42,6 +47,7 @@ interface AuditLogInput {
   after?: unknown;
 }
 
+// Curăță valorile înainte de salvare: undefined devine null, funcțiile se elimină, PIN-ul este redactat.
 function cleanAuditValue(value: unknown): unknown {
   if (value === undefined) {
     return null;
@@ -66,6 +72,7 @@ function cleanAuditValue(value: unknown): unknown {
   );
 }
 
+// Scrie o înregistrare de audit cu starea dinainte și de după modificare.
 export async function writeAuditLog(db: Firestore, input: AuditLogInput) {
   await addDoc(collection(db, "auditLogs"), {
     locationId: input.locationId,

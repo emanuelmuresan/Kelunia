@@ -1,8 +1,10 @@
+// Teste pentru textul de invitație care se copiază în WhatsApp/SMS (buildAccessInviteShareText).
 import { describe, expect, it } from "vitest";
 
 import { buildAccessInviteShareText } from "@/lib/access-codes";
 import { supportedLocales } from "@/lib/i18n/app-copy-catalog";
 
+// Un cod de exemplu, cu dată de expirare, și linkul de înregistrare.
 const item = {
   code: "KEL-ABCD-EFGH-JKLM",
   role: "member" as const,
@@ -12,6 +14,7 @@ const item = {
 };
 const link = "https://www.kelunia.com/login?invite=KEL-ABCD-EFGH-JKLM";
 
+// Pentru fiecare limbă textul trebuie să fie complet: cod, link, locație, grup, an, cei patru pași și nicio cheie netradusă.
 describe("buildAccessInviteShareText", () => {
   it.each(supportedLocales.map((locale) => locale.code))("is complete and fully translated in %s", (language) => {
     const text = buildAccessInviteShareText(item, link, undefined, language);
@@ -25,6 +28,7 @@ describe("buildAccessInviteShareText", () => {
     expect(text.split("\n").filter((line) => /^[1-4]\. /.test(line))).toHaveLength(4);
   });
 
+  // Textul diferă între limbi (nu rămâne în română).
   it("differs between languages", () => {
     const ro = buildAccessInviteShareText(item, link, undefined, "ro");
     const en = buildAccessInviteShareText(item, link, undefined, "en");
@@ -34,6 +38,7 @@ describe("buildAccessInviteShareText", () => {
     expect(en).not.toContain("Cod acces");
   });
 
+  // Mesajul personalizat vine primul, iar fără expirare linia de expirare lipsește.
   it("keeps a custom message and omits the expiry line when the code never expires", () => {
     const text = buildAccessInviteShareText({ ...item, expiresAt: undefined }, link, "Salut!", "fr");
 
@@ -41,6 +46,7 @@ describe("buildAccessInviteShareText", () => {
     expect(text).not.toContain("expire le");
   });
 
+  // Administratorii nu au grup, deci linia „Grup” lipsește.
   it("leaves out the group for administrators", () => {
     const text = buildAccessInviteShareText({ ...item, role: "manager" }, link, undefined, "en");
 

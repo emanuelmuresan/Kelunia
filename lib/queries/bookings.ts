@@ -1,9 +1,12 @@
+// Interogarea rezervărilor și fereastra de date citită în funcție de vedere (an, lună, săptămână, zi, listă).
 import { collection, limit, orderBy, query, where, type Firestore } from "firebase/firestore";
 import { addDays, dateKey, getMonthEnd, getMonthStart, getWeekStart, parseDateKey } from "@/lib/dates";
 import type { AppView, CalendarMode, ListFilter } from "@/lib/types/domain";
 
+// Număr maxim de rezervări citite într-o interogare.
 export const bookingsQueryLimit = 500;
 
+// Intervalul de date citit: marja din jurul perioadei afișate permite navigarea fără reîncărcări dese.
 export function bookingQueryWindow(date: Date, view: AppView, mode: CalendarMode, filter: ListFilter) {
   const todayDate = parseDateKey(dateKey(new Date()));
 
@@ -56,6 +59,7 @@ export function bookingQueryWindow(date: Date, view: AppView, mode: CalendarMode
   };
 }
 
+// Rezervările locației între două date, ordonate cronologic.
 export function buildBookingsQuery(db: Firestore, locationId: string, startDate: string, endDate: string) {
   return query(
     collection(db, "events"),

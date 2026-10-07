@@ -1,3 +1,5 @@
+// Regulile pentru parole la crearea contului: lungime minimă, literă și cifră, fără partea principală a emailului.
+// Returnează un mesaj de eroare, sau șir gol dacă parola este acceptată.
 export const minimumPasswordLength = 8;
 
 export function passwordSecurityError(password: string, email = "") {
