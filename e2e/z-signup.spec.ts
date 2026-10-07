@@ -1,4 +1,6 @@
 // Named z-* so it runs after the other specs: registering adds users to the seeded location.
+// Teste e2e pentru înregistrarea cu cod de invitație pe pagina reală de login și regulile Firestore reale (emulator).
+// Fiecare rol parcurge tot drumul: înregistrare, confirmarea emailului, autentificare și rolul corect pe dashboard.
 import { expect, test, type Page } from "@playwright/test";
 import { getApps, initializeApp } from "firebase-admin/app";
 import { openSettingsSection } from "./helpers";
@@ -8,6 +10,7 @@ import { getAuth } from "firebase-admin/auth";
 // unverified account registers with an invitation code. Regression net for the
 // "Missing or insufficient permissions" reports on access-code registration.
 
+// Funcția cloud de verificare a emailului nu există pe emulatoare; cererea este simulată.
 async function stubVerificationEmail(page: Page, response: Record<string, unknown> = { sent: true }) {
   // The verification email is a Cloud Function that does not exist on the emulators.
   await page.route("**/sendAuthVerificationEmail", (route) => {
@@ -27,10 +30,12 @@ async function stubVerificationEmail(page: Page, response: Record<string, unknow
 
 const password = "Parola-Sigura-2026!";
 
+// Cele trei moduri de a ajunge la înregistrare: linkul din email, linkul doar cu cod sau codul scris de mână.
 type Entry = "link" | "code-only" | "typed-code";
 
 // How an invitee actually arrives: the link from the e-mail (code + e-mail in the
 // URL), a link with only the code, or the "Am cod" tab with the code typed by hand.
+// Completează formularul de înregistrare pe una dintre căi.
 async function register(page: Page, code: string, typedEmail: string, entry: Entry = "code-only") {
   await stubVerificationEmail(page);
 
@@ -54,6 +59,7 @@ async function register(page: Page, code: string, typedEmail: string, entry: Ent
   await page.locator('form button[type="submit"]').click();
 }
 
+// Simulează apăsarea linkului din emailul de verificare: marchează adresa ca verificată.
 // Stands in for the click on the link in the verification e-mail.
 async function verifyEmail(email: string) {
   const app = getApps()[0] ?? initializeApp({ projectId: "demo-kelunia" });
@@ -62,6 +68,7 @@ async function verifyEmail(email: string) {
   await auth.updateUser(user.uid, { emailVerified: true });
 }
 
+// Autentificarea după verificare.
 async function logIn(page: Page) {
   await page.locator('input[type="password"]').first().fill(password);
   await page.locator('form button[type="submit"]').click();
@@ -69,6 +76,7 @@ async function logIn(page: Page) {
 
 // The whole journey for every role: register with the invitation, confirm the
 // e-mail, sign in, land on the dashboard with the right role and permissions.
+// Drumul complet pentru fiecare rol (administrator, colaborator, oaspete); doar administratorul vede secțiunea Acces.
 const journeys = [
   { role: "administrator", label: "Administrator", code: "KEL-E2EM-ANGR-0001", entry: "link" as const },
   { role: "collaborator", label: "Colaborator", code: "KEL-E2EB-MEMB-0002", entry: "link" as const },
@@ -108,6 +116,7 @@ journeys.forEach(({ role, label, code, entry }, index) => {
   });
 });
 
+// Emailul scris cu majuscule și spații se normalizează și înregistrarea reușește.
 test("an e-mail typed with capitals still registers (it is normalised to lowercase)", async ({ page }) => {
   await register(page, "KEL-E2EG-GUES-0003", "  Capitalizat.Test@E2E.test ");
 
@@ -115,6 +124,7 @@ test("an e-mail typed with capitals still registers (it is normalised to lowerca
   await expect(page.locator(".error-line")).toHaveCount(0);
 });
 
+// Autentificarea înainte de verificare retrimite emailul sau spune că unul a fost trimis de curând.
 test("logging in before verifying resends the email, or says one was just sent", async ({ page }) => {
   await register(page, "KEL-E2EG-GUES-0003", "inca.neverificat@e2e.test");
   await expect(page.locator(".success-line")).toBeVisible({ timeout: 20_000 });

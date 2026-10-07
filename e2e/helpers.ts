@@ -1,3 +1,4 @@
+// Ajutoare comune pentru testele e2e: deschiderea unei secțiuni din Setări și găsirea unui bloc după titlu.
 import type { Page } from "@playwright/test";
 
 // Settings now shows four compact cards (Profil, Configurare, Acces, Suport); a

@@ -6,6 +6,8 @@
  * Run inside `firebase emulators:exec` so FIRESTORE_EMULATOR_HOST /
  * FIREBASE_AUTH_EMULATOR_HOST are set. Safe to run repeatedly.
  */
+// Datele de test din emulatoare: doi utilizatori verificați (un membru și un manager), o locație cu licență activă, grupuri, o cameră,
+// trei coduri de invitație (manager, membru, oaspete) și o rezervare apropiată.
 import { initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore, Timestamp } from "firebase-admin/firestore";
@@ -14,6 +16,7 @@ const projectId = process.env.GCLOUD_PROJECT || process.env.FIREBASE_PROJECT || 
 
 initializeApp({ projectId });
 
+// Conturile de test; parolele sunt doar pentru emulator.
 export const E2E_USER = {
   uid: "e2e-member-uid-000000000001",
   email: "member@e2e.test",
@@ -28,10 +31,12 @@ export const E2E_ADMIN = {
   displayName: "Admin E2E",
 };
 
+// Identificatorii și numele locației și ale grupului de test.
 const LOCATION_ID = "loc-e2e";
 const LOCATION_NAME = "Sala E2E";
 const GROUP_NAME = "Grupa E2E";
 
+// Conturile Auth: se șterg și se recreează, deci seed-ul poate rula de mai multe ori.
 async function seedAuth() {
   const auth = getAuth();
 
@@ -64,6 +69,7 @@ async function seedAuth() {
   });
 }
 
+// Documentele Firestore: profilurile, locația, grupurile, camera, codurile de invitație și rezervarea.
 async function seedFirestore() {
   const db = getFirestore();
   const farFuture = Timestamp.fromMillis(Date.now() + 365 * 24 * 60 * 60 * 1000);
@@ -213,6 +219,7 @@ async function seedFirestore() {
   });
 }
 
+// Rulează seed-ul.
 await seedAuth();
 await seedFirestore();
 console.info(`Seed complet pentru proiectul ${projectId}.`);

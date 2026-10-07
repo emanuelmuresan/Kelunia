@@ -1,3 +1,4 @@
+// Configurarea testelor unitare Vitest: mediu jsdom, alias „@” către rădăcina proiectului; se rulează doar testele din features/ și lib/.
 import { resolve } from "node:path";
 import { defineConfig } from "vitest/config";
 

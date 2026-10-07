@@ -1,7 +1,10 @@
+// Teste e2e pentru comportamente comune ale interfeței: ștergere cu „Anulează”, confirmare la renunțarea la modificări, limba invitației,
+// drepturile administratorului, banda de evenimente, închiderea locației, blocurile din „Pagini”, ascunderea listei și traducerea mesajelor.
 import { expect, test, type Page } from "@playwright/test";
 
 import { blockOf, openSettingsSection } from "./helpers";
 
+// Autentificare ca administrator și deschiderea paginii Setări.
 async function loginAsAdmin(page: Page) {
   await page.goto("/login");
   await page.locator('input[type="email"]').fill("admin@e2e.test");
@@ -11,6 +14,7 @@ async function loginAsAdmin(page: Page) {
   await page.getByRole("button", { name: /Setări/ }).first().click();
 }
 
+// Ajutoare pentru profil: deschide vederea profilului și butonul „Modifică” al unui bloc.
 // Settings -> "Profil" card -> Deschide -> the block's own Modifică.
 async function openProfileView(page: Page) {
   await openSettingsSection(page, "Profil");
@@ -23,6 +27,7 @@ async function editProfileBlock(page: Page, block: string) {
   await view.locator(".settings-block", { hasText: block }).getByRole("button", { name: "Modifică" }).click();
 }
 
+// Ștergerea unui grup poate fi anulată din notificarea mică.
 test("deleting a group is undoable from the toast", async ({ page }) => {
   await loginAsAdmin(page);
 
@@ -42,6 +47,7 @@ test("deleting a group is undoable from the toast", async ({ page }) => {
   await expect(dialog.locator(".mini-row", { hasText: "Grupa B" })).toBeVisible();
 });
 
+// Clic în afara unui profil modificat cere confirmare înainte de renunțare; fără modificări se închide direct.
 test("clicking outside an edited profile asks before discarding", async ({ page }) => {
   await loginAsAdmin(page);
 
@@ -73,6 +79,7 @@ test("clicking outside an untouched profile just closes it", async ({ page }) =>
   await expect(profile).toHaveCount(0);
 });
 
+// Limba invitației se alege în fereastra codurilor de acces.
 test("the invitation language can be picked in the codes modal", async ({ page }) => {
   await loginAsAdmin(page);
 
@@ -88,6 +95,7 @@ test("the invitation language can be picked in the codes modal", async ({ page }
   await dialog.screenshot({ path: "test-results/invite-language.png" });
 });
 
+// Un administrator nu își poate schimba rolul, nu își poate șterge profilul și singurul administrator nu își poate șterge contul.
 test("an administrator cannot change their own role", async ({ page }) => {
   await loginAsAdmin(page);
 
@@ -116,6 +124,7 @@ test("the only administrator cannot delete their account", async ({ page }) => {
   await expect(dialog.getByRole("button", { name: "Șterge definitiv contul" })).toBeDisabled();
 });
 
+// Banda de evenimente continuă să curgă (și cu mișcare redusă), iar mesajul gol rămâne pe un singur rând.
 for (const reducedMotion of ["no-preference", "reduce"] as const) {
   test(`the upcoming-events band keeps flowing (motion: ${reducedMotion})`, async ({ page }) => {
     await page.emulateMedia({ reducedMotion });
@@ -156,6 +165,7 @@ test("the empty-state message flows on one line instead of wrapping", async ({ p
   expect(await position()).toBeLessThan(first);
 });
 
+// Închiderea locației cere numele scris și poate fi anulată.
 test("closing a location needs the name typed and can be cancelled", async ({ page }) => {
   await loginAsAdmin(page);
 
@@ -179,6 +189,7 @@ test("closing a location needs the name typed and can be cancelled", async ({ pa
   await expect(dialog).toHaveCount(0);
 });
 
+// Blocurile din „Pagini” au fiecare propriul „Modifică”, iar lista poate fi ascunsă; calendarul rămâne mereu.
 test("the page settings are three blocks, each with its own Modifică", async ({ page }) => {
   await loginAsAdmin(page);
 
@@ -226,6 +237,7 @@ test("the list page can be hidden but the calendar always stays", async ({ page 
   await expect(page.getByRole("button", { name: "Listă programări" })).toHaveCount(1);
 });
 
+// Rulează ultimul: schimbă administratorul de test în limba engleză și verifică mesajele traduse.
 // Runs last: it switches the seeded admin to English.
 test("messages follow the chosen language", async ({ page }) => {
   await loginAsAdmin(page);

@@ -1,5 +1,8 @@
+// Configurarea testelor e2e Playwright: rulează exportul static real (după „npm run build”) pe portul 3100, împotriva emulatoarelor Firebase.
+// Variabilele NEXT_PUBLIC_* de aici sunt valori de test pentru emulator; nu sunt chei reale.
 import { defineConfig, devices } from "@playwright/test";
 
+// Port dedicat, ca un test să nu intre în conflict cu serverul de dezvoltare de pe :3000.
 // Dedicated port so an e2e run never collides with a dev server on :3000.
 const PORT = 3100;
 const BASE_URL = `http://localhost:${PORT}`;

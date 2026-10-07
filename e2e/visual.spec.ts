@@ -1,5 +1,8 @@
+// Capturi de ecran pentru verificare vizuală manuală (nu sunt aserțiuni); rulează doar cu VISUAL=1 și scriu imaginile în test-results/.
+// Unele capturi (bandă, spații și grupuri, pagini) folosesc structura veche a paginii Setări, înainte de cele patru carduri, și pot necesita actualizare.
 import { test } from "@playwright/test";
 
+// Utilizatorul membru creat de seed.mjs.
 const USER = { email: "member@e2e.test", password: "Test123456" };
 
 // Not assertions — captures screenshots into test-results/ for manual review of
@@ -7,6 +10,7 @@ const USER = { email: "member@e2e.test", password: "Test123456" };
 // so it doesn't slow CI; run locally with `VISUAL=1 npm run test:e2e`.
 test.skip(!process.env.VISUAL, "set VISUAL=1 to capture screenshots");
 
+// Calendarul pe mobil, cu și fără banda de evenimente, vederea anului, fereastra de rezervare și confirmarea „notifică acum”.
 test("capture mobile calendar + FAB + notify-now", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript(() => {
@@ -65,6 +69,7 @@ test("capture mobile calendar + FAB + notify-now", async ({ page }) => {
   }
 });
 
+// Setările de notificări din profil.
 test("capture notification settings in the profile modal", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/login");
@@ -86,6 +91,7 @@ test("capture notification settings in the profile modal", async ({ page }) => {
   await page.locator('[aria-labelledby="profile-settings-title"]').screenshot({ path: "test-results/notification-settings.png" });
 });
 
+// Banda de evenimente: mesajul gol și editarea numărului de zile (se verifică și că „014” devine „14”).
 test("capture ticker settings editing + empty-state band", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript(() => {
@@ -117,6 +123,7 @@ test("capture ticker settings editing + empty-state band", async ({ page }) => {
   }
 });
 
+// Pagina Setări a administratorului: rezumatul paginilor și fereastra de modificare.
 test("capture admin settings: pages summary + modal", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/login");
@@ -133,6 +140,7 @@ test("capture admin settings: pages summary + modal", async ({ page }) => {
   await page.locator('[aria-labelledby="pages-settings-title"]').screenshot({ path: "test-results/pages-modal.png" });
 });
 
+// Acțiunile de pe rânduri și notificarea mică după salvare.
 test("capture unified row actions + toast", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/login");
@@ -158,6 +166,7 @@ test("capture unified row actions + toast", async ({ page }) => {
   await page.screenshot({ path: "test-results/toast-after-save.png" });
 });
 
+// Banda în trei culori (albastru, alb, închis).
 test("capture ticker colors", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   for (const [name, color] of [["blue", "#1787ff"], ["white", "#ffffff"], ["dark", "#16172b"]]) {
@@ -181,6 +190,7 @@ test("capture ticker colors", async ({ page }) => {
   }
 });
 
+// Selectorul de culori în fereastra benzii.
 test("capture inline colour picker", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/login");
@@ -197,6 +207,7 @@ test("capture inline colour picker", async ({ page }) => {
   await modal.screenshot({ path: "test-results/color-picker.png" });
 });
 
+// Cardul de profil, vederea deschisă și rândul „Raportează o problemă”.
 test("capture profile card, opened view and standalone report row", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/login");
@@ -217,6 +228,7 @@ test("capture profile card, opened view and standalone report row", async ({ pag
   await view.screenshot({ path: "test-results/profile-view.png" });
 });
 
+// Cele patru carduri din Setări și secțiunile deschise.
 test("capture the four settings cards and opened sections", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/login");

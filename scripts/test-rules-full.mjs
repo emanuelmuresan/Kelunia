@@ -1,3 +1,5 @@
+// Testează regulile Firestore pe emulator: pentru fiecare scriere pe care o face clientul, verifică că este PERMISĂ pentru rolul autorizat
+// și REFUZATĂ pentru ceilalți (alt rol, altă locație, email neverificat). Funcțiile cloud nu sunt incluse (folosesc Admin SDK, care ignoră regulile).
 /**
  * Full pass over every Firestore write the CLIENT performs (not the Cloud
  * Functions, which use Admin SDK and bypass rules). Each case seeds a doc shaped
@@ -7,10 +9,12 @@
  * Needs the emulator on 127.0.0.1:8080 with firestore.rules loaded.
  *   node scripts/test-rules-full.mjs
  */
+// Mediul de test cu regulile din firestore.rules și identitățile folosite: manager, manager din altă locație, membru și proprietar.
 import { readFileSync } from "node:fs";
 import { initializeTestEnvironment } from "@firebase/rules-unit-testing";
 import { doc, getDoc, getDocs, setDoc, updateDoc, addDoc, deleteDoc, collection, increment, runTransaction, Timestamp } from "firebase/firestore";
 
+// Identificatori de test și emailul proprietarului platformei.
 const LOC = "place_loc1";
 const MGR = "managerUid00000000000000000001";
 const MGR2 = "managerUid00000000000000000002"; // different location
@@ -23,6 +27,7 @@ const te = await initializeTestEnvironment({
   firestore: { host: "127.0.0.1", port: Number(process.env.RULES_EMU_PORT || 8080), rules: readFileSync("firestore.rules", "utf8") },
 });
 
+// Fabrici de documente cu aceeași formă ca cele scrise de aplicație (utilizator, locație, cameră, grup, program fix, cod de acces, setări).
 const ts = () => Timestamp.now();
 const softDelete = () => ({ deleted: true, deletedAt: ts(), deletedBy: "m@x.com", deletedByUid: MGR, updatedBy: "m@x.com", updatedAt: ts() });
 
@@ -56,6 +61,7 @@ const settingsDoc = (over = {}) => ({
   locationId: LOC, locationName: "L", updatedBy: "m@x.com", updatedAt: ts(), ...over,
 });
 
+// Pregătește datele de pornire (cu regulile oprite), înaintea fiecărui caz.
 async function seedAll() {
   await te.withSecurityRulesDisabled(async (c) => {
     const d = c.firestore();
@@ -72,6 +78,7 @@ async function seedAll() {
   });
 }
 
+// Contexte autentificate: câte unul pentru fiecare tip de utilizator, inclusiv cel neverificat și cel nou.
 const dbMgr = () => te.authenticatedContext(MGR, { email: "m@x.com", email_verified: true, firebase: { sign_in_provider: "password" } }).firestore();
 const dbMgr2 = () => te.authenticatedContext(MGR2, { email: "m2@x.com", email_verified: true, firebase: { sign_in_provider: "password" } }).firestore();
 const dbMember = () => te.authenticatedContext(MEMBER, { email: "mem@x.com", email_verified: true, firebase: { sign_in_provider: "password" } }).firestore();
@@ -80,6 +87,7 @@ const dbUnverified = () => te.authenticatedContext(MGR, { email: "m@x.com", emai
 const NEWUSER = "newUserUid00000000000000001";
 const dbNewUser = () => te.authenticatedContext(NEWUSER, { email: "new@x.com", email_verified: false, firebase: { sign_in_provider: "password" } }).firestore();
 
+// Rulează un caz: execută operația și compară rezultatul (permis sau refuzat) cu cel așteptat.
 let pass = 0, fail = 0;
 async function chk(label, want, fn) {
   await seedAll();
@@ -91,6 +99,7 @@ async function chk(label, want, fn) {
   console.log(`  ${ok ? "ok  " : "FAIL"} ${label} -> ${got}${ok ? "" : ` (want ${want})${detail ? "  " + detail : ""}`}`);
 }
 
+// Camere și grupuri: managerul locației poate crea, modifica, șterge logic și restaura; formatul „valabil până” e validat; alții nu pot.
 console.log("\n--- rooms / groups (manager owns location) ---");
 await chk("room: edit name (updateDoc)", "ALLOW", () => updateDoc(doc(dbMgr(), "rooms", "room1"), { name: "Sala X", locationId: LOC, locationName: "L", updatedBy: "m@x.com", updatedAt: ts() }));
 await chk("room: soft-delete (updateDoc softDeletePayload)", "ALLOW", () => updateDoc(doc(dbMgr(), "rooms", "room1"), softDelete()));
@@ -106,18 +115,21 @@ await chk("group: non-string activeUntil denied", "DENY", () => updateDoc(doc(db
 await chk("room: manager of OTHER location cannot edit", "DENY", () => updateDoc(doc(dbMgr2(), "rooms", "room1"), { name: "Hax", locationId: LOC, locationName: "L", updatedBy: "x", updatedAt: ts() }));
 await chk("room: member cannot soft-delete", "DENY", () => updateDoc(doc(dbMember(), "rooms", "room1"), softDelete()));
 
+// Programe fixe.
 console.log("\n--- fixedSchedules ---");
 await chk("fixed: edit (updateDoc)", "ALLOW", () => updateDoc(doc(dbMgr(), "fixedSchedules", "fx1"), { dayIndex: 2, group: "G", room: "R", startTime: "09:00", endTime: "11:00", title: "T2", locationId: LOC, locationName: "L", updatedBy: "m@x.com", updatedAt: ts() }));
 await chk("fixed: soft-delete (updateDoc softDeletePayload)", "ALLOW", () => updateDoc(doc(dbMgr(), "fixedSchedules", "fx1"), softDelete()));
 await chk("fixed: undo soft-delete (restore)", "ALLOW", async () => { await updateDoc(doc(dbMgr(), "fixedSchedules", "fx1"), softDelete()); await updateDoc(doc(dbMgr(), "fixedSchedules", "fx1"), { deleted: false, deletedAt: null, deletedBy: "", deletedByUid: "", updatedBy: "m@x.com", updatedAt: ts() }); });
 await chk("fixed: create (addDoc)", "ALLOW", () => addDoc(collection(dbMgr(), "fixedSchedules"), fixedDoc({ title: "New" })));
 
+// Locații: contoarele pot fi crescute de manager; planul și datele de facturare doar de proprietar.
 console.log("\n--- locations ---");
 await chk("location: usage counter increment (manager, updateDoc)", "ALLOW", () => updateDoc(doc(dbMgr(), "locations", LOC), { "usage.bookingCount": increment(-1), updatedAt: ts() }));
 await chk("location: owner license update (plan+billingStatus)", "ALLOW", () => updateDoc(doc(dbOwner(), "locations", LOC), { plan: "pro", billingStatus: "active", updatedBy: OWNER_EMAIL, updatedAt: ts() }));
 await chk("location: owner full edit (name+address)", "ALLOW", () => updateDoc(doc(dbOwner(), "locations", LOC), { name: "L2", officialAddress: "Str 2", updatedBy: OWNER_EMAIL, updatedAt: ts() }));
 await chk("location: manager cannot change plan", "DENY", () => updateDoc(doc(dbMgr(), "locations", LOC), { plan: "trial", updatedAt: ts() }));
 
+// Setările locației: managerii le pot modifica; listPageEnabled trebuie să fie boolean; membrii le pot citi, dar nu le pot scrie.
 console.log("\n--- settings (calendar_<loc>) ---");
 await chk("settings: manager update (setDoc)", "ALLOW", () => setDoc(doc(dbMgr(), "settings", `calendar_${LOC}`), settingsDoc({ fixedSectionTitle: "Nou" })));
 await chk("settings: the list page can be hidden (listPageEnabled=false)", "ALLOW", () => setDoc(doc(dbMgr(), "settings", `calendar_${LOC}`), settingsDoc({ listPageEnabled: false })));
@@ -130,6 +142,7 @@ await chk("settings: member reads own-location settings when doc is absent", "AL
 });
 await chk("settings: member cannot read another location's settings", "DENY", () => getDoc(doc(dbMember(), "settings", "calendar_place_other")));
 
+// Rapoartele de probleme: orice utilizator conectat poate trimite unul (cu propriul uid, nerezolvat); doar proprietarul le citește și le marchează rezolvate.
 console.log("\n--- errorReports ---");
 const errReport = (over = {}) => ({
   message: "TypeError: x is undefined", componentStack: "at Foo", userMessage: "s-a blocat calendarul",
@@ -152,6 +165,7 @@ await chk("errorReports: owner marks resolved", "ALLOW", async () => {
   await updateDoc(doc(dbOwner(), "errorReports", "er1"), { status: "resolved", resolvedAt: ts(), resolvedBy: OWNER_EMAIL });
 });
 
+// Jurnalul de audit: managerul poate scrie pentru fiecare tip de entitate, dar nu cu alt autor.
 console.log("\n--- auditLogs (one per entity type, manager) ---");
 for (const et of ["booking", "fixedSchedule", "room", "group", "accessCode", "user", "location", "settings"]) {
   await chk(`audit: create ${et}`, "ALLOW", () => addDoc(collection(dbMgr(), "auditLogs"), {
@@ -164,6 +178,7 @@ await chk("audit: spoofed actorUid rejected", "DENY", () => addDoc(collection(db
   actorUid: "someoneElse", actorEmail: "m@x.com", actorName: "U", before: null, after: null, createdAt: ts(),
 }));
 
+// Închiderea locațiilor: proprietarul poate salva câmpurile de închidere și șterge locația; managerul nu; closedLocations este doar pentru citire de către proprietar.
 console.log("\n--- locations: closure ---");
 await chk("locations: owner can save a location carrying closure fields", "ALLOW", () => updateDoc(doc(dbOwner(), "locations", LOC), { closureRequestedBy: "m@x.com", statusBeforeClosure: "active", closureScheduledFor: Timestamp.fromMillis(Date.now() + 30 * 86400000), closureRequestedAt: ts() }));
 await chk("locations: manager can no longer delete the location", "DENY", () => deleteDoc(doc(dbMgr(), "locations", LOC)));
@@ -173,12 +188,14 @@ await chk("closedLocations: owner can read the archived billing record", "ALLOW"
 await chk("closedLocations: a location manager cannot read it", "DENY", async () => { await te.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), "closedLocations", LOC), { name: "L" })); return getDoc(doc(dbMgr(), "closedLocations", LOC)); });
 await chk("closedLocations: nobody writes from a client (not even the owner)", "DENY", () => setDoc(doc(dbOwner(), "closedLocations", LOC), { name: "x" }));
 
+// Utilizatori: un manager nu își poate schimba rolul sau șterge profilul, dar poate face asta pentru alții din locație.
 console.log("\n--- users: administrator safety ---");
 await chk("users: manager cannot change their OWN role", "DENY", () => updateDoc(doc(dbMgr(), "users", MGR), { role: "member" }));
 await chk("users: manager can change ANOTHER user's role", "ALLOW", () => updateDoc(doc(dbMgr(), "users", MEMBER), { role: "guest" }));
 await chk("users: manager cannot delete their own users doc", "DENY", () => deleteDoc(doc(dbMgr(), "users", MGR)));
 await chk("users: manager can delete another user of the location", "ALLOW", () => deleteDoc(doc(dbMgr(), "users", MEMBER)));
 
+// Coduri de acces: ștergere logică, restaurare, creare cu expirare și prelungirea expirării.
 console.log("\n--- accessCodes ---");
 await chk("accessCode: soft-delete (updateDoc {...softDelete, active:false})", "ALLOW", () => updateDoc(doc(dbMgr(), "accessCodes", "CODE1"), { ...softDelete(), active: false }));
 await chk("accessCode: undo soft-delete (restore)", "ALLOW", async () => { await updateDoc(doc(dbMgr(), "accessCodes", "CODE1"), { ...softDelete(), active: false }); await updateDoc(doc(dbMgr(), "accessCodes", "CODE1"), { ...{ deleted: false, deletedAt: null, deletedBy: "", deletedByUid: "", updatedBy: "m@x.com", updatedAt: ts() }, active: true }); });
@@ -194,10 +211,12 @@ await chk("accessCode: manager extends expiresAt on an existing code", "ALLOW", 
   })
 );
 
+// Emailul trebuie să fie verificat pentru orice scriere.
 console.log("\n--- email_verified gate ---");
 await chk("unverified manager cannot edit room", "DENY", () => updateDoc(doc(dbUnverified(), "rooms", "room1"), { name: "x", locationId: LOC, locationName: "L", updatedBy: "x", updatedAt: ts() }));
 await chk("unverified manager cannot soft-delete booking-style", "DENY", () => updateDoc(doc(dbUnverified(), "rooms", "room1"), softDelete()));
 
+// Citirea unei locații de către un utilizator nou neverificat (necesară la înregistrarea cu cod) este permisă doar după id, nu și ca listă.
 console.log("\n--- locations: unverified bootstrap read (access-code registration) ---");
 // Regression for: a brand-new access-code signup creates the Auth user, then
 // reads /locations/{id} to confirm it exists and get its live name - BEFORE
@@ -207,12 +226,14 @@ await chk("locations: brand-new unverified user (no users doc) reads a location 
 await chk("locations: unverified user WITH an existing users doc still cannot read", "DENY", () => getDoc(doc(dbUnverified(), "locations", LOC)));
 await chk("locations: brand-new unverified user cannot list locations", "DENY", () => getDocs(collection(dbNewUser(), "locations")));
 
+// Înregistrarea cu cod de acces, într-o singură tranzacție, pentru cele trei roluri (manager, membru, oaspete) cu un utilizator neverificat.
 console.log("\n--- access-code self-registration (full transaction, all 3 roles) ---");
 // Mirrors createProfile()'s runTransaction in app/login/page.tsx exactly: the
 // brand-new, unverified Auth user reads the access code, writes their own
 // users/{uid} doc, and bumps the code's usedCount - in one transaction, with
 // no users/{uid} doc existing beforehand. Covers manager/member/guest since
 // each has a different maxUses convention (1 / 10 / null).
+// Ajutoare: creează un cod de acces de test și simulează tranzacția de înregistrare din app/login/page.tsx.
 async function seedAccessCode(codeId, role, over = {}) {
   await te.withSecurityRulesDisabled((c) =>
     setDoc(doc(c.firestore(), "accessCodes", codeId), {
@@ -249,6 +270,7 @@ async function attemptAccessCodeSignup(uid, codeId) {
   });
 }
 
+// Cazurile de înregistrare: fiecare rol reușește; un cod expirat și un email cu alte majuscule decât în token sunt refuzate; un cod vechi, fără expirare, merge.
 for (const role of ["manager", "member", "guest"]) {
   const codeId = `SELFCODE_${role.toUpperCase()}`;
   const uid = `selfSignupUid${role}0000000001`;
@@ -282,6 +304,7 @@ await chk("access-code self-registration: no-expiresAt (legacy) code still works
   await attemptAccessCodeSignup("selfSignupUidLegacy000001", "SELFCODE_LEGACY");
 });
 
+// Curăță mediul de test și afișează rezultatul.
 await te.cleanup();
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

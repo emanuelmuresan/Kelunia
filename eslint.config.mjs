@@ -1,3 +1,5 @@
+// Regulile ESLint: setul Next.js (core-web-vitals și TypeScript) și două reguli oprite (img simplu permis; setState în efecte permis).
+// Folderele generate (out, android, ios, functions/lib) sunt ignorate.
 import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";

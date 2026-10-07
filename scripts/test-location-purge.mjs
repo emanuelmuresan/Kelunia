@@ -1,3 +1,5 @@
+// Testează purgeLocation (functions/src/location-closure.ts) pe emulatoarele Auth și Firestore: datele și conturile unei locații închise dispar,
+// iar altă locație, proprietarul platformei și înregistrările contabile (licențe, abonamente, audit de locație/licență) rămân.
 /**
  * Exercises purgeLocation() (functions/src/location-closure.ts) against the Auth +
  * Firestore emulators: a closed location's data and member accounts disappear,
@@ -9,6 +11,7 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 
+// Se folosește firebase-admin din pachetul functions, ca să fie aceeași copie ca în codul compilat.
 // Use the functions package's own firebase-admin: the compiled purge code builds
 // Firestore Timestamps with it, and two copies of the SDK would not interoperate.
 const require = createRequire(new URL("../functions/package.json", import.meta.url));
@@ -17,10 +20,12 @@ const { getAuth } = require("firebase-admin/auth");
 const { getFirestore } = require("firebase-admin/firestore");
 const { purgeLocation } = require("./lib/location-closure.js");
 
+// Conectarea la emulatoare.
 initializeApp({ projectId: process.env.GCLOUD_PROJECT || "demo-kelunia" });
 const db = getFirestore();
 const auth = getAuth();
 
+// Date de test: locația care se șterge, una care rămâne și un helper care creează un utilizator cu jetoane și subcolecție privată.
 const GONE = "loc-closing";
 const KEPT = "loc-other";
 const OWNER_EMAIL = "owner@example.com";
@@ -32,6 +37,7 @@ async function user(uid, email, locationId, extra = {}) {
   await db.doc(`notificationTokens/token-${uid}`).set({ uid, email, locationId, token: `t-${uid}` });
 }
 
+// Locația închisă, înregistrările de facturare și auditul ei, iar apoi utilizatorii și documentele operaționale ale ambelor locații.
 await db.doc(`locations/${GONE}`).set({
   name: "Closing",
   billingStatus: "canceled",
@@ -64,12 +70,14 @@ for (const [id, locationId] of [["a", GONE], ["b", GONE], ["c", KEPT]]) {
   await db.doc(`auditLogs/${id}`).set({ locationId });
 }
 
+// Rulează purjarea.
 const result = await purgeLocation(db, auth, GONE, OWNER_EMAIL);
 
 const exists = async (path) => (await db.doc(path).get()).exists;
 const count = async (collection, locationId) =>
   (await db.collection(collection).where("locationId", "==", locationId).get()).size;
 
+// Verificări: conturile și documentele locației închise sunt șterse; datele de facturare sunt arhivate fără contoare; restul rămâne.
 assert.equal(result.accountsDeleted, 2, "both members of the closed location are deleted");
 assert.equal(await exists(`locations/${GONE}`), false, "location doc removed");
 assert.equal(await exists(`settings/calendar_${GONE}`), false, "location settings removed");

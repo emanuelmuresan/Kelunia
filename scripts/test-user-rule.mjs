@@ -8,21 +8,26 @@
  *
  *   npm run test:rules
  */
+// Teste pentru regulile de actualizare a documentului users/{uid}: ce modificări sunt permise (setările personale, schimbarea rolului altui utilizator)
+// și ce rămâne protejat (rolul propriu, isOwner, locația, câmpurile PIN, formatul momentelor de notificare, documentul privat cu PIN-ul).
 import { readFileSync } from "node:fs";
 import { initializeTestEnvironment } from "@firebase/rules-unit-testing";
 import { doc, getDoc, setDoc, Timestamp } from "firebase/firestore";
 
+// Identitățile de test: un manager, alt manager, proprietarul și o locație.
 const EMU_PORT = Number(process.env.RULES_EMU_PORT || 8080);
 const MANAGER = "ulvfji9FmdVD3Kun7MEfDb3vrLb2";
 const MANAGER2 = "otherManagerUid00000000000001";
 const OWNER = "ownerUid000000000000000000001";
 const LOCATION = "place_chijhzhrunhbs0ar-8jbkrgjjzw";
 
+// Mediul de test cu regulile din firestore.rules.
 const testEnv = await initializeTestEnvironment({
   projectId: "kelunia-890fe",
   firestore: { host: "127.0.0.1", port: EMU_PORT, rules: readFileSync("firestore.rules", "utf8") },
 });
 
+// Documentul unui manager folosit ca punct de pornire.
 const managerDoc = {
   allowedRoomIds: [],
   createdAt: Timestamp.fromDate(new Date("2026-05-08T03:13:52Z")),
@@ -46,6 +51,7 @@ const managerDoc = {
   verificationEmailSentAt: Timestamp.fromDate(new Date("2026-05-20T05:17:18Z")),
 };
 
+// Reface datele de pornire (cu regulile oprite).
 async function seed() {
   await testEnv.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore();
@@ -60,6 +66,7 @@ async function seed() {
   });
 }
 
+// Contexte autentificate: managerul, alt manager, proprietarul și un străin.
 function ctxFor(uid, email) {
   return testEnv.authenticatedContext(uid, { email, email_verified: true, firebase: { sign_in_provider: "password" } });
 }
@@ -69,6 +76,7 @@ const odb = ctxFor(OWNER, "emanuelmuresan@gmail.com").firestore();
 const strangerDb = ctxFor("strangerUid0000000000000000001", "stranger@example.com").firestore();
 
 let pass = 0, fail = 0;
+// Un caz: scrie în users/{uid} cu merge și compară rezultatul (permis sau refuzat) cu cel așteptat.
 async function check(label, want, targetDb, targetUid, payload) {
   await seed(); // every test starts from the pristine docs
   let got, detail = "";
@@ -84,6 +92,7 @@ async function check(label, want, targetDb, targetUid, payload) {
   console.log(`  ${ok ? "ok  " : "FAIL"} ${label} -> ${got}${ok ? "" : ` (wanted ${want}) ${detail}`}`);
 }
 
+// Încărcături de test: setările personale (cum le trimite aplicația) și vechiul document complet.
 const TRIMMED = {
   displayName: "Renamed", groupName: "", group: "",
   usePin: false, lockOnHide: false, useBiometrics: false,
@@ -100,6 +109,7 @@ const OLD_FULL = {
   notifyOffsets: ["1d", "7d"], notifyOffsetsDays: [1, 7], language: "ro",
 };
 
+// Rulează cazurile, grupate: fluxuri reale, formatul momentelor, protecția identității și a PIN-ului.
 console.log("\nusers/{uid} update rules:");
 
 // Real app flows — must pass

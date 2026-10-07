@@ -1,7 +1,10 @@
+// Test de fum: un membru se autentifică, ajunge pe calendar, navighează între pagini și deschide/închide fereastra de rezervare nouă.
 import { expect, test } from "@playwright/test";
 
+// Utilizatorul membru creat de seed.mjs.
 const USER = { email: "member@e2e.test", password: "Test123456" };
 
+// Înainte de fiecare test: autentificare prin pagina reală de login.
 test.describe("dashboard smoke", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/login");
