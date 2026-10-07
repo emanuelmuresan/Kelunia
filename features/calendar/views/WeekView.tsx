@@ -1,5 +1,6 @@
 "use client";
 
+// Vederea pe o săptămână: refolosește agenda (AgendaView) cu cele 7 zile.
 import { AgendaView } from "./AgendaView";
 import type { Booking, GroupItem } from "@/lib/types/domain";
 

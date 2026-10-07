@@ -1,5 +1,7 @@
 "use client";
 
+// Banda cu evenimentele următoare, care glisează orizontal sub antet; se atinge o rezervare ca să îi vezi detaliile.
+// Setările (culoare, text, număr de zile) vin din useUpcomingTickerSettings.
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { addDays, dateKey, formatDateLabel } from "@/lib/dates";
@@ -7,6 +9,7 @@ import { appText, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 import type { Booking } from "@/lib/types/domain";
 import type { UpcomingTickerSettings } from "@/features/calendar/hooks/useUpcomingTickerSettings";
 
+// Proprietățile benzii: rezervările din fereastra de zile, ziua curentă, setările și funcția de selectare.
 type UpcomingTickerProps = {
   bookings: Booking[];
   today: string;
@@ -15,9 +18,11 @@ type UpcomingTickerProps = {
   onSelectBooking: (booking: Booking) => void;
 };
 
+// Culorile textului: alb pe fundal închis, aproape negru pe fundal deschis.
 const lightText = "#ffffff";
 const darkText = "#111827";
 
+// Decide dacă o culoare de fundal este închisă, după luminanța relativă a ei.
 function isDarkColor(hex: string) {
   const channel = (offset: number) => {
     const value = parseInt(hex.slice(offset, offset + 2), 16) / 255;
@@ -33,8 +38,10 @@ export function tickerTextColor(settings: Pick<UpcomingTickerSettings, "color" |
   return settings.textColor || (isDarkColor(settings.color) ? lightText : darkText);
 }
 
+// Viteza de derulare în pixeli pe secundă.
 const pixelsPerSecond = 55;
 
+// Rezervările care încep între azi și azi + numărul de zile ales, în ordine cronologică.
 export function upcomingForTicker(bookings: Booking[], today: string, leadDays: number) {
   const end = dateKey(addDays(new Date(), leadDays));
 
@@ -43,7 +50,9 @@ export function upcomingForTicker(bookings: Booking[], today: string, leadDays: 
     .sort((a, b) => (a.startDate + a.startTime).localeCompare(b.startDate + b.startTime));
 }
 
+// Componenta benzii.
 export function UpcomingTicker({ bookings, today, settings, language = "ro", onSelectBooking }: UpcomingTickerProps) {
+  // Evenimentele următoare și mesajul afișat când nu există niciunul.
   const upcoming = useMemo(
     () => upcomingForTicker(bookings, today, settings.leadDays),
     [bookings, today, settings.leadDays]
@@ -55,6 +64,7 @@ export function UpcomingTicker({ bookings, today, settings, language = "ro", onS
           String(settings.leadDays)
         )
       : "";
+  // Măsurătorile benzii: se repetă conținutul până depășește lățimea benzii, ca derularea să fie continuă.
   const bandRef = useRef<HTMLDivElement | null>(null);
   const setRef = useRef<HTMLDivElement | null>(null);
   const [flow, setFlow] = useState({ copies: 2, setWidth: 0 });
@@ -86,10 +96,12 @@ export function UpcomingTicker({ bookings, today, settings, language = "ro", onS
     return () => observer.disconnect();
   }, [upcoming, emptyMessage, settings.enabled]);
 
+  // Banda dezactivată nu se afișează.
   if (!settings.enabled) {
     return null;
   }
 
+  // Culorile benzii, trimise către CSS prin variabile; durata animației depinde de lățimea conținutului.
   const palette = {
     ["--ticker-accent" as string]: settings.color,
     ["--ticker-text" as string]: tickerTextColor(settings),
@@ -97,6 +109,7 @@ export function UpcomingTicker({ bookings, today, settings, language = "ro", onS
 
   const durationSeconds = Math.max(8, flow.setWidth / pixelsPerSecond);
 
+  // Structura benzii: copii ale aceluiași set de evenimente, pentru o derulare fără întrerupere.
   return (
     <div className={`upcoming-ticker ${emptyMessage ? "upcoming-ticker-empty" : ""}`} ref={bandRef} style={palette} aria-label="Evenimente viitoare">
       <div
@@ -106,6 +119,7 @@ export function UpcomingTicker({ bookings, today, settings, language = "ro", onS
           animationDuration: `${durationSeconds}s`,
         }}
       >
+        {/* Copiile repetate; doar prima este vizibilă pentru cititoarele de ecran. */}
         {Array.from({ length: flow.copies }, (_, copyIndex) => (
           <div
             aria-hidden={copyIndex > 0 ? true : undefined}

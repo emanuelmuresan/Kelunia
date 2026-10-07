@@ -1,8 +1,10 @@
+// Teste pentru useBookingDeepLink: rezervare din lista încărcată, citire directă, rezervare ștearsă și id de program fix.
 import { renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useBookingDeepLink } from "./useBookingDeepLink";
 
+// Simulări pentru Firestore, notificări, normalizare și ștergerea logică.
 vi.mock("firebase/firestore", () => ({
   doc: vi.fn((_db: unknown, ...segments: string[]) => ({ path: segments.join("/") })),
   getDoc: vi.fn(),
@@ -24,6 +26,7 @@ vi.mock("@/lib/soft-delete", () => ({
 
 const { getDoc } = await import("firebase/firestore");
 
+// Ajutor: montează hook-ul cu funcții simulate și întoarce funcțiile apelate.
 type Params = Parameters<typeof useBookingDeepLink>[0];
 
 function renderWith(overrides: Partial<Params> = {}) {
@@ -45,6 +48,7 @@ function renderWith(overrides: Partial<Params> = {}) {
   return { setActiveView, setSelectedBooking, setSelectedBookingNotice };
 }
 
+// Adresa este resetată înainte și după fiecare test.
 beforeEach(() => {
   vi.clearAllMocks();
   window.history.replaceState({}, "", "/dashboard");
@@ -54,6 +58,7 @@ afterEach(() => {
   window.history.replaceState({}, "", "/dashboard");
 });
 
+// Cazurile testate.
 describe("useBookingDeepLink", () => {
   it("opens a booking already in the loaded list without a document read", async () => {
     window.history.replaceState({}, "", "/dashboard?booking=b1");

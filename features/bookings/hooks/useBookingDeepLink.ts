@@ -1,5 +1,6 @@
 "use client";
 
+// Deschide o rezervare dintr-un link sau dintr-o notificare (?booking=ID), apelat din dashboard.
 import { useCallback, useEffect, type Dispatch, type SetStateAction } from "react";
 import { doc, getDoc, type Firestore } from "firebase/firestore";
 
@@ -8,6 +9,7 @@ import { normalizeBooking } from "@/lib/scheduling";
 import { isSoftDeleted } from "@/lib/soft-delete";
 import type { AppView, Booking } from "@/lib/types/domain";
 
+// Parametrii: baza de date, rezervările încărcate și funcțiile care selectează rezervarea.
 type UseBookingDeepLinkParams = {
   db: Firestore;
   bookings: Booking[];
@@ -29,6 +31,7 @@ export function useBookingDeepLink({
   setSelectedBooking,
   setSelectedBookingNotice,
 }: UseBookingDeepLinkParams) {
+  // Caută rezervarea în lista încărcată; dacă nu e acolo, încearcă citirea directă a documentului.
   const openBookingById = useCallback(
     async (bookingId: string): Promise<boolean> => {
       if (!bookingId || bookingId.startsWith("fixed:")) {
@@ -61,6 +64,7 @@ export function useBookingDeepLink({
     [bookings, db, setActiveView, setSelectedBooking, setSelectedBookingNotice]
   );
 
+  // Notificarea locală nativă atinsă de utilizator deschide rezervarea ei.
   useEffect(() => {
     let nativeListener: { remove: () => Promise<void> } | null = null;
 
@@ -79,6 +83,7 @@ export function useBookingDeepLink({
     };
   }, [openBookingById]);
 
+  // Linkul ?booking=ID din adresă; după deschidere adresa se curăță.
   useEffect(() => {
     if (typeof window === "undefined") {
       return;

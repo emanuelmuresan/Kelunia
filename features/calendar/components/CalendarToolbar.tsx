@@ -1,8 +1,10 @@
 "use client";
 
+// Bara de unelte a calendarului: titlul perioadei, săgeți înainte/înapoi, butonul „Azi” și comutatorul An/Lună/Săptămână/Zi.
 import { appText, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 import type { CalendarMode } from "@/lib/types/domain";
 
+// Proprietățile: titlul perioadei, modul curent și funcțiile apelate la navigare.
 type CalendarToolbarProps = {
   periodTitle: string;
   calendarMode: CalendarMode;
@@ -12,6 +14,7 @@ type CalendarToolbarProps = {
   onCalendarModeChange: (mode: CalendarMode) => void;
 };
 
+// Componenta barei de unelte.
 export function CalendarToolbar({
   periodTitle,
   calendarMode,
@@ -22,6 +25,7 @@ export function CalendarToolbar({
 }: CalendarToolbarProps) {
   return (
     <>
+      {/* Titlul perioadei și butoanele de navigare. */}
       <div className="calendar-toolbar">
         <div>
           <span className="eyebrow">{appText(language, "nav.calendar")}</span>
@@ -57,6 +61,7 @@ export function CalendarToolbar({
         </div>
       </div>
 
+      {/* Comutatorul modului calendarului. */}
       <div className="segmented-control" role="group" aria-label={appText(language, "calendar.mode")}>
         {[
           ["year", appText(language, "calendar.year")],

@@ -1,5 +1,6 @@
 "use client";
 
+// Pagina „Listă”: toate rezervările din filtrul ales, cu sortare, istoric (audit) și paginare.
 import type {
   Booking,
   GroupItem,
@@ -9,6 +10,7 @@ import type {
 import { appText, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 import { BookingRow } from "../components/BookingRow";
 
+// Proprietățile paginii: lista, filtrul, sortarea, paginarea și acțiunile.
 type ListViewProps = {
   listViewTitle: string;
   listBookings: Booking[];
@@ -35,6 +37,7 @@ type ListViewProps = {
   onPageChange: (page: number) => void;
 };
 
+// Componenta paginii.
 export function ListView({
   listViewTitle,
   listBookings,
@@ -60,8 +63,10 @@ export function ListView({
   canEditBooking,
   onPageChange,
 }: ListViewProps) {
+  // Panoul paginii.
   return (
     <section className="workspace-panel">
+      {/* Titlul, numărul de rezultate, filtrele și butonul de istoric (doar pentru proprietar și manageri). */}
       <div className="section-heading list-heading">
         <div>
           <span className="eyebrow">{listViewTitle}</span>
@@ -102,12 +107,14 @@ export function ListView({
         </div>
       </div>
 
+      {/* Avertisment dacă lista este posibil incompletă. */}
       {reachedBookingsQueryLimit && (
         <p className="muted-note">
           {appText(language, "list.limitWarning")}
         </p>
       )}
 
+      {/* Rezervările paginii curente sau mesajul că lista e goală. */}
       <div className="booking-list">
         {listBookings.length === 0 ? (
           <p className="empty-line">{appText(language, "list.emptyBookings")}</p>
@@ -128,6 +135,7 @@ export function ListView({
         )}
       </div>
 
+      {/* Navigarea între pagini, doar dacă sunt mai multe pagini. */}
       {listBookings.length > listPageSize && (
         <div className="list-pagination" aria-label={appText(language, "list.pagination")}>
           <button

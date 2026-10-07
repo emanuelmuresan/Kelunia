@@ -1,10 +1,12 @@
 "use client";
 
+// Vederea anului: 12 luni mici, cu zilele care au rezervări marcate; un clic pe lună o deschide.
 import { useMemo } from "react";
 
 import { datesInRange, parseDateKey } from "@/lib/dates";
 import type { Booking } from "@/lib/types/domain";
 
+// O lună a anului cu celulele ei.
 type YearMonth = {
   month: number;
   year: number;
@@ -13,6 +15,7 @@ type YearMonth = {
   cells: (string | null)[];
 };
 
+// Proprietățile vederii: lunile, rezervările, ziua curentă și acțiunile.
 type YearViewProps = {
   yearMonths: YearMonth[];
   bookings: Booking[];
@@ -21,9 +24,12 @@ type YearViewProps = {
   onOpenMonth: (firstDateKey: string) => void;
 };
 
+// Inițialele zilelor săptămânii.
 const shortWeekdays = ["L", "M", "M", "J", "V", "S", "D"];
 
+// Componenta anului.
 export function YearView({ yearMonths, bookings, today, onDateSelect, onOpenMonth }: YearViewProps) {
+  // Zilele care au cel puțin o rezervare (inclusiv cele pe mai multe zile).
   const bookedDays = useMemo(() => {
     const set = new Set<string>();
 
@@ -34,6 +40,7 @@ export function YearView({ yearMonths, bookings, today, onDateSelect, onOpenMont
     return set;
   }, [bookings]);
 
+  // Structura anului.
   return (
     <div className="year-grid">
       {yearMonths.map((monthData) => (

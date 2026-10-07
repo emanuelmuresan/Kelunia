@@ -1,3 +1,4 @@
+// Proprietățile comune ale vederilor calendarului (rezervări, programe fixe, camere, grupuri și data curentă).
 import type {
   Booking,
   FixedSchedule,

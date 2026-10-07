@@ -1,5 +1,7 @@
 "use client";
 
+// Editorul de rezervări: formularul (creare, editare, duplicare), validările, salvarea prin funcția cloud saveBooking,
+// ștergerea logică cu „Anulează” și înregistrarea în jurnalul de audit. Folosit de app/dashboard/page.tsx.
 import { useAppText } from "@/features/shell/hooks/useAppText";
 import { useEffect, useState, type Dispatch, type FormEvent, type SetStateAction } from "react";
 import type { User } from "firebase/auth";
@@ -22,6 +24,7 @@ import { updateLocationCounterSafely } from "@/lib/usage-counters";
 import type { Booking, BookingForm, FixedSchedule, GroupItem, RoomItem } from "@/lib/types/domain";
 import { findBookingConflict } from "@/features/bookings/services/booking-conflicts";
 
+// Tipuri locale: accesul de scriere dat de licență și forma funcției de audit.
 type LicenseWriteAccess = {
   isReadOnly: boolean;
   message: string;
@@ -37,6 +40,7 @@ type RecordAuditLog = (
   auditLocationName?: string
 ) => Promise<void>;
 
+// Parametrii hook-ului: rezervările vizibile, permisiunile, locația, datele auxiliare și funcțiile din dashboard.
 type UseBookingEditorParams = {
   bookings: Booking[];
   canManageBookings: boolean;
@@ -67,6 +71,7 @@ type UseBookingEditorParams = {
   }) => string;
 };
 
+// Hook-ul editorului; returnează starea formularului și acțiunile.
 export function useBookingEditor({
   bookings,
   canManageBookings,
@@ -90,12 +95,14 @@ export function useBookingEditor({
   user,
   pushToast,
 }: UseBookingEditorParams) {
+  // Starea editorului: fereastra deschisă, rezervarea editată (null = nouă), datele formularului și eroarea.
   const msg = useAppText();
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<BookingForm>(emptyForm);
   const [formError, setFormError] = useState("");
 
+  // Dacă lista de grupuri sau camere se schimbă, selecțiile care nu mai există se golesc.
   useEffect(() => {
     setFormData((current) => ({
       ...current,
@@ -105,6 +112,7 @@ export function useBookingEditor({
     }));
   }, [groups, rooms]);
 
+  // Fără internet formularul nu poate fi trimis și afișează mesajul offline.
   function requireBookingOnline() {
     const connected = typeof navigator === "undefined" ? isOnline : navigator.onLine;
 
@@ -117,6 +125,7 @@ export function useBookingEditor({
     return false;
   }
 
+  // Cine poate edita: managerii orice rezervare, membrii doar pe ale lor (după emailul autorului), în limitele licenței.
   function canEditBooking(booking: Booking) {
     return Boolean(
       user &&
@@ -125,6 +134,7 @@ export function useBookingEditor({
     );
   }
 
+  // Deschide formularul gol pentru o rezervare nouă; fără drept de scriere afișează motivul (licență) sau nu face nimic.
   function openCreateForm(date?: string, options?: { defaultStartTime?: string }) {
     if (!canManageBookings) {
       if (licenseAccess.isReadOnly) {
@@ -147,6 +157,7 @@ export function useBookingEditor({
     setShowBookingModal(true);
   }
 
+  // Deschide formularul cu datele unei rezervări existente pentru editare.
   function openEditForm(booking: Booking) {
     if (!canEditBooking(booking)) {
       return;
@@ -175,6 +186,7 @@ export function useBookingEditor({
     setShowBookingModal(true);
   }
 
+  // Repetă o rezervare: copiază grupul, camera, orele și motivul, dar lasă datele necompletate.
   function duplicateBooking(booking: Booking) {
     if (!canManageBookings || !requireBookingOnline()) {
       return;
@@ -203,10 +215,12 @@ export function useBookingEditor({
     setShowBookingModal(true);
   }
 
+  // Trimiterea formularului: validează, verifică conflictele și salvează prin funcția cloud.
   async function handleBookingSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError("");
 
+    // Validări: conexiune, drepturi, data, grupul și camera, camera permisă, ordinea datelor și a orelor.
     if (!requireBookingOnline()) {
       return;
     }
@@ -245,6 +259,7 @@ export function useBookingEditor({
       return;
     }
 
+    // Conflict cu altă rezervare sau cu un program fix în aceeași cameră.
     const conflict = findBookingConflict({
       bookings,
       fixedSchedules,
@@ -257,6 +272,7 @@ export function useBookingEditor({
       return;
     }
 
+    // Datele pentru notificări: momentele alese, destinatarii și dacă s-a apăsat „trimite acum grupului”.
     const originalBooking = editingId ? bookings.find((booking) => booking.id === editingId) : null;
     const bookingNotificationOffsets = normalizeNotificationOffsetRules(formData.notifyOffsets);
     const groupNotificationOffsets = normalizeNotificationOffsetRules(formData.notifyGroupOffsets);
@@ -266,6 +282,7 @@ export function useBookingEditor({
       ? formData.notifyGroupRecipients.map((email) => email.trim().toLowerCase()).filter(Boolean)
       : [];
 
+    // Notificarea proprie cere cel puțin un moment și permisiunea de notificare; cea pentru grup cere momente și destinatari.
     if (formData.notifyOnThisBooking) {
       if (bookingNotificationOffsets.length === 0) {
         setFormError(msg("msg.chooseBookingNotifMoment"));
@@ -290,6 +307,7 @@ export function useBookingEditor({
       return;
     }
 
+    // Datele rezervării, inclusiv câmpurile vechi (congregatie, orar, motiv, location) păstrate pentru compatibilitate.
     const payload = {
       group: formData.group,
       congregatie: formData.group,
@@ -332,6 +350,7 @@ export function useBookingEditor({
       updatedAt: Timestamp.now(),
     };
 
+    // Salvarea se face în funcția cloud, nu direct în Firestore; după succes se scrie în jurnalul de audit.
     try {
       const saveBooking = httpsCallable(cloudFunctions, "saveBooking");
       const savePayload = {
@@ -374,6 +393,7 @@ export function useBookingEditor({
     }
   }
 
+  // Anulează o ștergere: scoate marcajul de ștergere, readuce contorul și scrie în audit.
   async function restoreBooking(booking: Booking) {
     try {
       await updateDoc(doc(db, "events", booking.id), {
@@ -402,6 +422,7 @@ export function useBookingEditor({
     }
   }
 
+  // Șterge logic rezervarea (marcaj deleted, fără a o elimina), actualizează contorul și auditul în fundal și oferă „Anulează”.
   async function removeBooking(booking: Booking) {
     if (!canEditBooking(booking) || !requireBookingOnline()) {
       return;
@@ -441,6 +462,7 @@ export function useBookingEditor({
     });
   }
 
+  // Starea și acțiunile expuse dashboard-ului.
   return {
     canEditBooking,
     duplicateBooking,

@@ -1,11 +1,13 @@
 "use client";
 
+// Antetul aplicației: bara de sus cu titlul, avertismentele (offline, licență), prezentarea pentru vizitatori și bara de file.
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { InstallAppPrompt } from "@/components/InstallAppPrompt";
 import { appText, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 import type { AppView } from "@/lib/types/domain";
 
+// Un element de navigare: [vederea, eticheta].
 type NavigationItem = [AppView, string];
 
 type KeluniaShellChromeProps = {
@@ -23,10 +25,12 @@ type KeluniaShellChromeProps = {
   onSignOut: () => void;
 };
 
+// Clasa CSS a pictogramei unei file.
 function tabIconClass(view: AppView) {
   return `tab-icon tab-icon-${view}`;
 }
 
+// Împarte titlul lung în două rânduri echilibrate.
 function splitBalancedTitle(title: string) {
   const words = title.trim().split(/\s+/).filter(Boolean);
 
@@ -38,6 +42,7 @@ function splitBalancedTitle(title: string) {
   return [words.slice(0, midpoint).join(" "), words.slice(midpoint).join(" ")].filter(Boolean);
 }
 
+// Componenta antetului.
 export function KeluniaShellChrome({
   displayedView,
   headerTitle,
@@ -52,9 +57,11 @@ export function KeluniaShellChrome({
   onNavigate,
   onSignOut,
 }: KeluniaShellChromeProps) {
+  // Titlul pe rânduri și referința către bara de sus.
   const headerTitleLines = splitBalancedTitle(headerTitle);
   const topbarRef = useRef<HTMLElement>(null);
 
+  // Reține înălțimea barei de sus în variabila CSS --kelunia-topbar-h, folosită de restul paginii (ex. banda de evenimente).
   useEffect(() => {
     const node = topbarRef.current;
 
@@ -73,8 +80,10 @@ export function KeluniaShellChrome({
     return () => observer.disconnect();
   }, [headerTitle, userLabel, isOnline, showLicenseWarning]);
 
+  // Structura antetului.
   return (
     <>
+      {/* Bara de sus: sigla, titlul locației și utilizatorul. */}
       <header className="app-topbar app-main-topbar" ref={topbarRef}>
         <div className="app-topbar-brand" aria-label="Kelunia">
           <img src="/icon-192.png" alt="" />
@@ -92,9 +101,11 @@ export function KeluniaShellChrome({
         </div>
       </header>
 
+      {/* Avertismente: fără internet sau licență care permite doar citirea. */}
       {!isOnline && <p className="offline-banner">{offlineMessage}</p>}
       {isSignedIn && showLicenseWarning && <p className="warning-line settings-alert">{licenseMessage}</p>}
 
+      {/* Prezentarea scurtă pentru cei neautentificați. */}
       {!isSignedIn && (
         <section className="public-intro" aria-label="Kelunia">
           <div className="public-intro-copy">
@@ -111,6 +122,7 @@ export function KeluniaShellChrome({
         </section>
       )}
 
+      {/* Bara de file: pagini, instalare și conectare/deconectare. */}
       <nav className="app-tabs" aria-label={appText(language, "nav.aria")}>
         {navigationItems.map(([value, label]) => (
           <button

@@ -1,5 +1,6 @@
 "use client";
 
+// Afișează notificările mici (toast) din colțul ecranului, cu buton opțional de acțiune (ex. „Anulează”) și buton de închidere.
 import { useAuth } from "@/context/AuthContext";
 import type { Toast } from "@/features/shell/hooks/useToasts";
 import { appText } from "@/lib/i18n/app-copy-catalog";
@@ -9,6 +10,7 @@ type ToastStackProps = {
   onDismiss: (id: string) => void;
 };
 
+// Nu se randează nimic când nu există notificări.
 export function ToastStack({ toasts, onDismiss }: ToastStackProps) {
   const { profile } = useAuth();
 
@@ -18,6 +20,7 @@ export function ToastStack({ toasts, onDismiss }: ToastStackProps) {
 
   return (
     <div className="toast-stack" role="status" aria-live="polite">
+      {/* O notificare: mesaj, acțiune opțională și închidere. */}
       {toasts.map((toast) => (
         <div className={`toast ${toast.tone === "error" ? "toast-error" : ""}`} key={toast.id}>
           <span>{toast.message}</span>

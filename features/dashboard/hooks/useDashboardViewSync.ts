@@ -1,10 +1,12 @@
 "use client";
 
+// Sincronizează ecranul activ și locația aleasă cu ce permit profilul și licența; apelat din app/dashboard/page.tsx.
 import { useEffect, type Dispatch, type SetStateAction } from "react";
 
 import type { UserProfile } from "@/context/AuthContext";
 import type { AppView, LocationItem } from "@/lib/types/domain";
 
+// Parametrii: starea dashboard-ului și funcțiile care o modifică.
 type UseDashboardViewSyncParams = {
   profile: UserProfile | null;
   isOwner: boolean;
@@ -39,6 +41,7 @@ export function useDashboardViewSync({
   listPageEnabled,
   currentLocationId,
 }: UseDashboardViewSyncParams) {
+  // Utilizatorul care nu este proprietar pornește pe locația din profil.
   useEffect(() => {
     if (!profile) {
       return;
@@ -51,6 +54,7 @@ export function useDashboardViewSync({
     setActiveLocationId((current) => current || profile.locationId || "main-location");
   }, [isOwner, needsLocationSetup, profile, setActiveLocationId]);
 
+  // La configurarea locației, precompletează numele din profil.
   useEffect(() => {
     if (!profile || !needsLocationSetup) {
       return;
@@ -59,6 +63,7 @@ export function useDashboardViewSync({
     setLocationSetupName((current) => current || profile.locationName || "");
   }, [needsLocationSetup, profile, setLocationSetupName]);
 
+  // Proprietarul: dacă locația aleasă nu mai există în listă, selecția se șterge.
   useEffect(() => {
     if (!isOwner || !activeLocationId || locations.some((location) => location.id === activeLocationId)) {
       return;
@@ -67,6 +72,7 @@ export function useDashboardViewSync({
     setActiveLocationId("");
   }, [activeLocationId, isOwner, locations, setActiveLocationId]);
 
+  // Dacă pagina programului fix este oprită, utilizatorul revine la calendar.
   useEffect(() => {
     if (!fixedPageEnabled && activeView === "fixed") {
       setActiveView("calendar");
@@ -80,6 +86,7 @@ export function useDashboardViewSync({
     }
   }, [activeView, listPageEnabled, setActiveView]);
 
+  // Proprietarul fără locație aleasă rămâne pe Setări (unde își gestionează locațiile).
   useEffect(() => {
     if (isOwner && !currentLocationId && activeView !== "settings") {
       setActiveView("settings");

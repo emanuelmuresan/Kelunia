@@ -1,10 +1,13 @@
 "use client";
 
+// Dialogul de confirmare din aplicație, înlocuind window.confirm: useConfirm() returnează o funcție asincronă (true/false).
+// Include și useDismissGuard, folosit de ferestrele de editare ca să nu piardă modificări nesalvate.
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 
 import { useAuth } from "@/context/AuthContext";
 import { appText } from "@/lib/i18n/app-copy-catalog";
 
+// Opțiunile unei confirmări: mesaj, titlu, etichetele butoanelor și tonul (obișnuit sau periculos).
 export type ConfirmOptions = {
   message: string;
   title?: string;
@@ -25,6 +28,7 @@ export function useConfirm() {
   return useContext(ConfirmContext);
 }
 
+// O confirmare în așteptare, cu funcția care rezolvă promisiunea.
 type PendingConfirm = ConfirmOptions & { resolve: (value: boolean) => void };
 
 /** One in-app confirmation dialog for every irreversible action (replaces window.confirm). */
@@ -34,6 +38,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
   const [pending, setPending] = useState<PendingConfirm | null>(null);
   const confirmButtonRef = useRef<HTMLButtonElement | null>(null);
 
+  // Deschide dialogul și returnează o promisiune rezolvată cu alegerea utilizatorului.
   const confirm = useCallback<ConfirmFn>(
     (options) =>
       new Promise<boolean>((resolve) => {
@@ -42,11 +47,13 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
     []
   );
 
+  // Închide dialogul și transmite alegerea.
   function settle(value: boolean) {
     pending?.resolve(value);
     setPending(null);
   }
 
+  // Cât timp dialogul e deschis: butonul de confirmare primește focus, iar Esc anulează.
   useEffect(() => {
     if (!pending) {
       return;
@@ -65,6 +72,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [pending]);
 
+  // Dialogul se afișează peste pagină; clic pe fundal anulează.
   return (
     <ConfirmContext.Provider value={confirm}>
       {children}
@@ -100,6 +108,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
 }
 
 /** Backdrop/Esc dismissal for editors: closes at once when clean, asks before dropping unsaved edits. */
+// Pentru fereastra de editare: dacă nu sunt modificări o închide direct, altfel cere confirmarea renunțării.
 export function useDismissGuard(dirty: boolean, onClose: () => void, language: Parameters<typeof appText>[0] = "ro") {
   const confirmAction = useConfirm();
 

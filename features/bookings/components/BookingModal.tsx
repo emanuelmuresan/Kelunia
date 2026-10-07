@@ -1,12 +1,16 @@
 "use client";
 
+// Fereastra cu formularul de rezervare (nouă sau editată): grup, cameră, date, ore, motiv și opțiunile de notificare.
+// Starea formularului este ținută de useBookingEditor; aici se afișează câmpurile și se avertizează la conflicte.
 import { useMemo, useState, type FormEvent } from "react";
 import { appText, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 import type { Booking, BookingForm, FixedSchedule, GroupItem, ManagedUser, RoomItem } from "@/lib/types/domain";
 import { findBookingConflict } from "@/features/bookings/services/booking-conflicts";
 
+// Tipul stării formularului, refolosit de alte fișiere.
 export type BookingFormState = BookingForm;
 
+// Proprietățile ferestrei: datele formularului, listele de alegere, rezervările (pentru conflicte) și acțiunile.
 interface BookingModalProps {
   open: boolean;
   editingId: string | null;
@@ -26,6 +30,7 @@ interface BookingModalProps {
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }
 
+// Componenta ferestrei.
 export function BookingModal({
   open,
   editingId,
@@ -44,8 +49,10 @@ export function BookingModal({
   onClose,
   onSubmit,
 }: BookingModalProps) {
+  // Dacă panoul „trimite acum” (alegerea publicului) este deschis.
   const [notifyNowOpen, setNotifyNowOpen] = useState(false);
 
+  // Avertisment imediat dacă intervalul ales se suprapune cu o altă rezervare sau cu un program fix.
   const conflict = useMemo(() => {
     if (!formData.startDate || !formData.room || !formData.startTime || !formData.endTime) {
       return null;
@@ -54,16 +61,19 @@ export function BookingModal({
     return findBookingConflict({ bookings, fixedSchedules, form: formData, ignoredId: editingId });
   }, [bookings, fixedSchedules, formData, editingId]);
 
+  // Fereastra închisă nu se randează.
   if (!open) {
     return null;
   }
 
+  // Camera aleasă și persoanele grupului ales (pentru notificări către persoane anume).
   const selectedRoomId = formData.roomId || rooms.find((room) => room.name === formData.room)?.id || "";
   const selectedGroupMembers = managedUsers.filter((managedUser) =>
     managedUser.groupName.trim().toLowerCase() === formData.group.trim().toLowerCase() &&
     managedUser.email.trim()
   );
 
+  // Ajutoare pentru momentele de notificare: format „15m/2h/7d”, maximum 5, limite de 120 minute, 48 ore, 30 zile.
   function syncLegacyOffsets(nextOffsets: string[]) {
     return nextOffsets
       .filter((offset) => /^([1-9]\d*)(m|h|d)$/.test(offset))
@@ -80,6 +90,7 @@ export function BookingModal({
     return unit === "m" ? 120 : unit === "h" ? 48 : 30;
   }
 
+  // Modifică valoarea sau unitatea unui moment de notificare personală.
   function updateNotificationOffset(index: number, value: string) {
     const { unit } = offsetParts(formData.notifyOffsets[index]);
     const max = maxForUnit(unit);
@@ -99,6 +110,7 @@ export function BookingModal({
     onChange({ ...formData, notifyOffsets: nextOffsets });
   }
 
+  // Modifică valoarea sau unitatea unui moment de reamintire pentru grup.
   function updateGroupNotificationOffset(index: number, value: string) {
     const { unit } = offsetParts(formData.notifyGroupOffsets[index]);
     const max = maxForUnit(unit);
@@ -118,9 +130,11 @@ export function BookingModal({
     onChange({ ...formData, notifyGroupOffsets: nextOffsets });
   }
 
+  // Structura ferestrei.
   return (
     <div className="modal-backdrop" role="presentation">
       <div className="modal-card" role="dialog" aria-modal="true" aria-label={appText(language, "booking.details")}>
+        {/* Antetul: „Rezervare nouă” sau „Modifică rezervarea”. */}
         <div className="modal-head">
           <div>
             <span className="eyebrow">{editingId ? appText(language, "booking.editing") : appText(language, "booking.new")}</span>
@@ -130,7 +144,9 @@ export function BookingModal({
             ×
           </button>
         </div>
+        {/* Formularul rezervării. */}
         <form className="booking-form" onSubmit={onSubmit}>
+          {/* Grupul și camera. */}
           <label>
             {groupsLabel}
             <select value={formData.group} onChange={(event) => onChange({ ...formData, group: event.target.value })}>
@@ -151,6 +167,7 @@ export function BookingModal({
               {rooms.map((room) => <option key={room.id} value={room.id}>{room.name}</option>)}
             </select>
           </label>
+          {/* Datele și orele; data de sfârșit este opțională (implicit aceeași zi). */}
           <label>
             {appText(language, "booking.startDate")}
             <input
@@ -173,6 +190,7 @@ export function BookingModal({
             {appText(language, "booking.endTime")}
             <input type="time" value={formData.endTime} onChange={(event) => onChange({ ...formData, endTime: event.target.value })} required />
           </label>
+          {/* Motivul rezervării. */}
           <label className="full-field">
             {appText(language, "booking.reason")}
             <input
@@ -182,7 +200,9 @@ export function BookingModal({
               required
             />
           </label>
+          {/* Notificări: trimitere imediată, notificare personală și reamintire pentru grup. */}
           <div className="full-field notification-options booking-notification-options">
+            {/* Notificare imediată: către grup sau, pentru manageri, către toată locația ori către persoane alese. */}
             <div className="notification-quick-actions">
               {!canNotifyWholeLocation ? (
                 <>
@@ -289,6 +309,7 @@ export function BookingModal({
               )}
             </div>
 
+            {/* Notificare personală înainte de rezervare, cu până la 5 momente. */}
             <label className="toggle-row">
               <input
                 type="checkbox"
@@ -304,6 +325,7 @@ export function BookingModal({
               {appText(language, "booking.personalNotification")}
             </label>
 
+            {/* Momentele notificării personale. */}
             {formData.notifyOnThisBooking && (
               <>
                 {formData.notifyOffsets.map((offset, index) => {
@@ -354,6 +376,7 @@ export function BookingModal({
               </>
             )}
 
+            {/* Reamintire pentru grupul rezervării. */}
             <label className="toggle-row">
               <input
                 type="checkbox"
@@ -369,6 +392,7 @@ export function BookingModal({
               {appText(language, "booking.groupReminder")}
             </label>
 
+            {/* Publicul reamintirii: tot grupul sau persoane alese. */}
             {formData.notifyGroupOnThisBooking && (
               <div className="notification-audience">
                 <label>
@@ -416,6 +440,7 @@ export function BookingModal({
               </div>
             )}
 
+            {/* Momentele reamintirii pentru grup. */}
             {formData.notifyGroupOnThisBooking && (
               <>
                 {formData.notifyGroupOffsets.map((offset, index) => {
@@ -466,10 +491,12 @@ export function BookingModal({
               </>
             )}
           </div>
+          {/* Mesajele de eroare: conflictul detectat local sau eroarea de la salvare. */}
           {conflict && !error && (
             <p className="error-line full-field">Există deja o programare: {conflict}.</p>
           )}
           {error && <p className="error-line full-field">{error}</p>}
+          {/* Butoanele de anulare și salvare. */}
           <div className="modal-actions full-field">
             <button className="secondary-button" type="button" onClick={onClose}>{appText(language, "action.cancel")}</button>
             <button className="primary-button" type="submit">{editingId ? appText(language, "action.save") : appText(language, "booking.confirm")}</button>

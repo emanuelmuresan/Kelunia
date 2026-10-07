@@ -1,5 +1,7 @@
 "use client";
 
+// Fereastra „Raportează o problemă”: trimite un document în errorReports (citit doar de proprietar), cu mesajul utilizatorului.
+// Din ErrorBoundary se atașează automat și detaliile tehnice ale erorii.
 import { useState } from "react";
 
 import { useAuth } from "@/context/AuthContext";
@@ -9,12 +11,14 @@ import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 
 import { auth, db } from "@/lib/firebase";
 
+// Proprietățile ferestrei: deschisă/închisă, contextul erorii (opțional) și închiderea.
 type ReportProblemModalProps = {
   open: boolean;
   errorContext?: { message?: string; componentStack?: string };
   onClose: () => void;
 };
 
+// Starea formularului: textul, trimiterea în curs, confirmarea și eroarea.
 export function ReportProblemModal({ open, errorContext, onClose }: ReportProblemModalProps) {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
@@ -24,10 +28,12 @@ export function ReportProblemModal({ open, errorContext, onClose }: ReportProble
   const language = profile?.language ?? "ro";
   const requestClose = useDismissGuard(text.trim().length > 0 && !done && !sending, onClose, language);
 
+  // Fereastra nu se randează când e închisă.
   if (!open) {
     return null;
   }
 
+  // Validează mesajul (minimum 5 caractere) și îl salvează, cu lungimi limitate, împreună cu adresa, browserul, versiunea și utilizatorul.
   async function send() {
     const userMessage = text.trim();
 
@@ -62,6 +68,7 @@ export function ReportProblemModal({ open, errorContext, onClose }: ReportProble
     }
   }
 
+  // Fereastra propriu-zisă; clic pe fundal cere confirmare dacă există text nesalvat.
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={requestClose}>
       <section
@@ -81,6 +88,7 @@ export function ReportProblemModal({ open, errorContext, onClose }: ReportProble
           </button>
         </div>
 
+        {/* După trimitere se arată mulțumirea; altfel formularul. */}
         {done ? (
           <>
             <p className="success-line">{appText(language, "report.thanks")}</p>

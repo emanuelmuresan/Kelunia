@@ -1,10 +1,13 @@
 "use client";
 
+// Vederea „agendă” pentru zilele unei perioade (săptămână sau zi): o carte pe zi cu rezervările ei.
+// O folosesc WeekView și DayView.
 import { bookingsForDay } from "@/lib/scheduling";
 import { formatDateLabel, parseDateKey } from "@/lib/dates";
 import { groupColorForName, groupColorStyle } from "@/lib/group-colors";
 import type { Booking, GroupItem } from "@/lib/types/domain";
 
+// Proprietățile agendei: zilele, rezervările, grupurile (pentru culori) și acțiunile.
 type AgendaViewProps = {
   activePeriodDays: string[];
   bookings: Booking[];
@@ -17,6 +20,7 @@ type AgendaViewProps = {
   onSelectBooking: (booking: Booking) => void;
 };
 
+// Componenta agendei.
 export function AgendaView({
   activePeriodDays,
   bookings,
@@ -29,6 +33,7 @@ export function AgendaView({
 }: AgendaViewProps) {
   return (
     <div className="agenda-grid">
+      {/* O carte pentru fiecare zi a perioadei. */}
       {activePeriodDays.map((day) => {
         const dayBookings = bookingsForDay(bookings, day);
 
@@ -48,6 +53,7 @@ export function AgendaView({
                 <strong>{formatDateLabel(day, { year: "numeric" })}</strong>
               </div>
 
+              {/* Butonul „+” pentru rezervare nouă (dezactivat offline). */}
               {canManageBookings && (
                 <button
                   disabled={!isOnline}
@@ -63,6 +69,7 @@ export function AgendaView({
               )}
             </div>
 
+            {/* Rezervările zilei, colorate după grup, sau mesajul „Nicio programare”. */}
             {dayBookings.length === 0 ? (
               <p className="empty-line">Nicio programare</p>
             ) : (

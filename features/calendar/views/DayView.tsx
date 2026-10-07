@@ -1,5 +1,6 @@
 "use client";
 
+// Vederea pe o zi: refolosește agenda (AgendaView) cu o singură zi.
 import { AgendaView } from "./AgendaView";
 import type { Booking, GroupItem } from "@/lib/types/domain";
 

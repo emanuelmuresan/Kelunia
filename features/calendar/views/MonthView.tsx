@@ -1,12 +1,15 @@
 "use client";
 
+// Vederea lunii: grilă cu zilele, primele rezervări ale fiecărei zile și numărul celor ascunse.
 import { bookingsForDay, isGroupBooking } from "@/lib/scheduling";
 import { parseDateKey } from "@/lib/dates";
 import { groupColorForName, groupColorStyle } from "@/lib/group-colors";
 import type { Booking, GroupItem } from "@/lib/types/domain";
 
+// Câte rezervări se afișează într-o celulă; restul apar ca „+N”.
 const visibleBookingsPerMonthCell = 2;
 
+// Proprietățile vederii: celulele lunii, ziua curentă, rezervările și acțiunile.
 type MonthViewProps = {
   shortDayLabels: string[];
   monthCells: (string | null)[];
@@ -21,6 +24,7 @@ type MonthViewProps = {
   onSelectBooking: (booking: Booking) => void;
 };
 
+// Componenta lunii.
 export function MonthView({
   shortDayLabels,
   monthCells,
@@ -36,12 +40,14 @@ export function MonthView({
 }: MonthViewProps) {
   return (
     <div className="month-calendar">
+      {/* Capul de tabel cu zilele săptămânii. */}
       {shortDayLabels.map((day) => (
         <div className="month-heading" key={day}>
           {day}
         </div>
       ))}
 
+      {/* Fiecare celulă: o zi sau un gol. */}
       {monthCells.map((cell, index) => {
         const dayBookings = cell ? bookingsForDay(bookings, cell) : [];
         const visibleBookings = dayBookings.slice(0, visibleBookingsPerMonthCell);
@@ -74,6 +80,7 @@ export function MonthView({
                   )}
                 </div>
 
+                {/* Rezervările zilei (colorate după grup) și „+N” pentru cele ascunse; se evidențiază dacă una aparține grupului utilizatorului. */}
                 <div className="cell-events">
                   {visibleBookings.map((booking) => {
                     const groupColor = groupColorForName(groups, booking.group);

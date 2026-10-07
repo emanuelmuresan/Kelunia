@@ -1,10 +1,12 @@
 "use client";
 
+// Fereastra cu detaliile unei rezervări: data, ora, motivul, autorul și acțiunile permise (notificare, editare, ștergere, repetare, adăugare).
 import { formatDateLabel } from "@/lib/dates";
 import { groupColorForName, groupColorStyle } from "@/lib/group-colors";
 import { appText, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 import type { Booking, GroupItem } from "@/lib/types/domain";
 
+// Proprietățile ferestrei: rezervarea, permisiunile și acțiunile; fără rezervare nu se afișează nimic.
 type BookingDetailsModalProps = {
   booking: Booking | null;
   groups: GroupItem[];
@@ -24,6 +26,7 @@ type BookingDetailsModalProps = {
   language?: SupportedLocale;
 };
 
+// Componenta ferestrei.
 export function BookingDetailsModal({
   booking,
   groups,
@@ -41,10 +44,12 @@ export function BookingDetailsModal({
   notificationMessage = "",
   language = "ro",
 }: BookingDetailsModalProps) {
+  // Fără rezervare selectată fereastra este închisă.
   if (!booking) {
     return null;
   }
 
+  // Structura ferestrei; se colorează cu culoarea grupului rezervării.
   return (
     <div className="modal-backdrop" role="presentation">
       <div
@@ -56,6 +61,7 @@ export function BookingDetailsModal({
         aria-modal="true"
         aria-label={appText(language, "booking.details")}
       >
+        {/* Antetul: camera, grupul și butonul de închidere. */}
         <div className="modal-head">
           <div>
             <span className="eyebrow">{booking.room}</span>
@@ -71,6 +77,7 @@ export function BookingDetailsModal({
           </button>
         </div>
 
+        {/* Lista detaliilor rezervării. */}
         <dl className="details-list">
           <div>
             <dt>{appText(language, "booking.date")}</dt>
@@ -108,6 +115,7 @@ export function BookingDetailsModal({
           )}
         </dl>
 
+        {/* Acțiunile; editarea, ștergerea și notificările apar doar celor care au voie. */}
         <div className="modal-actions">
           {canEdit && (
             <>
@@ -182,6 +190,7 @@ export function BookingDetailsModal({
           </button>
         </div>
 
+        {/* Rezultatul trimiterii notificării. */}
         {notificationMessage && (
           <p className="success-line settings-alert">{notificationMessage}</p>
         )}
