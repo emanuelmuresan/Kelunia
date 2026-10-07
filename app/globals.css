@@ -1,3 +1,8 @@
+/* Stilurile globale ale aplicației Kelunia (un singur fișier). Culorile, razele și umbrele sunt variabile CSS definite în :root; tema se alege prin atributul data-theme de pe <html>. */
+/* Fișierul urmează aproximativ ordinea: bază și variabile, antet și navigare, pagini (program fix, calendar, listă), ferestre modale și formulare, setări, pagina de start și paginile legale, */
+/* apoi adaptări pentru ecrane mici (media queries) și componente adăugate ulterior (buton plutitor, vederea anului, banda de evenimente, notificări mici, selector de culori). */
+/* Cele mai multe clase au prefixe care indică zona (settings-, modal-, month-, landing-, legal-...); regulile pentru mobil sunt grupate în media queries, uneori mai multe pentru aceeași zonă. */
+/* Variabile de temă: culori, fundaluri, margini, umbre și raze. */
 :root {
   --bg: #f6f9ff;
   --surface: #ffffff;
@@ -18,6 +23,7 @@
   --shadow: 0 18px 50px rgba(22, 23, 43, 0.08);
 }
 
+/* Reguli de bază: box-sizing, corpul paginii și elementele de formular. */
 * {
   box-sizing: border-box;
 }
@@ -54,6 +60,7 @@ textarea {
   font: inherit;
 }
 
+/* Ecrane tactile: câmpurile de text au dimensiune mare, ca să nu se mărească pagina la selectare pe iPhone. */
 @media (pointer: coarse) {
   input,
   select,
@@ -62,6 +69,7 @@ textarea {
   }
 }
 
+/* Butoane, linkuri și imagini: aspect de bază și zonă de atingere. */
 button,
 a {
   -webkit-tap-highlight-color: transparent;
@@ -75,6 +83,7 @@ img {
   max-width: 100%;
 }
 
+/* Structura aplicației: containerul principal, antetul de sus (sigla, titlul locației, utilizatorul) și selectorul de limbă. */
 .kelunia-shell {
   width: min(1180px, calc(100% - 28px));
   max-width: calc(100vw - 28px - env(safe-area-inset-left) - env(safe-area-inset-right));
@@ -188,6 +197,7 @@ img {
   line-height: 1.18;
 }
 
+/* Etichete mici, titluri de secțiune și bara de unelte. */
 .eyebrow {
   display: block;
   color: var(--violet);
@@ -217,6 +227,7 @@ img {
   font-weight: 760;
 }
 
+/* Butoanele: primar, secundar, periculos, doar pictogramă și comutatorul segmentat. */
 .primary-link,
 .primary-button,
 .secondary-button,
@@ -278,6 +289,7 @@ img {
   opacity: 0.55;
 }
 
+/* Butonul de ieșire din cont și butonul de instalare a aplicației. */
 .logout-button {
   min-height: 34px;
   padding: 0 10px;
@@ -368,6 +380,7 @@ img {
   line-height: 1;
 }
 
+/* Prezentarea pentru vizitatori (înainte de autentificare) și etichetele paginii de login. */
 .public-intro {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(220px, 360px);
@@ -439,6 +452,7 @@ img {
   background: var(--surface-muted);
 }
 
+/* Bara de file (pagini) de jos sau de sus și zona cu glisare între pagini. */
 .app-tabs {
   position: fixed;
   left: 0;
@@ -484,6 +498,7 @@ img {
   box-shadow: 0 1px 6px rgba(23, 33, 29, 0.08);
 }
 
+/* Butoanele barei de file și pictogramele lor. */
 .app-tabs button,
 .app-tab-link,
 .app-tab-action,
@@ -718,6 +733,7 @@ img {
   transform: translateX(-4px) rotate(45deg);
 }
 
+/* Pagina „Programări fixe”: coloanele zilelor și etichetele programelor. */
 .fixed-schedule-band,
 .workspace-panel,
 .settings-panel {
@@ -796,6 +812,7 @@ img {
   box-shadow: inset 3px 0 0 rgba(227, 93, 244, 0.18);
 }
 
+/* Culoarea grupurilor: rezervările și programele fixe se colorează după grupul lor (variabila --group-color). */
 .group-colored-booking {
   border-color: color-mix(in srgb, var(--group-color) 78%, #d8e8e4);
   background: color-mix(in srgb, var(--group-color) 24%, #fff);
@@ -849,6 +866,7 @@ img {
   font-size: 0.84rem;
 }
 
+/* Panourile de lucru și bara calendarului. */
 .workspace-panel {
   padding: 14px;
 }
@@ -913,6 +931,7 @@ img {
   box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
 }
 
+/* Vederea lunii: grila cu zilele, rezervările din celule și numărul celor ascunse. */
 .month-calendar {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -958,6 +977,7 @@ img {
 }
 
 .month-cell:not(.muted),
+/* Vederea agendă (săptămână și zi): o carte pe zi, cu rezervările ei. */
 .agenda-day.clickable-day {
   cursor: pointer;
 }
@@ -1127,6 +1147,7 @@ img {
   color: var(--muted);
 }
 
+/* Lista de rezervări (pagina „Listă”): rânduri, insigna cu data și paginarea. */
 .booking-list {
   display: grid;
   gap: 8px;
@@ -1214,6 +1235,7 @@ img {
   padding: 0 12px;
 }
 
+/* Pagina Setări: grila cardurilor, panourile și rândurile de rezumat. */
 .settings-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1284,6 +1306,7 @@ img {
   margin: 0;
 }
 
+/* Bannerul „fără internet” și rândurile de setări. */
 .offline-banner {
   margin: 0 0 14px;
   padding: 10px 12px;
@@ -1400,6 +1423,7 @@ img {
   line-height: 1.28;
 }
 
+/* Întrerupătoare (checkbox cu etichetă) și opțiunile de notificare. */
 .toggle-row {
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
@@ -1500,6 +1524,7 @@ img {
   text-decoration: underline;
 }
 
+/* Inbox-ul mesajelor din pagina publică: rânduri, detalii, conversație și câmpul de răspuns. */
 .community-application-row {
   cursor: pointer;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
@@ -1611,6 +1636,7 @@ img {
   margin-bottom: 10px;
 }
 
+/* Ferestrele pentru coduri de acces și licențe: bare de unelte, rânduri de coduri, camere permise, utilizatori. */
 .code-toolbar {
   display: flex;
   align-items: end;
@@ -1682,6 +1708,7 @@ img {
   width: 100%;
 }
 
+/* Licențele: formularul de generare și lista lor. */
 .license-add-grid {
   display: grid;
   grid-template-columns: 130px 130px minmax(180px, 1fr) auto;
@@ -1845,6 +1872,7 @@ img {
   flex: 1 1 74px;
 }
 
+/* Ecrane până la 1180px: rândurile codurilor trec pe mai multe linii. */
 @media (max-width: 1180px) {
   .code-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1861,6 +1889,7 @@ img {
   }
 }
 
+/* Lista licențelor, lista utilizatorilor și rândurile mici din ferestrele de gestionare. */
 .license-list {
   overflow: visible;
 }
@@ -2081,6 +2110,7 @@ img {
   font-size: 0.86rem;
 }
 
+/* Istoricul de modificări (audit). */
 .audit-list {
   display: grid;
   gap: 8px;
@@ -2122,6 +2152,7 @@ img {
   flex: 0 0 auto;
 }
 
+/* Ferestrele modale: fundalul, cardul, antetul, acțiunile și detaliile unei rezervări. */
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -2155,6 +2186,7 @@ img {
   background: #fff;
 }
 
+/* Fereastra cu detaliile rezervării și fereastra cu rezervările unei zile. */
 .details-card {
   width: min(520px, 100%);
 }
@@ -2283,6 +2315,7 @@ img {
   margin: 18px 0;
 }
 
+/* Ecrane până la 520px: butoanele din lista zilei. */
 @media (max-width: 520px) {
   .day-bookings-list button {
     grid-template-columns: 86px minmax(0, 1fr);
@@ -2339,6 +2372,7 @@ img {
   overflow-wrap: anywhere;
 }
 
+/* Mesaje de stare (eroare, succes, avertisment), stări goale și ecranele de încărcare. */
 .error-line,
 .success-line,
 .warning-line {
@@ -2405,6 +2439,7 @@ img {
   margin: 0;
 }
 
+/* Ecranul de pornire al aplicației instalate. */
 .app-entry-splash {
   min-height: 100dvh;
   display: none;
@@ -2444,6 +2479,7 @@ img {
   width: auto;
 }
 
+/* Pagina de autentificare: cardul, câmpurile, comutatorul de mod și linkurile. */
 .auth-shell {
   width: min(430px, calc(100% - 28px));
   max-width: calc(100vw - 28px - env(safe-area-inset-left) - env(safe-area-inset-right));
@@ -2644,6 +2680,7 @@ img {
   font-weight: 800;
 }
 
+/* Ecrane până la 900px: pagina de start, grilele de program fix și setări, pagina de login. */
 @media (max-width: 900px) {
   .public-intro {
     grid-template-columns: 1fr;
@@ -2670,6 +2707,7 @@ img {
   }
 }
 
+/* Ecrane până la 720px (telefon): antetul, ferestrele, calendarul, bara de file și majoritatea componentelor aplicației. */
 @media (max-width: 720px) {
   .kelunia-shell {
     width: min(1180px, calc(100% - 18px));
@@ -2910,6 +2948,7 @@ img {
   }
 }
 
+/* Ecrane foarte înguste (până la 430px): ajustări suplimentare pentru antet, ferestre și bară de file. */
 @media (max-width: 430px) {
   .kelunia-shell {
     width: min(1180px, calc(100% - 12px));
@@ -3019,6 +3058,7 @@ img {
   }
 }
 
+/* Telefon în orientare orizontală: bara de file mai compactă. */
 @media (max-width: 900px) and (orientation: landscape) {
   .fixed-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3065,6 +3105,7 @@ img {
   }
 }
 
+/* Schelet de layout neutilizat (app-shell, sidebar, topbar, page-container). */
 .app-shell {
   display: flex;
   min-height: 100vh;
@@ -3136,6 +3177,7 @@ img {
   display: none;
 }
 
+/* Pagina de start (landing): navigare, hero, secțiuni, prețuri, întrebări frecvente, comunitate, newsletter și subsol. */
 .landing-shell {
   width: 100%;
   max-width: 100%;
@@ -3513,6 +3555,7 @@ img {
   box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
 }
 
+/* Uneltele proprietarului: newsletter, licențe, inbox și insigne. */
 .newsletter-owner-block {
   display: grid;
   gap: 12px;
@@ -3591,6 +3634,7 @@ img {
   font-weight: 850;
 }
 
+/* Ecrane până la 820px: cardurile uneltelor proprietarului. */
 @media (max-width: 820px) {
   .owner-tool-card {
     align-items: stretch;
@@ -3630,6 +3674,7 @@ img {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+/* Formularul și rezumatul profilului, plus insignele de stare (status-pill). */
 .profile-inline-form {
   display: none;
 }
@@ -3771,6 +3816,7 @@ img {
   white-space: nowrap;
 }
 
+/* Ferestre imbricate (peste alta) și liste împărțite în două coloane. */
 .modal-backdrop-nested {
   z-index: 70;
   background: rgba(12, 18, 16, 0.72);
@@ -3786,6 +3832,7 @@ img {
   flex: 1 1 120px;
 }
 
+/* Ecrane până la 720px: rândurile compacte de licență. */
 @media (max-width: 720px) {
   .compact-license-row {
     grid-template-columns: 1fr;
@@ -3827,6 +3874,7 @@ img {
 }
 
 .landing-legal-footer,
+/* Paginile legale (confidențialitate, termeni, cookie-uri, contact): antet, card și linkuri. */
 .legal-links {
   display: flex;
   align-items: center;
@@ -4020,6 +4068,7 @@ img {
   font-weight: 720;
 }
 
+/* Pagina de start pe ecrane până la 900px. */
 @media (max-width: 900px) {
   .landing-nav {
     position: static;
@@ -4060,6 +4109,7 @@ img {
   }
 }
 
+/* Pagina de start pe telefon (până la 560px). */
 @media (max-width: 560px) {
   .landing-nav,
   .landing-nav-actions {
@@ -4252,6 +4302,7 @@ img {
   }
 }
 
+/* Aplicația instalată sau nativă: ascunde elemente care nu au sens în aplicație (ex. „înapoi acasă”). */
 .kelunia-installed-shell .back-link,
 .kelunia-installed-shell .app-footer {
   display: none;
@@ -4349,6 +4400,7 @@ img {
   min-height: 48px;
 }
 
+/* Aplicație nativă pe ecrane înguste: antet și bară de file adaptate (zone sigure, fără bara de browser). */
 @media (max-width: 430px) {
   .kelunia-native-shell {
     --native-topbar-content-height: 100px;
@@ -4389,6 +4441,7 @@ img {
   }
 }
 
+/* Ecrane de la 768px în sus (tabletă și desktop): bara de file cu etichete lângă pictograme. */
 @media (min-width: 768px) {
   .kelunia-shell {
     width: auto;
@@ -4461,6 +4514,7 @@ img {
   }
 }
 
+/* Ecrane de la 1024px în sus (desktop): lățimi maxime ale conținutului. */
 @media (min-width: 1024px) {
   .kelunia-shell {
     padding-left: calc(228px + max(22px, env(safe-area-inset-left)));
@@ -4478,6 +4532,7 @@ img {
   }
 }
 
+/* Pagina de traduceri a proprietarului: antet, tabel și rezumat. */
 .translation-page {
   min-height: 100vh;
   padding: 32px;
@@ -4571,6 +4626,7 @@ img {
   font-weight: 700;
 }
 
+/* Ecrane până la 760px: pagina de traduceri. */
 @media (max-width: 760px) {
   .translation-page {
     padding: 20px 14px;
@@ -4931,6 +4987,7 @@ img {
   }
 }
 
+/* Setările de notificări: starea dispozitivului, momentele și rândurile lor. */
 .notif-settings {
   display: grid;
   gap: 14px;
@@ -4997,6 +5054,7 @@ img {
   line-height: 1.2;
 }
 
+/* Pastila de culoare din rezumatul benzii de evenimente. */
 .ticker-color-swatch {
   display: inline-block;
   width: 1.4rem;
@@ -5006,6 +5064,7 @@ img {
   vertical-align: middle;
 }
 
+/* Dialogul de confirmare din aplicație (înlocuiește window.confirm). */
 .confirm-dialog {
   width: min(420px, 100%);
   display: grid;
@@ -5017,6 +5076,7 @@ img {
   line-height: 1.45;
 }
 
+/* Câmpul pentru limba invitației din fereastra codurilor de acces. */
 .invite-language-field {
   display: flex;
   align-items: center;
@@ -5033,6 +5093,7 @@ img {
   min-width: 9rem;
 }
 
+/* Previzualizarea benzii în fereastra de editare. */
 .ticker-preview {
   padding: 9px 12px;
   border-radius: 8px;
@@ -5040,6 +5101,7 @@ img {
   font-weight: 700;
 }
 
+/* Nota „acesta este contul tău” din tabelul de utilizatori. */
 .user-self-note {
   display: block;
   margin-top: 4px;
@@ -5047,6 +5109,7 @@ img {
   font-weight: 650;
 }
 
+/* Selectorul de culori: pastile și câmp hexazecimal. */
 .color-field {
   display: grid;
   gap: 6px;
@@ -5109,6 +5172,7 @@ img {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
+/* Blocurile de setări: antet cu titlu și buton propriu. */
 .settings-block-head {
   display: flex;
   align-items: center;
@@ -5124,6 +5188,7 @@ img {
   margin-top: 4px;
 }
 
+/* Panoul „Raportează o problemă”, separat de celelalte setări. */
 .report-problem-panel {
   grid-column: 1 / -1;
   display: flex;
@@ -5142,6 +5207,7 @@ img {
   margin: 0;
 }
 
+/* Cardurile compacte din Setări (Profil, Configurare, Acces, Suport) și ferestrele secțiunilor. */
 .settings-section-card {
   display: flex;
   align-items: center;

@@ -1,16 +1,18 @@
 /**
  * Proves a change only added comments: for every TS/JS file that differs from HEAD, the
  * syntax tree (ignoring comments, whitespace-only JSX text and empty `{/* *\/}` JSX
- * expressions) must be identical to the one in HEAD.
+ * expressions) must be identical to the one in the base ref.
  *
- *   node scripts/verify-comments-only.mjs
+ *   node scripts/verify-comments-only.mjs [base-ref]   (default: HEAD)
  */
 import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 
 import ts from "typescript";
 
-const changed = execSync("git diff --name-only HEAD", { encoding: "utf8" })
+const base = process.argv[2] ?? "HEAD";
+
+const changed = execSync(`git diff --name-only ${base}`, { encoding: "utf8" })
   .split(/\r?\n/)
   .filter((file) => /\.(tsx?|jsx?|mjs)$/.test(file));
 
@@ -53,7 +55,7 @@ for (const file of changed) {
   let before = "";
 
   try {
-    before = execSync(`git show HEAD:${file}`, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+    before = execSync(`git show ${base}:${file}`, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
   } catch {
     continue; // a new file has nothing to compare against
   }
