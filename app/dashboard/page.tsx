@@ -1,5 +1,8 @@
 "use client";
 
+// Pagina principală după autentificare: orchestrează toate hook-urile din features/ și alege ce ecran se vede
+// (calendar, listă, program fix, setări), plus ferestrele modale și blocarea aplicației.
+// Logica propriu-zisă stă în hook-uri; aici doar se leagă între ele și se pasează către vederi.
 import { useAppText } from "@/features/shell/hooks/useAppText";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -107,13 +110,17 @@ import { useBookingDeepLink } from "@/features/bookings/hooks/useBookingDeepLink
 import { useRequiredGroupSetup } from "@/features/groups/hooks/useRequiredGroupSetup";
 import { useDashboardViewSync } from "@/features/dashboard/hooks/useDashboardViewSync";
 
+// Cheia Google Maps (pentru căutarea adresei la configurarea locației).
 const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
 
+// Componenta paginii dashboard.
 export default function KeluniaPage() {
+  // Utilizatorul curent, profilul lui din Firestore și rolurile derivate (manager, proprietar, super-admin).
   const { user, profile, role, isSuperAdmin, isOwner, loading: authLoading, updateProfile } = useAuth();
   const router = useRouter();
   const language = profile?.language ?? "ro";
 
+  // Starea de navigare: ecranul activ, modul calendarului, data curentă, locația aleasă, filtrul și sortarea listei.
   const [activeView, setActiveView] = useState<AppView>("calendar");
   const [calendarMode, setCalendarMode] = useState<CalendarMode>("month");
   const [currentDate, setCurrentDate] = useState(() => new Date());
@@ -121,12 +128,14 @@ export default function KeluniaPage() {
   const [listFilter, setListFilter] = useState<ListFilter>("future");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
+  // Selecții și erori pentru ferestrele deschise (rezervare, zi, setări).
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [notifyingSelectedBooking, setNotifyingSelectedBooking] = useState(false);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [settingsError, setSettingsError] = useState("");
 
 
+  // Ciorna setărilor personale; se resetează din profil și se salvează cu „Salvează”.
   const [personalDraft, setPersonalDraft] = useState({
     displayName: "",
     groupName: "",
@@ -141,12 +150,14 @@ export default function KeluniaPage() {
     notifyOffsetsDays: [1, 7],
     language: "ro" as AppLanguage,
   });
+  // Starea rețelei, setările benzii de evenimente viitoare, toast-urile și textele traduse.
   const [groupSetupError, setGroupSetupError] = useState("");
   const { isOnline, setIsOnline } = useOnlineStatus();
   const { tickerSettings, updateTickerSettings } = useUpcomingTickerSettings();
   const { toasts, pushToast, dismissToast } = useToasts();
   const msg = useAppText();
   const offlineReadOnlyMessage = msg("msg.offline");
+  // Notificările mici (toast) pentru confirmări; erorile rămân afișate în fereastra respectivă.
   const setSelectedBookingNotice = useCallback(
     (value: string) => {
       if (value) {
@@ -165,6 +176,7 @@ export default function KeluniaPage() {
     [pushToast]
   );
 
+  // Utilizatorii neverificați sau deconectați sunt trimiși la pagina de login.
   useEffect(() => {
     if (!authLoading && user && !user.emailVerified) {
       void signOut(auth).finally(() => router.replace("/login"));
@@ -176,6 +188,7 @@ export default function KeluniaPage() {
     }
   }, [authLoading, router, user]);
 
+  // Locația curentă și accesul la licență, în funcție de rol.
   const today = dateKey(new Date());
   const {
     currentLocation,
@@ -193,7 +206,9 @@ export default function KeluniaPage() {
     profile,
     user,
   });
+  // Proprietarul fără locație aleasă vede doar setările.
   const displayedView: AppView = isOwner && !currentLocationId ? "settings" : activeView;
+  // Contextul de permisiuni; din el rezultă ce are voie să facă utilizatorul în locația curentă.
   const permissionContext = {
     signedIn: Boolean(user),
     role,
@@ -205,6 +220,7 @@ export default function KeluniaPage() {
   const canManageBookings = can("booking.create", permissionContext);
   const canManageAccessCodes = Boolean((isOwner && currentLocationId) || canEditCurrentLocation);
   const canManageMembers = canManageAccessCodes;
+  // Cererile din comunitate și newsletter-ul: doar pentru proprietar.
   const {
     applications: communityApplications,
     communityApplicationsError,
@@ -226,6 +242,7 @@ export default function KeluniaPage() {
     enabled: Boolean(user && isOwner),
     user,
   });
+  // Rezervările din fereastra vizibilă (lună/săptămână/listă) și resursele locației: grupuri, camere, programe fixe.
   const bookingsWindow = useMemo(
     () => bookingQueryWindow(currentDate, activeView, calendarMode, listFilter),
     [activeView, calendarMode, currentDate, listFilter]
@@ -248,6 +265,7 @@ export default function KeluniaPage() {
     userExists: Boolean(user),
     locationId: currentLocationId,
   });
+  // Filtrare după accesul la camere: managerul și proprietarul văd tot, ceilalți doar camerele permise.
   const hasFullRoomAccess = isOwner || role === "manager";
   const accessibleRooms = useMemo(
     () => filterRoomsByAccess(rooms, profile, hasFullRoomAccess),
@@ -261,6 +279,7 @@ export default function KeluniaPage() {
     () => bookings.filter((booking) => bookingMatchesRoomAccess(booking, rooms, profile, hasFullRoomAccess)),
     [bookings, hasFullRoomAccess, profile, rooms]
   );
+  // Banda de evenimente privește înainte de azi, indiferent de luna afișată, deci are propria fereastră de rezervări.
   // The band looks ahead from today regardless of which month/week the calendar
   // is showing, so it needs its own bookings window.
   const tickerEndDate = dateKey(addDays(new Date(), tickerSettings.leadDays));
@@ -275,6 +294,7 @@ export default function KeluniaPage() {
     [hasFullRoomAccess, profile, rooms, tickerWindowBookings]
   );
   const tickerActive = tickerSettings.enabled;
+  // Programele fixe vizibile după accesul la camere.
   const visibleFixedSchedulesByRoomAccess = useMemo(() => {
     if (hasFullRoomAccess) {
       return fixedSchedules;
@@ -283,6 +303,7 @@ export default function KeluniaPage() {
     const allowedRoomNames = new Set(accessibleRooms.map((room) => room.name));
     return fixedSchedules.filter((schedule) => allowedRoomNames.has(schedule.room));
   }, [accessibleRooms, fixedSchedules, hasFullRoomAccess]);
+  // Lista de rezervări: filtrare, sortare și paginare.
   const {
     listBookings,
     listPage,
@@ -299,6 +320,7 @@ export default function KeluniaPage() {
     sortDirection,
     today,
   });
+  // Jurnalul de audit și acțiunea de a înregistra modificări.
   const {
     auditLogs,
     auditLoading,
@@ -319,6 +341,7 @@ export default function KeluniaPage() {
     isOnline,
     setIsOnline,
   });
+  // Setările de navigare ale locației: numele paginilor, vizibilitatea listei și a programului fix, etichetele.
   const {
     fixedPageEnabled,
     fixedPageEnabledDraft,
@@ -352,6 +375,7 @@ export default function KeluniaPage() {
     setSettingsError,
     setSettingsMessage,
   });
+  // Utilizatorii și codurile de acces ale locației (doar pentru manageri) și rapoartele de erori (doar proprietar).
   const { accessCodes, managedUsers } = useManagedLocationUsers({
     isManager: isSuperAdmin || isOwner,
     locationId: currentLocationId,
@@ -362,7 +386,9 @@ export default function KeluniaPage() {
     enabled: Boolean(user && isOwner),
   });
 
+  // Notificări locale pentru rezervările grupului.
   useGroupBookingNotifications({ bookings: visibleBookingsByRoomAccess, fixedSchedules, profile, user });
+  // Calendarul: celulele lunii, lunile anului, schimbarea perioadei și titlul ei.
   const {
     activePeriodDays,
     monthCells,
@@ -375,6 +401,7 @@ export default function KeluniaPage() {
     setCurrentDate,
   });
 
+  // Afișează mesajul „offline” în fereastra potrivită scrierii încercate.
   function showOfflineError(target: WriteTarget) {
     if (target === "group") {
       setGroupSetupError(offlineReadOnlyMessage);
@@ -404,6 +431,7 @@ export default function KeluniaPage() {
     setSettingsError(offlineReadOnlyMessage);
   }
 
+  // Blochează scrierile când nu există conexiune și afișează mesajul potrivit.
   function requireOnline(target: WriteTarget = "settings") {
     const connected = typeof navigator === "undefined" ? isOnline : navigator.onLine;
 
@@ -416,6 +444,7 @@ export default function KeluniaPage() {
     return false;
   }
 
+  // Câmpurile comune pentru ștergerea logică (soft-delete): nu se șterg date, doar se marchează ca șterse.
   function softDeletePayload() {
     return {
       deleted: true,
@@ -427,6 +456,7 @@ export default function KeluniaPage() {
     };
   }
 
+  // Alegerea obligatorie a grupului pentru utilizatorii care nu au unul.
   const {
     groupSetupDraft,
     setGroupSetupDraft,
@@ -448,6 +478,7 @@ export default function KeluniaPage() {
     setGroupSetupError,
   });
 
+  // Sincronizează grupul din codul de acces cu profilul utilizatorului.
   useAccessCodeGroupSync({
     isManager: isSuperAdmin,
     isOnline,
@@ -458,6 +489,7 @@ export default function KeluniaPage() {
     user,
   });
 
+  // Configurarea primei locații (nume, adresă, hartă) pentru conturile noi de manager.
   const {
     address: locationSetupAddress,
     addressInputRef: locationSetupAddressInputRef,
@@ -480,6 +512,7 @@ export default function KeluniaPage() {
     user,
   });
 
+  // Editorul de camere/grupuri (spații).
   const {
     spaceEditor,
     spaceError,
@@ -504,6 +537,7 @@ export default function KeluniaPage() {
     setSettingsMessage,
   });
 
+  // Editorul programelor fixe.
   const {
     showFixedManager,
     showFixedForm,
@@ -533,12 +567,14 @@ export default function KeluniaPage() {
     setSettingsMessage,
   });
 
+  // Elementele de navigare; calendarul rămâne mereu, lista și programul fix pot fi ascunse.
   const navigationItems: Array<[AppView, string]> = [
     ...(currentLocationId && fixedPageEnabled ? [["fixed", fixedSectionTitle] as [AppView, string]] : []),
     ...(currentLocationId ? [["calendar", appText(language, "nav.calendar")] as [AppView, string]] : []),
     ...(currentLocationId && listPageEnabled ? [["list", listViewTitle] as [AppView, string]] : []),
     ["settings", appText(language, "nav.settings")],
   ];
+  // Glisarea laterală între pagini pe telefon.
   const swipeViews = navigationItems.map(([view]) => view);
   const { handleSwipeStart, handleSwipeEnd, clearSwipe } = useCalendarSwipe({
     swipeViews,
@@ -546,6 +582,7 @@ export default function KeluniaPage() {
     setActiveView,
   });
 
+  // Menține sincronizate ecranul activ, locația aleasă și configurarea locației.
   useDashboardViewSync({
     profile,
     isOwner,
@@ -561,6 +598,7 @@ export default function KeluniaPage() {
     currentLocationId,
   });
 
+  // Când se schimbă profilul, ciorna setărilor personale se reconstruiește din el (inclusiv momentele de notificare).
   useEffect(() => {
     if (!profile) {
       return;
@@ -595,6 +633,7 @@ export default function KeluniaPage() {
     setGroupSetupDraft(profile.groupName);
   }, [profile, setGroupSetupDraft]);
 
+  // Utilizatorii gestionați din locația curentă și limita de manageri a planului.
   const visibleManagedUsers = useMemo(
     () => managedUsers.filter((managedUser) => managedUser.locationId === currentLocationId),
     [currentLocationId, managedUsers]
@@ -605,6 +644,7 @@ export default function KeluniaPage() {
   );
   const currentLocationManagerLimit = currentLocation?.planLimits?.maxManagers ?? 2;
 
+  // Acțiuni asupra utilizatorilor: schimbarea rolului, accesul la camere, eliminarea.
   const { updateManagedUserRole, updateManagedUserRoomAccess, removeManagedUser } = useManagedUserActions({
     db,
     managedUsers,
@@ -619,6 +659,7 @@ export default function KeluniaPage() {
     setSettingsMessage,
   });
 
+  // Editorul locației (nume, adresă).
   const {
     locationEditor,
     locationError,
@@ -639,6 +680,7 @@ export default function KeluniaPage() {
     setSettingsMessage,
   });
 
+  // Invitațiile de manager încă active ocupă din limita planului de manageri.
   const currentLocationPendingManagerInviteCount = useMemo(
     () =>
       accessCodes.filter(
@@ -657,6 +699,7 @@ export default function KeluniaPage() {
     [accessCodes, currentLocationId]
   );
 
+  // Codurile de acces și invitațiile: generare, copiere, trimitere pe email, prelungire, oprire.
   const {
     changeInviteLanguage,
     codeGenerator,
@@ -696,6 +739,7 @@ export default function KeluniaPage() {
     language,
   });
 
+  // Codurile de licență (doar proprietar).
   const {
     copyLicenseCode,
     createLicenseCode,
@@ -720,6 +764,7 @@ export default function KeluniaPage() {
     language,
   });
 
+  // Activează notificările proprietarului (cere permisiunea browserului).
   async function enableOwnerNotifications() {
     const allowed = await requestKeluniaNotificationPermission();
 
@@ -732,8 +777,10 @@ export default function KeluniaPage() {
     setSettingsError(msg("msg.notifDenied"));
   }
 
+  // Notificări pentru proprietar când sosesc cereri noi din pagina publică.
   useOwnerLandingNotifications({ user, isOwner, communityApplications });
 
+  // Rezervările: formular, creare, editare, duplicare, ștergere.
   const {
     canEditBooking,
     duplicateBooking,
@@ -770,11 +817,13 @@ export default function KeluniaPage() {
     user,
     pushToast,
   });
+  // Rezervările zilei selectate.
   const selectedDayBookings = useMemo(
     () => (selectedDay ? bookingsForDay(visibleBookingsByRoomAccess, selectedDay) : []),
     [selectedDay, visibleBookingsByRoomAccess]
   );
 
+  // Deschide lista zilei; de acolo se alege o rezervare sau se adaugă una nouă.
   function openDayBookings(date: string) {
     setCurrentDate(parseDateKey(date));
     // Always open the day list — pick a booking there, or use its "add" button
@@ -784,6 +833,7 @@ export default function KeluniaPage() {
     setSelectedDay(date);
   }
 
+  // Din fereastra zilei se trece la formularul de rezervare nouă.
   function createBookingFromDayModal() {
     if (!selectedDay) {
       return;
@@ -794,12 +844,14 @@ export default function KeluniaPage() {
     openCreateForm(date, { defaultStartTime: "12:00" });
   }
 
+  // Din fereastra zilei se deschid detaliile unei rezervări.
   function selectBookingFromDayModal(booking: Booking) {
     setSelectedDay(null);
     setSelectedBookingNotice("");
     setSelectedBooking(booking);
   }
 
+  // Din detalii se creează o rezervare nouă în aceeași dată.
   function createBookingFromSelectedBooking() {
     if (!selectedBooking) {
       return;
@@ -810,6 +862,7 @@ export default function KeluniaPage() {
     openCreateForm(date, { defaultStartTime: "12:00" });
   }
 
+  // Trimite acum o notificare pentru rezervarea selectată (grupului sau întregii locații) prin funcția cloud.
   async function notifySelectedBookingNow(scope: "group" | "location" = "group") {
     if (!selectedBooking || notifyingSelectedBooking) {
       return;
@@ -861,6 +914,7 @@ export default function KeluniaPage() {
     }
   }
 
+  // Schimbarea parolei și trimiterea emailului de resetare.
   const {
     openPasswordModal,
     passwordDraft,
@@ -881,6 +935,7 @@ export default function KeluniaPage() {
     setIsOnline,
     user,
   });
+  // Blocarea aplicației cu PIN sau biometrie.
   const {
     appLocked,
     unlockPin,
@@ -904,6 +959,7 @@ export default function KeluniaPage() {
     handleBiometricsToggle,
   } = useAppLock({ db, user, profile, setPersonalDraft, setSettingsError });
 
+  // Deschide o rezervare dintr-un link/notificare și o selectează.
   useBookingDeepLink({
     db,
     bookings,
@@ -912,8 +968,10 @@ export default function KeluniaPage() {
     setSelectedBookingNotice,
   });
 
+  // Leagă notificările push primite de aplicație.
   useKeluniaPushBridge({ user, profile });
 
+  // Salvează PIN-ul: validează formatul, îl trimite la funcția cloud (se stochează hash, nu textul) și apoi salvează setările.
   async function confirmPinSetup() {
     if (!user || !pinIntent) {
       return;
@@ -963,6 +1021,7 @@ export default function KeluniaPage() {
     }
   }
 
+  // Salvează setările personale, cu validări (online, grup, PIN, notificări) și apoi scrie în Firestore.
   async function savePersonalSettings(options?: { usePin?: boolean; useBiometrics?: boolean; language?: AppLanguage }) {
     if (!user) {
       return;
@@ -986,11 +1045,13 @@ export default function KeluniaPage() {
       useBiometrics: options?.useBiometrics ?? personalDraft.useBiometrics,
       language: options?.language ?? personalDraft.language,
     };
+    // Normalizează momentele de notificare și deduce zilele pentru câmpurile vechi.
     const notificationOffsets = normalizeNotificationOffsetRules(effectiveDraft.notifyOffsets);
     const notificationOffsetDays = notificationOffsets
       .filter((offset) => offset.unit === "days")
       .map((offset) => offset.value);
 
+    // Activarea PIN-ului/biometriei fără PIN configurat deschide mai întâi configurarea PIN-ului.
     if (
       (effectiveDraft.usePin || effectiveDraft.useBiometrics) &&
       !profile?.hasPin &&
@@ -1000,6 +1061,7 @@ export default function KeluniaPage() {
       return;
     }
 
+    // Notificările pentru grup cer cel puțin un moment și permisiunea de notificare.
     if (effectiveDraft.notifyGroupBookings) {
       if (notificationOffsets.length === 0) {
         setSettingsError(msg("msg.chooseNotifMoment"));
@@ -1086,13 +1148,16 @@ export default function KeluniaPage() {
     }
   }
 
+  // Banner pentru o locație programată la închidere.
   const closureDate = (currentLocation?.closureScheduledFor as { toDate?: () => Date } | null | undefined)?.toDate?.();
   const closureBanner = closureDate
     ? msg("closure.banner", { date: closureDate.toLocaleDateString(dateLocales[language], { day: "2-digit", month: "long", year: "numeric" }) })
     : "";
+  // Locațiile pentru care se pot edita codurile de acces.
   const editableCodeLocations = currentLocation
     ? [currentLocation]
     : [{ id: currentLocationId, name: locationName, ownerEmail: "", address: "", placeId: "" }];
+  // Ecranul de blocare, afișat peste orice vedere când aplicația este blocată.
   const appLockOverlay = appLocked ? (
     <AppLockModal
       biometricEnabled={Boolean(profile?.useBiometrics)}
@@ -1106,6 +1171,7 @@ export default function KeluniaPage() {
     />
   ) : null;
 
+  // Cont de manager nou: mai întâi se configurează locația.
   if (needsLocationSetup) {
     return (
       <>
@@ -1128,6 +1194,7 @@ export default function KeluniaPage() {
       </>
     );
   }
+  // Utilizatorul trebuie să-și aleagă grupul înainte de a folosi aplicația.
   if (mustChooseGroup) {
     return (
       <>
@@ -1150,6 +1217,7 @@ export default function KeluniaPage() {
     );
   }
 
+  // Cât se încarcă sesiunea se arată ecranul de încărcare.
   if (authLoading) {
     return (
       <div className="loading-screen">
@@ -1162,12 +1230,15 @@ export default function KeluniaPage() {
     );
   }
 
+  // Fără utilizator nu se afișează nimic (urmează redirecționarea spre login).
   if (!user) {
     return null;
   }
 
+  // Aplicația propriu-zisă: antetul, banda, vederea activă și ferestrele modale.
   return (
     <main className="kelunia-shell" data-ticker={tickerActive ? "on" : undefined}>
+      {/* Antetul și navigarea. */}
       <KeluniaShellChrome
         displayedView={displayedView}
         headerTitle={headerTitle}
@@ -1183,6 +1254,7 @@ export default function KeluniaPage() {
         onSignOut={confirmSignOut}
       />
 
+      {/* Banda cu evenimentele următoare. */}
       <UpcomingTicker
         bookings={tickerBookings}
         today={today}
@@ -1191,13 +1263,16 @@ export default function KeluniaPage() {
         onSelectBooking={setSelectedBooking}
       />
 
+      {/* Zona cu vederile; permite glisarea între pagini. */}
       <div
         className="swipe-page-region"
         onTouchStart={handleSwipeStart}
         onTouchEnd={handleSwipeEnd}
         onTouchCancel={clearSwipe}
       >
+      {/* Eroarea unei vederi nu strică restul aplicației. */}
       <ErrorBoundary region="dashboard-view">
+      {/* Programul fix. */}
       {displayedView === "fixed" && (
         <FixedSchedulesView
           fixedSectionTitle={fixedSectionTitle}
@@ -1210,6 +1285,7 @@ export default function KeluniaPage() {
         />
       )}
 
+      {/* Calendarul: bara de unelte și vederea an/lună/săptămână/zi. */}
       {displayedView === "calendar" && (
         <section className="workspace-panel calendar-panel">
           <CalendarToolbar
@@ -1275,6 +1351,7 @@ export default function KeluniaPage() {
         </section>
       )}
 
+      {/* Lista de rezervări. */}
       {displayedView === "list" && (
       <ListView
         listViewTitle={listViewTitle}
@@ -1303,6 +1380,7 @@ export default function KeluniaPage() {
         />
       )}
 
+      {/* Setările. */}
       {displayedView === "settings" && (
       <SettingsView
         settingsError={settingsError}
@@ -1386,6 +1464,7 @@ export default function KeluniaPage() {
       </ErrorBoundary>
       </div>
 
+      {/* Butonul plutitor „+” pentru rezervare nouă. */}
       {canManageBookings && (displayedView === "calendar" || displayedView === "list") && (
         <button
           className="fab-add"
@@ -1398,6 +1477,7 @@ export default function KeluniaPage() {
         </button>
       )}
 
+      {/* Ferestrele modale: audit, parolă, coduri de acces, licențe, locație, PIN, spații, programe fixe, rezervări. */}
       <AuditHistoryModal
         open={showAuditModal}
         auditLogs={auditLogs}
@@ -1597,6 +1677,7 @@ export default function KeluniaPage() {
         }}
         onNotify={notifySelectedBookingNow}
       />
+      {/* Notificările mici și ecranul de blocare. */}
       <ToastStack toasts={toasts} onDismiss={dismissToast} />
       {appLockOverlay}
     </main>

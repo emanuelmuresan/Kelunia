@@ -1,18 +1,24 @@
 "use client";
 
+// Registrează service worker-ul care face aplicația instalabilă (PWA) și o curăță în dezvoltare.
+
 import { useEffect } from "react";
 
+// Componentă fără interfață: doar rulează efectul de înregistrare la montare.
 export default function PwaRegister() {
+  // Dacă browserul nu are service worker, nu avem ce înregistra.
   useEffect(() => {
     if (!("serviceWorker" in navigator)) {
       return;
     }
 
+    // Pe localhost sau în dezvoltare nu vrem service worker: ar servi pagini vechi din cache.
     const isLocal =
       window.location.hostname === "localhost" ||
       window.location.hostname === "127.0.0.1" ||
       window.location.hostname === "0.0.0.0";
 
+    // În mediu local îl dezînregistrăm și ștergem cache-ul lui, apoi ieșim.
     if (process.env.NODE_ENV !== "production" || isLocal) {
       navigator.serviceWorker
         .getRegistrations()
@@ -29,6 +35,7 @@ export default function PwaRegister() {
       return;
     }
 
+    // În producție înregistrăm /sw.js după încărcarea paginii.
     const register = async () => {
       try {
         await navigator.serviceWorker.register("/sw.js");

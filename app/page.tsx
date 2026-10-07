@@ -1,5 +1,6 @@
 "use client";
 
+// Pagina publică de prezentare (landing): hero, beneficii, funcții, publicul țintă, planuri, FAQ, înscriere newsletter.
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import { AppEntryRedirect } from "@/components/AppEntryRedirect";
@@ -8,6 +9,7 @@ import { CommunityApplicationSection } from "@/features/landing/components/Commu
 import { LandingFinalCta, LandingNewsletterSection } from "@/features/landing/components/LandingContactSections";
 import { normalizeSupportedLocale, supportedLocales, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 
+// Forma textelor paginii pentru o limbă: titluri, liste de beneficii/funcții/planuri și întrebări frecvente.
 type LandingCopy = {
   nav: string;
   login: string;
@@ -34,6 +36,7 @@ type LandingCopy = {
   faqs: Array<[string, string]>;
 };
 
+// Textele paginii pentru fiecare limbă. Româna, engleza și spaniola sunt scrise integral; italiana, franceza și portugheza pornesc de la engleză și suprascriu ce e tradus.
 const copy: Record<SupportedLocale, LandingCopy> = {
   ro: {
     nav: "Navigare principală",
@@ -54,29 +57,34 @@ const copy: Record<SupportedLocale, LandingCopy> = {
     plansText: "Standard este pentru o locație activă. Pro adaugă administrare multi-location, permisiuni avansate și vizibilitate mai bună, păstrând licențierea pe locație activă.",
     faqEyebrow: "FAQ",
     faqTitle: "Întrebări rapide.",
+    // Beneficiile principale („de ce Kelunia"): titlu + descriere.
     problems: [
       ["Fără suprapuneri", "Sistemul blochează automat rezervările duble și îți arată rapid ce spațiu este liber și când."],
       ["Transparență totală", "Toți colaboratorii văd în timp real cine ocupă spațiul, pentru ce activitate și în ce interval."],
       ["Acces controlat", "Tu decizi cine poate rezerva, cine poate anula și cine are doar drept de vizualizare."],
     ],
+    // Funcțiile cheie: titlu, descriere și imaginea de captură din /public.
     features: [
       ["Calendar clar", "Programări pe zi, săptămână și lună, cu vizibilitate rapidă pentru fiecare locație și spațiu.", "/calendar.png"],
       ["Săli și resurse", "Organizează totul pe locații și grupuri. Fiecare rezervare rămâne legată de spațiul, echipa și scopul potrivit.", "/list.png"],
       ["Programări recurente", "Setezi o dată întâlnirile săptămânale, cursurile fixe sau rezervările repetitive, iar Kelunia ocupă restul intervalelor.", "/fixed.png"],
       ["Permisiuni pe roluri", "Administratorii controlează tot, colaboratorii rezervă, iar publicul poate avea doar drept de vizualizare.", "/settings.png"],
     ],
+    // Publicul țintă: emoji, titlu și descriere.
     audiences: [
       ["🏢", "Săli și spații comune", "Pentru săli de meeting, terenuri, spații de training sau locații care trebuie rezervate clar."],
       ["🎓", "Studiouri și săli de curs", "Artiștii, instructorii și profesorii își gestionează singuri intervalele, fără mesaje pierdute."],
       ["💼", "Echipe și birouri shared", "Coordonare simplă pentru echipe hibrid. Vezi cine vine la birou și ce săli sunt ocupate."],
       ["🏘️", "Asociații și rezidențial", "Gestionare transparentă pentru spații comune precum foișor, sală, teren de sport sau parcare. Fără conflicte între vecini."],
     ],
+    // Planurile: nume, preț, perioadă, preț anual, descriere, listă de avantaje, text buton și link.
     plans: [
       ["Trial", "Gratuit", "14 zile", "", "Testare completă fără card de credit.", ["Toate funcțiile incluse", "Setup rapid", "Calendar, săli și echipe", "Programări recurente"], "Începe acum", "/login?mode=trial"],
       ["Standard", "€14.99", "pe locație / lună", "sau €149 / an", "Pentru o locație activă care are nevoie de programări clare.", ["1 locație activă", "Calendar zi / săptămână / lună", "Săli și resurse", "Membri nelimitați", "Roluri basic", "Notificări email", "Export basic"], "Alege Standard", "/login?mode=trial"],
       ["Pro", "€49", "pe workspace / lună", "sau €490 / an", "Pentru echipe care administrează mai multe locații împreună.", ["Tot din Standard", "Administrare multi-location", "Licențiere pe locație activă", "Permisiuni pe roluri", "Notificări pentru grupuri", "Audit log"], "Alege Pro", "/login?mode=trial"],
       ["Business", "Contact", "pentru organizații", "", "Pentru fluxuri speciale, onboarding și integrare personalizată.", ["Tot din Pro", "Onboarding personalizat", "Import date", "Integrări custom", "Suport prioritar", "Limite personalizate"], "Contactează-ne", "mailto:contact@kelunia.com"],
     ],
+    // Întrebările frecvente: întrebare + răspuns.
     faqs: [
       ["Cum funcționează licențele?", "Fiecare locație activă necesită o licență. Standard este pentru o singură locație, iar Pro este destinat echipelor care administrează mai multe locații împreună."],
       ["Pot testa gratuit?", "Da. Ai 14 zile de testare gratuită, fără card de credit, ca să vezi dacă se potrivește fluxului tău."],
@@ -182,11 +190,13 @@ const copy: Record<SupportedLocale, LandingCopy> = {
       ["¿Para quién es Kelunia?", "Para cualquier organización que reserva espacios: salas, despachos, estudios, oficinas compartidas, pistas o ubicaciones de alquiler."],
     ],
   },
+  // Limbile completate mai jos pornind de la engleză, ca orice text netradus să rămână afișabil.
   it: {} as LandingCopy,
   fr: {} as LandingCopy,
   pt: {} as LandingCopy,
 };
 
+// Italiana: suprascrie textele engleze cu variantele italiene.
 copy.it = {
   ...copy.en,
   nav: "Navigazione principale",
@@ -237,6 +247,7 @@ copy.it = {
   ],
 };
 
+// Franceza: suprascrie textele engleze cu variantele franceze.
 copy.fr = {
   ...copy.en,
   nav: "Navigation principale",
@@ -287,6 +298,7 @@ copy.fr = {
   ],
 };
 
+// Portugheza: suprascrie textele engleze cu variantele portugheze.
 copy.pt = {
   ...copy.en,
   nav: "Navegação principal",
@@ -337,6 +349,7 @@ copy.pt = {
   ],
 };
 
+// Buton de acțiune: linkurile „mailto:" devin legătură simplă, restul navigare internă Next.
 function LandingCta({ href, children }: { href: string; children: ReactNode }) {
   if (href.startsWith("mailto:")) {
     return <a href={href} className="secondary-button">{children}</a>;
@@ -345,10 +358,12 @@ function LandingCta({ href, children }: { href: string; children: ReactNode }) {
   return <Link href={href} className="secondary-button">{children}</Link>;
 }
 
+// Componenta paginii: ține limba aleasă și desenează secțiunile cu textele ei.
 export default function LandingPage() {
   const [language, setLanguage] = useState<SupportedLocale>("ro");
   const text = copy[language] || copy.ro;
 
+  // La încărcare alege limba din ?lang= sau din ultima salvată în browser și o reține.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const storedLanguage = window.localStorage.getItem("kelunia-language");
@@ -359,6 +374,7 @@ export default function LandingPage() {
     window.localStorage.setItem("kelunia-language", initialLanguage);
   }, []);
 
+  // Schimbarea limbii din selector: o salvează și o pune în adresă fără a reîncărca pagina.
   function changeLanguage(nextLanguage: SupportedLocale) {
     setLanguage(nextLanguage);
     window.localStorage.setItem("kelunia-language", nextLanguage);
@@ -369,9 +385,11 @@ export default function LandingPage() {
 
   return (
     <main className="landing-shell">
+      {/* Dacă vizitatorul e deja autentificat, îl trimite direct în aplicație. */}
       <AppEntryRedirect />
 
       <div className="landing-public-content">
+        {/* Bara de sus: logo, selectorul de limbă și butonul de autentificare. */}
         <nav className="landing-nav" aria-label={text.nav}>
           <Link href="/" className="landing-brand" aria-label="Kelunia">
             <img src="/icon-192.png" alt="" />
@@ -390,6 +408,7 @@ export default function LandingPage() {
           </div>
         </nav>
 
+        {/* Hero: titlul mare, scurta introducere și butoanele „Autentificare" / „Începe testarea". */}
         <section className="landing-hero">
           <div className="landing-hero-content">
             <span className="eyebrow">{text.eyebrow}</span>
@@ -402,6 +421,7 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* „De ce Kelunia": cele trei beneficii principale. */}
         <section className="landing-section landing-problems" aria-labelledby="problems-title">
           <div className="landing-section-head">
             <span className="eyebrow">{text.why}</span>
@@ -419,6 +439,7 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* Funcțiile cheie, cu captură de ecran pentru fiecare. */}
         <section className="landing-section" id="features" aria-labelledby="features-title">
           <div className="landing-section-head">
             <span className="eyebrow">{text.featuresEyebrow}</span>
@@ -436,6 +457,7 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* Pentru cine este aplicația. */}
         <section className="landing-section landing-audience" aria-labelledby="audience-title">
           <div className="landing-section-head">
             <span className="eyebrow">{text.audienceEyebrow}</span>
@@ -453,6 +475,7 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* Planurile și prețurile. */}
         <section className="landing-section" id="plans" aria-labelledby="plans-title">
           <div className="landing-section-head">
             <span className="eyebrow">{text.plansEyebrow}</span>
@@ -479,8 +502,10 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* Formular pentru cine vrea să se alăture comunității. */}
         <CommunityApplicationSection />
 
+        {/* Întrebări frecvente. */}
         <section className="landing-section landing-faq" aria-labelledby="faq-title">
           <div className="landing-section-head">
             <span className="eyebrow">{text.faqEyebrow}</span>
@@ -497,6 +522,7 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* Înscriere la newsletter, apel final la acțiune și linkurile legale din subsol. */}
         <LandingNewsletterSection />
         <LandingFinalCta />
         <footer className="landing-legal-footer">

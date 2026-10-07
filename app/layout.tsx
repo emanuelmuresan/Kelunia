@@ -1,3 +1,4 @@
+// Layout-ul rădăcină al aplicației: se aplică tuturor paginilor (stiluri, autentificare, înregistrare PWA, confirmări).
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { ShellModeClass } from "@/components/ShellModeClass";
@@ -6,6 +7,7 @@ import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import PwaRegister from "./pwa-register";
 
+// Metadatele implicite ale aplicației (titlu, descriere, manifest PWA, iconițe pentru iOS).
 export const metadata: Metadata = {
   title: "Kelunia",
   description: "Kelunia organizeaza programari, sali, locatii, echipe si programari recurente intr-un singur loc.",
@@ -21,6 +23,7 @@ export const metadata: Metadata = {
   },
 };
 
+// Setări de afișare pe mobil: culoarea barei de sistem și folosirea întregului ecran (inclusiv zona cu „notch").
 export const viewport: Viewport = {
   themeColor: "#1787ff",
   width: "device-width",
@@ -28,6 +31,7 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
+// Structura HTML comună; textul aplicației este implicit în română.
 export default function RootLayout({
   children,
 }: {
@@ -36,6 +40,7 @@ export default function RootLayout({
   return (
     <html lang="ro">
       <body>
+        {/* Script mic care rulează înainte de pagină și marchează <html> dacă aplicația rulează ca PWA instalat sau în shell-ul nativ Capacitor, ca să aplicăm stilurile potrivite. */}
         <Script id="kelunia-shell-mode" strategy="beforeInteractive">
           {`
             (function () {
@@ -58,12 +63,15 @@ export default function RootLayout({
             })();
           `}
         </Script>
+        {/* Totul din aplicație stă în furnizorul de autentificare, iar confirmările (ștergere etc.) au propriul furnizor. */}
         <AuthProvider>
+          {/* Marchează rapid modul de afișare și înregistrează service worker-ul (PWA). */}
           <ShellModeClass />
           <PwaRegister />
           <ConfirmProvider>
             {children}
           </ConfirmProvider>
+          {/* Subsol comun cu semnătura aplicației. */}
           <footer className="app-footer">
             <img src="/semnatura.png" alt="Semnătură" />
           </footer>

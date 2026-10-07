@@ -1,5 +1,7 @@
 "use client";
 
+// Pagina de autentificare: conectare, cont de probă (trial), înregistrare cu cod de acces/licență și resetarea parolei.
+// Orice cont nou trebuie să-și verifice emailul înainte de a intra în aplicație.
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -21,12 +23,15 @@ import { normalizeAllowedRoomIds, normalizeRoomAccessMode } from "@/lib/room-acc
 import { passwordSecurityError } from "@/lib/security/password";
 import type { RoomAccessMode } from "@/lib/types/domain";
 
+// Cele patru moduri ale formularului; un singur formular le servește pe toate.
 type AuthMode = "login" | "trial" | "register" | "reset";
 
+// Transformă codul tastat într-un id de document valid (majuscule, fără caractere speciale).
 function accessCodeDocumentId(code: string) {
   return code.trim().toUpperCase().replace(/[^A-Z0-9_-]+/g, "-").replace(/^-+|-+$/g, "");
 }
 
+// Citește din documentul codului câte utilizări are voie și câte a avut deja.
 function accessCodeUsage(data: Record<string, unknown>, role: UserRole) {
   return {
     active: data.active !== false,
@@ -47,6 +52,7 @@ function isAccessCodeExpired(data: Record<string, unknown>) {
   return expiresAt.toMillis() <= Date.now();
 }
 
+// Verifică dacă un cod de acces poate fi folosit (activ, neexpirat, cu utilizări rămase); altfel aruncă o eroare clară.
 function assertAccessCodeCanBeUsed(data: Record<string, unknown>, role: UserRole) {
   const usage = accessCodeUsage(data, role);
 
@@ -65,16 +71,19 @@ function assertAccessCodeCanBeUsed(data: Record<string, unknown>, role: UserRole
   return usage;
 }
 
+// Verifică dacă o licență există și nu a fost deja folosită, revendicată, dezactivată sau ștearsă.
 function assertLicenseCodeCanBeUsed(exists: boolean, data: Record<string, unknown>) {
   if (!exists || data.used === true || data.claimed === true || data.active === false || data.deleted === true) {
     throw new Error("Codul de licență nu este valid sau a fost folosit deja.");
   }
 }
 
+// Curăță numele afișat: fără spații la capete și fără spații duble.
 function normalizeDisplayName(value: string) {
   return value.trim().replace(/\s+/g, " ");
 }
 
+// Cere cel puțin două cuvinte (nume și prenume), fiecare de minimum două litere.
 function assertFullName(value: string) {
   const parts = normalizeDisplayName(value).split(" ").filter(Boolean);
 
@@ -83,6 +92,7 @@ function assertFullName(value: string) {
   }
 }
 
+// Traduce erorile tehnice (Firebase, rețea, timeout) în mesaje ușor de înțeles pentru utilizator.
 function readableError(message: string) {
   if (message.includes("auth/too-many-requests")) {
     return "Prea multe încercări într-un timp scurt. Așteaptă puțin și încearcă din nou.";
@@ -127,6 +137,7 @@ function readableError(message: string) {
   return message.replace("Firebase: ", "");
 }
 
+// Oprește o promisiune care durează prea mult și o transformă într-o eroare cu mesajul dat.
 function withTimeout<T>(promise: Promise<T>, ms: number, message: string) {
   return Promise.race([
     promise,
@@ -136,6 +147,8 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string) {
   ]);
 }
 
+// Verifică dacă Firebase Auth poate fi contactat, cu o cerere de test care nu poate reuși (cont inexistent).
+// Dacă serverul răspunde cu 5xx sau nu răspunde la timp, utilizatorul primește un mesaj despre conexiune.
 async function verifyFirebaseAuthConnection() {
   const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
 
@@ -164,11 +177,13 @@ async function verifyFirebaseAuthConnection() {
   }
 }
 
+// Trimite emailul de verificare și deconectează utilizatorul (nu rămâne autentificat până nu confirmă emailul).
 async function sendVerificationAndSignOut(language: AppLanguage) {
   await sendCustomVerificationEmail(language);
   await signOut(auth);
 }
 
+// "sent" = un email nou a plecat; "throttled" = unul a fost trimis cu puțin timp în urmă.
 // "sent" = a fresh email went out; "throttled" = one was sent a moment ago.
 async function resendVerificationBeforeSignOut(language: AppLanguage): Promise<"sent" | "throttled"> {
   try {
@@ -184,6 +199,7 @@ async function resendVerificationBeforeSignOut(language: AppLanguage): Promise<"
   }
 }
 
+// Apelează funcția cloud care trimite emailul de verificare în limba aleasă.
 async function sendCustomVerificationEmail(language: AppLanguage) {
   const sendVerification = httpsCallable<{ language: AppLanguage }, { sent?: boolean; throttled?: boolean }>(
     cloudFunctions,
@@ -193,18 +209,22 @@ async function sendCustomVerificationEmail(language: AppLanguage) {
   return response.data;
 }
 
+// Apelează funcția cloud care trimite emailul de resetare a parolei.
 async function sendCustomPasswordResetEmail(email: string, language: AppLanguage) {
   const sendPasswordReset = httpsCallable(cloudFunctions, "sendAuthPasswordResetEmail");
   await sendPasswordReset({ email, language });
 }
 
+// Componenta paginii; ține starea formularului și toate acțiunile de autentificare.
 export default function LoginPage() {
   const [mode, setMode] = useState<AuthMode>("login");
+  // Previne ca un submit în curs să fie întrerupt de deconectarea automată a utilizatorilor neverificați.
   const submittingRef = useRef(false);
   const [emailInput, setEmailInput] = useState("");
   // Firebase Auth lowercases addresses and firestore.rules require the profile's
   // email to equal the token's, so a typed "Dan@Yahoo.com" (or a trailing space)
   // created the account and then got the profile write rejected as a permission error.
+  // Emailul folosit în aplicație este mereu normalizat: fără spații, cu litere mici.
   const email = emailInput.trim().toLowerCase();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -218,6 +238,7 @@ export default function LoginPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
 
+  // Detectează dacă aplicația rulează instalată (PWA/Capacitor), ca să ascundă linkul „înapoi acasă”.
   useEffect(() => {
     const updateShellMode = () => {
       setInstalledAppShell(isInstalledAppShell());
@@ -229,6 +250,7 @@ export default function LoginPage() {
     return () => window.clearTimeout(delayedUpdate);
   }, []);
 
+  // Citește din adresă invitația (cod, email, mod, limbă) și precompletează formularul.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const invitationCode = params.get("invite") || params.get("code") || params.get("cod") || "";
@@ -255,6 +277,7 @@ export default function LoginPage() {
     }
   }, []);
 
+  // Schimbă limba interfeței, o reține local și o scrie în adresă.
   function changeLanguage(nextLanguage: AppLanguage) {
     setLanguage(nextLanguage);
     window.localStorage.setItem("kelunia-language", nextLanguage);
@@ -263,6 +286,7 @@ export default function LoginPage() {
     window.history.replaceState(null, "", url.toString());
   }
 
+  // Un utilizator cu emailul verificat merge direct în dashboard; unul neverificat este deconectat.
   useEffect(() => {
     if (!authLoading && user?.emailVerified) {
       router.replace("/dashboard");
@@ -277,6 +301,8 @@ export default function LoginPage() {
     }
   }, [authLoading, router, user]);
 
+  // Creează contul cu cod de acces: utilizator Auth, apoi profilul și consumarea codului într-o singură tranzacție.
+  // Dacă orice pas eșuează, contul și profilul create pe jumătate sunt șterse.
   async function createProfile(
     role: UserRole,
     createdLocationName: string,
@@ -287,6 +313,7 @@ export default function LoginPage() {
     roomAccess: RoomAccessMode = "all",
     allowedRoomIds: string[] = []
   ) {
+    // Curăță și validează datele primite din cod înainte de a le scrie.
     const cleanLocationId = createdLocationId.trim();
     const cleanGroupName = role === "manager" ? "" : assignedGroupName.trim();
     const cleanAccessCodeId = accessCodeId.trim();
@@ -301,6 +328,7 @@ export default function LoginPage() {
       throw new Error("Codul de acces nu are un grup setat. Cere un cod nou de la administrator.");
     }
 
+    // Contul Auth se creează primul; fără el regulile Firestore nu permit scrierea profilului.
     const accessCodeRef = !isOwner && cleanAccessCodeId ? doc(db, "accessCodes", cleanAccessCodeId) : null;
     let profileCreated = false;
     let resolvedLocationName = createdLocationName.trim() || defaultLocationName;
@@ -308,6 +336,7 @@ export default function LoginPage() {
     const userRef = doc(db, "users", result.user.uid);
 
     try {
+      // Pentru un cod de acces, locația trebuie să existe încă; numele ei se ia din document.
       if (!isOwner) {
         const locationSnap = await getDoc(doc(db, "locations", cleanLocationId));
 
@@ -319,6 +348,7 @@ export default function LoginPage() {
         resolvedLocationName = String(locationData.name ?? locationData.locationName ?? resolvedLocationName).trim() || resolvedLocationName;
       }
 
+      // Profilul inițial al utilizatorului, așa cum îl cer regulile Firestore.
       const profilePayload = {
         uid: result.user.uid,
         email,
@@ -341,7 +371,9 @@ export default function LoginPage() {
         createdAt: Timestamp.now(),
       };
 
+      // Cu cod de acces: profilul și incrementarea utilizărilor se fac atomic, după ce codul este revalidat.
       if (accessCodeRef) {
+        // Dacă între timp codul s-a schimbat (rol, locație, grup, camere), înregistrarea este refuzată.
         await runTransaction(db, async (transaction) => {
           const codeSnap = await transaction.get(accessCodeRef);
 
@@ -382,12 +414,15 @@ export default function LoginPage() {
             lastUsedByUid: result.user.uid,
           });
         });
+      // Fără cod de acces (proprietarul): se scrie doar profilul.
       } else {
         await setDoc(userRef, profilePayload);
       }
 
+      // Profilul e gata; urmează emailul de verificare și deconectarea.
       profileCreated = true;
       await sendVerificationAndSignOut(language);
+    // La eroare se șterge ce s-a creat parțial, ca să nu rămână conturi blocate.
     } catch (profileError) {
       if (profileCreated) {
         await deleteDoc(userRef).catch((deleteProfileError) => {
@@ -403,6 +438,7 @@ export default function LoginPage() {
     }
   }
 
+  // Creează un cont de probă: manager fără locație, care își configurează locația după prima conectare.
   async function createTrialProfile() {
     const result = await createUserWithEmailAndPassword(auth, email, password);
     const userRef = doc(db, "users", result.user.uid);
@@ -443,7 +479,9 @@ export default function LoginPage() {
     }
   }
 
+  // Creează un cont manager pe baza unui cod de licență, revendicând licența într-o tranzacție.
   async function createLicensedProfile(licenseId: string, code: string) {
+    // Verificare rapidă înainte de a crea contul Auth, ca să nu rămână conturi inutile.
     const licenseRef = doc(db, "licenses", licenseId);
     const preflightLicenseSnap = await getDoc(licenseRef);
 
@@ -453,6 +491,7 @@ export default function LoginPage() {
     const userRef = doc(db, "users", result.user.uid);
 
     try {
+      // Tranzacția scrie profilul și marchează licența ca revendicată; reverificarea evită folosirea dublă a licenței.
       await runTransaction(db, async (transaction) => {
         const licenseSnap = await transaction.get(licenseRef);
         const licenseData = licenseSnap.data() ?? {};
@@ -509,16 +548,19 @@ export default function LoginPage() {
     }
   }
 
+  // Trimiterea formularului: acțiunea depinde de modul curent.
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
     setMessage("");
     setLoading(true);
+    // Marchează submit-ul ca activ (vezi efectul care deconectează utilizatorii neverificați).
     submittingRef.current = true;
 
     try {
       await ensureAuthPersistence();
 
+      // Conectare: verifică rețeaua, autentifică, apoi cere emailul verificat.
       if (mode === "login") {
         await verifyFirebaseAuthConnection();
         const credential = await withTimeout(
@@ -527,6 +569,7 @@ export default function LoginPage() {
           "Autentificarea nu a raspuns la timp."
         );
 
+        // Email neverificat: se retrimite verificarea și utilizatorul este deconectat.
         if (!credential.user.emailVerified) {
           const outcome = await resendVerificationBeforeSignOut(language);
           setError(appText(language, outcome === "throttled" ? "auth.unverifiedAlreadySent" : "auth.unverifiedResent"));
@@ -537,12 +580,14 @@ export default function LoginPage() {
         return;
       }
 
+      // Resetare parolă: trimite emailul de resetare.
       if (mode === "reset") {
         await sendCustomPasswordResetEmail(email, language);
         setMessage("Emailul de resetare a fost trimis.");
         return;
       }
 
+      // Cont de probă: validează parolele, numele și parola, apoi creează profilul.
       if (mode === "trial") {
         if (password !== confirmPassword) {
           throw new Error("Parolele nu se potrivesc.");
@@ -564,6 +609,7 @@ export default function LoginPage() {
         return;
       }
 
+      // Înregistrare: validează câmpurile, apoi decide între cod de acces și cod de licență.
       if (mode === "register") {
         if (password !== confirmPassword) {
           throw new Error("Parolele nu se potrivesc.");
@@ -577,6 +623,7 @@ export default function LoginPage() {
           throw new Error(passwordError);
         }
 
+        // Un document accessCodes cu acest id înseamnă cod de acces.
         const cleanAccessCode = accessCodeDocumentId(accessCode);
 
         if (!cleanAccessCode) {
@@ -592,6 +639,7 @@ export default function LoginPage() {
         let roomAccess: RoomAccessMode = "all";
         let allowedRoomIds: string[] = [];
 
+        // Cod de acces existent: se citesc rolul, locația, grupul și camerele permise din document.
         if (accessCodeSnap.exists()) {
           const accessCodeData = accessCodeSnap.data() ?? {};
           role = normalizeRole(accessCodeData.role);
@@ -614,6 +662,7 @@ export default function LoginPage() {
           return;
         }
 
+        // Altfel codul este tratat ca licență pentru un manager nou.
         await createLicensedProfile(cleanAccessCode, accessCode.trim());
         setMode("login");
         setPassword("");
@@ -621,6 +670,7 @@ export default function LoginPage() {
         setMessage(appText(language, "auth.verificationSent"));
         return;
       }
+    // Orice eroare devine un mesaj lizibil; blocarea submit-ului se eliberează mereu.
     } catch (err) {
       setError(readableError(err instanceof Error ? err.message : "A apărut o eroare."));
     } finally {
@@ -629,6 +679,7 @@ export default function LoginPage() {
     }
   }
 
+  // Titlul și subtitlul se aleg după modul curent.
   const title = {
     login: appText(language, "auth.title.login"),
     trial: appText(language, "auth.title.trial"),
@@ -642,6 +693,7 @@ export default function LoginPage() {
     reset: appText(language, "auth.subtitle.reset"),
   }[mode];
 
+  // Cât se încarcă sesiunea (sau utilizatorul e deja verificat și va fi redirecționat) se arată ecranul de încărcare.
   if (authLoading || user?.emailVerified) {
     return (
       <main className="loading-screen">
@@ -654,9 +706,11 @@ export default function LoginPage() {
     );
   }
 
+  // Formularul propriu-zis.
   return (
     <main className="auth-shell">
       <section className="auth-card">
+        {/* Bara de sus: link înapoi și selectorul de limbă. */}
         <div className="auth-top-row">
           {!installedAppShell && <Link href="/" className="back-link">← {appText(language, "action.backHome")}</Link>}
           <label className="language-selector auth-language-selector">
@@ -669,6 +723,7 @@ export default function LoginPage() {
           </label>
         </div>
 
+        {/* Antetul cardului: sigla, titlul și subtitlul modului. */}
         <div className="auth-card-head">
           <img src="/icon-192.png" alt="Kelunia" />
           <div>
@@ -678,15 +733,18 @@ export default function LoginPage() {
           </div>
         </div>
 
+        {/* Comutator între conectare, cont de probă și înregistrare. */}
         <div className="auth-switcher" role="group" aria-label={appText(language, "auth.type")}>
           <button className={mode === "login" ? "active" : ""} onClick={() => setMode("login")} type="button">{appText(language, "auth.mode.login")}</button>
           <button className={mode === "trial" ? "active" : ""} onClick={() => setMode("trial")} type="button">{appText(language, "auth.mode.trial")}</button>
           <button className={mode === "register" ? "active" : ""} onClick={() => setMode("register")} type="button">{appText(language, "auth.mode.code")}</button>
         </div>
 
+        {/* Mesajele de eroare și de succes. */}
         {error && <p className="error-line">{error}</p>}
         {message && <p className="success-line">{message}</p>}
 
+        {/* Câmpurile se afișează în funcție de mod. */}
         <form className="auth-form" onSubmit={handleSubmit}>
           <label>
             {appText(language, "auth.email")}
@@ -704,6 +762,7 @@ export default function LoginPage() {
             />
           </label>
 
+          {/* Parola (nu se cere la resetare). */}
           {mode !== "reset" && (
             <label>
               {appText(language, "auth.password")}
@@ -719,6 +778,7 @@ export default function LoginPage() {
             </label>
           )}
 
+          {/* Confirmarea parolei (doar la creare de cont). */}
           {(mode === "register" || mode === "trial") && (
             <label>
               {appText(language, "auth.confirmPassword")}
@@ -734,6 +794,7 @@ export default function LoginPage() {
             </label>
           )}
 
+          {/* Numele complet (doar la creare de cont). */}
           {(mode === "register" || mode === "trial") && (
             <label>
               {appText(language, "auth.displayName")}
@@ -747,6 +808,7 @@ export default function LoginPage() {
             </label>
           )}
 
+          {/* Codul de acces sau de licență (doar la înregistrare). */}
           {mode === "register" && (
             <label>
               {appText(language, "auth.accessCode")}
@@ -759,17 +821,20 @@ export default function LoginPage() {
             </label>
           )}
 
+          {/* Explicația codului de acces. */}
           {mode === "register" && (
             <>
               <p className="muted-note">{appText(language, "auth.accessCodeHelp")}</p>
             </>
           )}
 
+          {/* Butonul principal; textul urmează modul și starea de încărcare. */}
           <button className="primary-button" disabled={loading} type="submit">
             {loading ? appText(language, "auth.loading") : mode === "login" ? appText(language, "auth.signIn") : mode === "reset" ? appText(language, "auth.resetSubmit") : mode === "trial" ? appText(language, "auth.trialSubmit") : appText(language, "auth.createAccount")}
           </button>
         </form>
 
+        {/* Link între conectare și resetarea parolei. */}
         <div className="auth-links">
           {mode === "login" ? (
             <button onClick={() => setMode("reset")} type="button">{appText(language, "auth.forgotPassword")}</button>
