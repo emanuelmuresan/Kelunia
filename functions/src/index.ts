@@ -135,6 +135,7 @@ type NotificationTokenDocument = {
   token?: string;
   tokenType?: "apns" | "fcm";
   uid?: string;
+  notifyNewBookings?: boolean;
 };
 
 function normalizeRole(role: unknown): UserRole {
@@ -452,29 +453,73 @@ async function deliverPush(recipients: NotificationTokenDocument[], message: Pus
 
 const ownerAccountEmail = "emanuelmuresan@gmail.com";
 
-async function loadLocationPushTokens(locationId: string) {
-  const snapshot = await db.collection("notificationTokens").where("locationId", "==", locationId).get();
-  return snapshot.docs.map((tokenDoc) => tokenDoc.data() as NotificationTokenDocument).filter((item) => Boolean(item.token));
-}
+type PushRecipient = {
+  email: string;
+  groupName: string;
+  isAdmin: boolean;
+  token: NotificationTokenDocument;
+  wantsBookingPush: boolean;
+};
 
-// Administrators of a location: users whose role normalizes to manager, plus the
-// platform owner (whose profile is not tied to a single location).
-async function loadLocationAdminUids(locationId: string) {
-  const snapshot = await db.collection("users").where("locationId", "==", locationId).get();
-  return new Set(
-    snapshot.docs
-      .filter((userDoc) => normalizeRole((userDoc.data() as UserProfile).role) === "manager")
-      .map((userDoc) => userDoc.id)
+// Resolves who a location's push tokens really belong to *now*: role and group
+// come from the user's current profile, not from what the token stored when it
+// was registered. Tokens whose user no longer belongs to the location (removed
+// account, moved elsewhere) are dropped and cleaned up. The platform owner has
+// no single location, so is matched by email.
+async function loadLocationPushRecipients(locationId: string) {
+  const [tokenSnapshot, userSnapshot] = await Promise.all([
+    db.collection("notificationTokens").where("locationId", "==", locationId).get(),
+    db.collection("users").where("locationId", "==", locationId).get(),
+  ]);
+  const members = new Map(
+    userSnapshot.docs.map((userDoc) => {
+      const profile = userDoc.data() as UserProfile;
+      return [userDoc.id, {
+        email: cleanEmail(profile.email),
+        groupName: cleanText(profile.groupName, 120),
+        isAdmin: normalizeRole(profile.role) === "manager",
+      }] as const;
+    })
   );
+  const recipients: PushRecipient[] = [];
+  const staleRefs: FirebaseFirestore.DocumentReference[] = [];
+
+  tokenSnapshot.docs.forEach((tokenDoc) => {
+    const token = tokenDoc.data() as NotificationTokenDocument;
+
+    if (!token.token) {
+      return;
+    }
+
+    const member = members.get(String(token.uid ?? ""));
+    const isOwner = cleanEmail(token.email) === ownerAccountEmail;
+
+    if (!member && !isOwner) {
+      staleRefs.push(tokenDoc.ref);
+      return;
+    }
+
+    recipients.push({
+      email: member?.email || cleanEmail(token.email),
+      groupName: member?.groupName ?? "",
+      isAdmin: isOwner || member?.isAdmin === true,
+      token,
+      wantsBookingPush: token.notifyNewBookings !== false,
+    });
+  });
+
+  if (staleRefs.length > 0) {
+    const batch = db.batch();
+    staleRefs.slice(0, 450).forEach((ref) => batch.delete(ref));
+    await batch.commit().catch((error) => logger.warn("Stale notification token cleanup failed", { error }));
+  }
+
+  return recipients;
 }
 
-function isAdminToken(item: NotificationTokenDocument, adminUids: Set<string>) {
-  return adminUids.has(String(item.uid ?? "")) || cleanEmail(item.email) === ownerAccountEmail;
-}
-
-function isGroupToken(item: NotificationTokenDocument, group: string) {
+function isGroupRecipient(item: PushRecipient, group: string) {
   const groupKey = group.trim().toLowerCase();
-  return Boolean(groupKey) && cleanText(item.groupName, 120).toLowerCase() === groupKey;
+  return Boolean(groupKey) && item.groupName.toLowerCase() === groupKey;
 }
 
 type NowPushAudience = {
@@ -483,13 +528,13 @@ type NowPushAudience = {
   scope: "group" | "location";
 };
 
-function nowPushCovers(item: NotificationTokenDocument, group: string, nowPush: NowPushAudience) {
+function nowPushCovers(item: PushRecipient, group: string, nowPush: NowPushAudience) {
   if (nowPush.scope === "location") {
     return true;
   }
 
-  return isGroupToken(item, group)
-    && (nowPush.audience !== "selected" || nowPush.recipients.includes(cleanEmail(item.email)));
+  return isGroupRecipient(item, group)
+    && (nowPush.audience !== "selected" || nowPush.recipients.includes(item.email));
 }
 
 async function sendInstantBookingPush(
@@ -499,10 +544,10 @@ async function sendInstantBookingPush(
   group: string,
   nowPush: NowPushAudience
 ) {
-  const locationTokens = await loadLocationPushTokens(locationId);
-  const recipients = locationTokens.filter((item) => nowPushCovers(item, group, nowPush));
+  const recipients = (await loadLocationPushRecipients(locationId))
+    .filter((item) => item.wantsBookingPush && nowPushCovers(item, group, nowPush));
 
-  return deliverPush(recipients, {
+  return deliverPush(recipients.map((item) => item.token), {
     bookingId,
     body: bookingNotificationBody(bookingPayload),
     tag: `booking-now-${bookingId}`,
@@ -521,17 +566,14 @@ async function sendNewBookingPush(
   authorEmail: string,
   nowPush: NowPushAudience | null
 ) {
-  const [locationTokens, adminUids] = await Promise.all([
-    loadLocationPushTokens(locationId),
-    loadLocationAdminUids(locationId),
-  ]);
-  const recipients = locationTokens.filter((item) =>
-    cleanEmail(item.email) !== authorEmail
-    && (isAdminToken(item, adminUids) || isGroupToken(item, group))
+  const recipients = (await loadLocationPushRecipients(locationId)).filter((item) =>
+    item.wantsBookingPush
+    && item.email !== authorEmail
+    && (item.isAdmin || isGroupRecipient(item, group))
     && !(nowPush && nowPushCovers(item, group, nowPush))
   );
 
-  return deliverPush(recipients, {
+  return deliverPush(recipients.map((item) => item.token), {
     bookingId,
     body: bookingNotificationBody(bookingPayload),
     tag: `booking-new-${bookingId}`,
@@ -1075,6 +1117,7 @@ export const registerNotificationToken = onCall(
         platform: cleanText(payload.platform || "pwa", 40),
         token,
         tokenType: payload.tokenType === "apns" ? "apns" : "fcm",
+        notifyNewBookings: payload.notifyNewBookings !== false,
         uid: request.auth.uid,
         updatedAt: FieldValue.serverTimestamp(),
       },
@@ -1686,13 +1729,10 @@ export const notifySpaceExpiry = onSchedule(
 
     for (const [locationId, items] of expiringByLocation) {
       try {
-        const [locationTokens, adminUids] = await Promise.all([
-          loadLocationPushTokens(locationId),
-          loadLocationAdminUids(locationId),
-        ]);
+        const recipients = await loadLocationPushRecipients(locationId);
 
         await deliverPush(
-          locationTokens.filter((item) => isAdminToken(item, adminUids)),
+          recipients.filter((item) => item.isAdmin).map((item) => item.token),
           {
             bookingId: "",
             body: `Provizoriu până azi: ${items.join(", ")}. Dispare la miezul nopții - prelungește din Setări dacă mai e nevoie.`,
