@@ -1,8 +1,10 @@
+// Teste pentru useRequiredGroupSetup: grup gol, grup inexistent, fără internet, salvarea cu audit și calculul mustChooseGroup.
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useRequiredGroupSetup } from "./useRequiredGroupSetup";
 
+// Simulări pentru autentificare și Firestore (setDoc și doc), ca testele să nu scrie nicăieri.
 vi.mock("@/context/AuthContext", () => ({
   useAuth: () => ({ profile: null }),
 }));
@@ -14,6 +16,7 @@ vi.mock("firebase/firestore", () => ({
 
 const { setDoc } = await import("firebase/firestore");
 
+// Ajutor: montează hook-ul cu un utilizator și un profil fără grup, plus funcții simulate; parametrii se pot suprascrie.
 type Overrides = Partial<Parameters<typeof useRequiredGroupSetup>[0]>;
 
 function setup(overrides: Overrides = {}) {
@@ -58,10 +61,12 @@ function setup(overrides: Overrides = {}) {
   };
 }
 
+// Simulările se curăță înainte de fiecare test.
 beforeEach(() => {
   vi.clearAllMocks();
 });
 
+// Cazurile testate.
 describe("useRequiredGroupSetup", () => {
   it("rejects an empty group draft without writing", async () => {
     const { view, setGroupSetupError } = setup();
