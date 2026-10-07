@@ -1,11 +1,12 @@
 "use client";
 
-import { useDismissGuard } from "@/features/shell/components/ConfirmDialog";
 import { useState } from "react";
 
 import type { AppLanguage } from "@/context/AuthContext";
-import { SettingsBlock } from "@/features/settings/components/SettingsBlock";
 import { tickerTextColor } from "@/features/calendar/components/UpcomingTicker";
+import { ColorPicker } from "@/features/settings/components/ColorPicker";
+import { SettingsBlock } from "@/features/settings/components/SettingsBlock";
+import { useDismissGuard } from "@/features/shell/components/ConfirmDialog";
 import { appText, type UiCopyKey } from "@/lib/i18n/app-copy-catalog";
 import type { UpcomingTickerSettings } from "@/features/calendar/hooks/useUpcomingTickerSettings";
 
@@ -16,12 +17,15 @@ type TickerEditorModalProps = {
   onClose: () => void;
 };
 
+const bandPalette = ["#1787ff", "#10b8d7", "#8b5cf6", "#e35df4", "#b9503d", "#a86716", "#2e9d57", "#16172b", "#ffffff", "#f4c20d"] as const;
+const textPalette = ["#ffffff", "#111827", "#f4c20d", "#1787ff", "#b9503d"] as const;
+
 export function clampTickerLeadDays(text: string, fallback: number) {
   const parsed = Number(text);
   return Number.isInteger(parsed) && parsed >= 1 ? Math.min(parsed, 60) : fallback;
 }
 
-/** Per-device editor for the upcoming-events band. */
+/** Per-device editor for the upcoming-events band. Nothing applies until Save. */
 export function TickerEditorModal({ language, settings, onSave, onClose }: TickerEditorModalProps) {
   const t = (key: UiCopyKey) => appText(language, key);
   const [draft, setDraft] = useState(settings);
@@ -79,15 +83,16 @@ export function TickerEditorModal({ language, settings, onSave, onClose }: Ticke
           </SettingsBlock>
 
           <SettingsBlock title={t("settings.tickerLookBlock")}>
-            <label>
-              {t("settings.tickerColor")}
-              <input
-                type="color"
-                value={draft.color}
+            <div className="color-field">
+              <span>{t("settings.tickerColor")}</span>
+              <ColorPicker
                 disabled={!draft.enabled}
-                onChange={(event) => setDraft((current) => ({ ...current, color: event.target.value }))}
+                hexLabel={t("settings.colorHex")}
+                palette={bandPalette}
+                value={draft.color}
+                onChange={(color) => setDraft((current) => ({ ...current, color }))}
               />
-            </label>
+            </div>
 
             <label className="toggle-row compact-toggle">
               <input
@@ -105,21 +110,19 @@ export function TickerEditorModal({ language, settings, onSave, onClose }: Ticke
             </label>
 
             {draft.textColor !== "" && (
-              <label>
-                {t("settings.tickerTextColor")}
-                <input
-                  type="color"
-                  value={draft.textColor}
+              <div className="color-field">
+                <span>{t("settings.tickerTextColor")}</span>
+                <ColorPicker
                   disabled={!draft.enabled}
-                  onChange={(event) => setDraft((current) => ({ ...current, textColor: event.target.value }))}
+                  hexLabel={t("settings.colorHex")}
+                  palette={textPalette}
+                  value={draft.textColor}
+                  onChange={(textColor) => setDraft((current) => ({ ...current, textColor }))}
                 />
-              </label>
+              </div>
             )}
 
-            <div
-              className="ticker-preview"
-              style={{ backgroundColor: draft.color, color: tickerTextColor(draft) }}
-            >
+            <div className="ticker-preview" style={{ backgroundColor: draft.color, color: tickerTextColor(draft) }}>
               {t("settings.tickerTitle")}
             </div>
           </SettingsBlock>

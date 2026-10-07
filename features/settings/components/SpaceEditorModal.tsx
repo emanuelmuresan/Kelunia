@@ -1,6 +1,7 @@
 "use client";
 
 import type { SpaceEditor } from "@/lib/types/domain";
+import { ColorPicker } from "@/features/settings/components/ColorPicker";
 import { SettingsBlock } from "@/features/settings/components/SettingsBlock";
 import { dateKey } from "@/lib/dates";
 import { groupColorPalette, normalizeGroupColor } from "@/lib/group-colors";
@@ -74,32 +75,15 @@ export function SpaceEditorModal({
           </label>
 
           {!isRoom && (
-            <label>
-              {appText(language, "settings.color")}
-              <div className="group-color-picker">
-                {groupColorPalette.map((color) => (
-                  <button
-                    aria-label={`${appText(language, "settings.color")} ${color}`}
-                    className={normalizeGroupColor(spaceEditor.color) === color ? "active" : ""}
-                    key={color}
-                    onClick={() => onChange({ ...spaceEditor, color })}
-                    style={{ backgroundColor: color }}
-                    type="button"
-                  />
-                ))}
-                <input
-                  aria-label={appText(language, "settings.customColor")}
-                  type="color"
-                  value={normalizeGroupColor(spaceEditor.color) || groupColorPalette[0]}
-                  onChange={(event) =>
-                    onChange({
-                      ...spaceEditor,
-                      color: event.target.value,
-                    })
-                  }
-                />
-              </div>
-            </label>
+            <div className="color-field">
+              <span>{appText(language, "settings.color")}</span>
+              <ColorPicker
+                hexLabel={appText(language, "settings.colorHex")}
+                palette={groupColorPalette}
+                value={normalizeGroupColor(spaceEditor.color) || groupColorPalette[0]}
+                onChange={(color) => onChange({ ...spaceEditor, color })}
+              />
+            </div>
           )}
 
           <SettingsBlock title={appText(language, "settings.blockPeriod")}>

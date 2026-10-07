@@ -110,6 +110,27 @@ test("the only administrator cannot delete their account", async ({ page }) => {
   await expect(dialog.getByRole("button", { name: "Șterge definitiv contul" })).toBeDisabled();
 });
 
+for (const reducedMotion of ["no-preference", "reduce"] as const) {
+  test(`the upcoming-events band keeps flowing (motion: ${reducedMotion})`, async ({ page }) => {
+    await page.emulateMedia({ reducedMotion });
+    await page.addInitScript(() => {
+      localStorage.setItem("kelunia.upcomingTicker", JSON.stringify({ enabled: true, color: "#1787ff", textColor: "", leadDays: 30 }));
+    });
+    await loginAsAdmin(page);
+    await page.getByRole("button", { name: /Calendar/ }).first().click();
+
+    const track = page.locator(".upcoming-ticker-track");
+    await expect(track).toBeVisible();
+    const position = () => track.evaluate((node) => new DOMMatrixReadOnly(getComputedStyle(node).transform).m41);
+
+    const first = await position();
+    await page.waitForTimeout(900);
+    const second = await position();
+
+    expect(second).toBeLessThan(first);
+  });
+}
+
 // Runs last: it switches the seeded admin to English.
 test("messages follow the chosen language", async ({ page }) => {
   await loginAsAdmin(page);

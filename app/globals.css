@@ -4781,6 +4781,7 @@ img {
 }
 
 .upcoming-ticker:hover .upcoming-ticker-track,
+.upcoming-ticker:active .upcoming-ticker-track,
 .upcoming-ticker:focus-within .upcoming-ticker-track {
   animation-play-state: paused;
 }
@@ -4815,16 +4816,6 @@ img {
 
 .upcoming-ticker-what {
   opacity: 0.9;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .upcoming-ticker-track {
-    animation: none;
-  }
-
-  .upcoming-ticker {
-    overflow-x: auto;
-  }
 }
 
 /* Ticker present: shave its height off the fixed month grid so nothing scrolls */
@@ -5043,4 +5034,66 @@ img {
   margin-top: 4px;
   color: var(--amber);
   font-weight: 650;
+}
+
+.color-field {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 750;
+}
+
+.color-picker {
+  display: grid;
+  gap: 10px;
+}
+
+.color-picker-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.color-picker-swatches button {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  box-shadow: 0 0 0 1px var(--line);
+  cursor: pointer;
+}
+
+.color-picker-swatches button.active {
+  box-shadow: 0 0 0 3px var(--blue);
+}
+
+.color-picker-swatches button.active::after {
+  content: "\2713";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.75);
+}
+
+.color-picker-swatches button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.color-picker-hex {
+  display: grid;
+  gap: 4px;
+  font-weight: 650;
+}
+
+.color-picker-hex input {
+  max-width: 9rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }

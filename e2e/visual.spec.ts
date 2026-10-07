@@ -180,3 +180,19 @@ test("capture ticker colors", async ({ page }) => {
     await page.goto("/login");
   }
 });
+
+test("capture inline colour picker", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/login");
+  await page.locator('input[type="email"]').fill(USER.email);
+  await page.locator('input[type="password"]').first().fill(USER.password);
+  await page.locator('form button[type="submit"]').click();
+  await page.locator("main.kelunia-shell").waitFor({ timeout: 30_000 });
+  await page.getByRole("button", { name: /Setări/ }).first().click();
+  await page.locator("article.settings-panel", { hasText: "Bandă evenimente viitoare" }).getByRole("button", { name: "Modifică" }).click();
+  const modal = page.locator('[aria-labelledby="ticker-settings-title"]');
+  await modal.getByLabel("Afișează banda sus (doar pe acest dispozitiv)").check();
+  await modal.getByLabel("Automată (alb pe culori închise, negru pe culori deschise)").uncheck();
+  await modal.evaluate((node) => { node.scrollTop = node.scrollHeight; });
+  await modal.screenshot({ path: "test-results/color-picker.png" });
+});
