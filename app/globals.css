@@ -1222,6 +1222,7 @@ img {
 }
 
 .settings-panel {
+  min-width: 0;
   padding: 18px;
 }
 
@@ -1302,6 +1303,7 @@ img {
 
 .settings-summary-list {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
   margin-top: 16px;
 }
@@ -1325,9 +1327,8 @@ img {
 
 .settings-summary-list strong {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  text-align: right;
 }
 
 .settings-form label,
@@ -2645,7 +2646,7 @@ img {
   }
 
   .settings-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .auth-shell {
@@ -4983,4 +4984,13 @@ img {
   font-size: 0.8rem;
   color: var(--muted);
   line-height: 1.2;
+}
+
+.ticker-color-swatch {
+  display: inline-block;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  vertical-align: middle;
 }

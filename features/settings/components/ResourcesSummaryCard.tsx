@@ -35,27 +35,24 @@ export function ResourcesSummaryCard({
         </div>
       </div>
 
-      <div className="owner-tool-grid">
-        <div className="owner-tool-card">
-          <div>
-            <span className="eyebrow">{roomsLabel}</span>
-            <h3>{rooms.length} {rooms.length === 1 ? "element" : "elemente"}</h3>
-            <p>{rooms.length > 0 ? rooms.slice(0, 3).map((room) => room.name).join(", ") : t("settings.noItems")}</p>
-          </div>
+      <div className="settings-summary-list">
+        <div>
+          <span>{roomsLabel}</span>
+          <strong>
+            {rooms.length > 0 ? `${rooms.length} · ${rooms.slice(0, 3).map((room) => room.name).join(", ")}` : t("settings.noItems")}
+          </strong>
         </div>
-
-        <div className="owner-tool-card">
-          <div>
-            <span className="eyebrow">{groupsLabel}</span>
-            <h3>{groups.length} {groups.length === 1 ? "element" : "elemente"}</h3>
-            <p>{groups.length > 0 ? groups.slice(0, 3).map((group) => group.name).join(", ") : t("settings.noItems")}</p>
-          </div>
+        <div>
+          <span>{groupsLabel}</span>
+          <strong>
+            {groups.length > 0 ? `${groups.length} · ${groups.slice(0, 3).map((group) => group.name).join(", ")}` : t("settings.noItems")}
+          </strong>
         </div>
       </div>
 
-      <div className="modal-actions inline-actions">
+      <div className="settings-card-actions">
         <button className="primary-button compact" onClick={onOpenResourcesManager} type="button">
-          {t("settings.resourcesOpen")}
+          {t("settings.edit")}
         </button>
       </div>
     </article>

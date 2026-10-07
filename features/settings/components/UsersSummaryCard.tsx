@@ -20,23 +20,29 @@ export function UsersSummaryCard({ language, managedUsers, onOpenUsersManager }:
       <div className="section-heading">
         <div>
           <span className="eyebrow">{t("settings.users")}</span>
-          <h2>{managedUsers.length} conturi</h2>
+          <h2>{t("settings.users")}</h2>
         </div>
       </div>
 
-      <div className="owner-tool-card">
+      <div className="settings-summary-list">
         <div>
-          <span className="eyebrow">{t("settings.access")}</span>
-          <h3>{managedUsers.length} {managedUsers.length === 1 ? "utilizator" : "utilizatori"}</h3>
-          <p>
-            {managerCount} administratori · {managedUsers.length - managerCount} colaboratori si oaspeti
-          </p>
+          <span>{t("settings.users")}</span>
+          <strong>{managedUsers.length}</strong>
         </div>
-        <div className="owner-tool-actions">
-          <button className="primary-button compact" onClick={onOpenUsersManager} type="button">
-            {t("settings.users")}
-          </button>
+        <div>
+          <span>{t("settings.administrators")}</span>
+          <strong>{managerCount}</strong>
         </div>
+        <div>
+          <span>{t("role.collaborator")} / {t("role.guest")}</span>
+          <strong>{managedUsers.length - managerCount}</strong>
+        </div>
+      </div>
+
+      <div className="settings-card-actions">
+        <button className="primary-button compact" onClick={onOpenUsersManager} type="button">
+          {t("settings.edit")}
+        </button>
       </div>
     </article>
   );

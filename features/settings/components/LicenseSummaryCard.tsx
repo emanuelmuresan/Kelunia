@@ -61,12 +61,6 @@ export function LicenseSummaryCard({
           <span className="eyebrow">{t("settings.access")}</span>
           <h2>{t("settings.codes")}</h2>
         </div>
-
-        {canManageAccessCodes && (
-          <button className="secondary-button compact" onClick={onOpenCodesEditor} type="button">
-            {t("settings.edit")}
-          </button>
-        )}
       </div>
 
       <div className="settings-summary-list">
@@ -96,6 +90,14 @@ export function LicenseSummaryCard({
           </strong>
         </div>
       </div>
+
+      {canManageAccessCodes && (
+        <div className="settings-card-actions">
+          <button className="primary-button compact" onClick={onOpenCodesEditor} type="button">
+            {t("settings.edit")}
+          </button>
+        </div>
+      )}
     </article>
   );
 }

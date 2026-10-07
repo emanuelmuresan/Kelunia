@@ -21,6 +21,13 @@ export const E2E_USER = {
   displayName: "Membru E2E",
 };
 
+export const E2E_ADMIN = {
+  uid: "e2e-admin-uid-0000000000001",
+  email: "admin@e2e.test",
+  password: "Test123456",
+  displayName: "Admin E2E",
+};
+
 const LOCATION_ID = "loc-e2e";
 const LOCATION_NAME = "Sala E2E";
 const GROUP_NAME = "Grupa E2E";
@@ -41,6 +48,20 @@ async function seedAuth() {
     emailVerified: true,
     displayName: E2E_USER.displayName,
   });
+
+  try {
+    await auth.deleteUser(E2E_ADMIN.uid);
+  } catch {
+    // first run — nothing to delete
+  }
+
+  await auth.createUser({
+    uid: E2E_ADMIN.uid,
+    email: E2E_ADMIN.email,
+    password: E2E_ADMIN.password,
+    emailVerified: true,
+    displayName: E2E_ADMIN.displayName,
+  });
 }
 
 async function seedFirestore() {
@@ -55,6 +76,32 @@ async function seedFirestore() {
     groupName: GROUP_NAME,
     group: GROUP_NAME,
     role: "member",
+    isOwner: false,
+    locationId: LOCATION_ID,
+    locationName: LOCATION_NAME,
+    locationSetupRequired: false,
+    accessCodeId: "",
+    usePin: false,
+    lockOnHide: false,
+    useBiometrics: false,
+    roomAccess: "all",
+    allowedRoomIds: [],
+    language: "ro",
+    notifyGroupBookings: false,
+    notifyFixedGroupSchedules: false,
+    notifyWeekBefore: true,
+    notifyDayBefore: true,
+    notifyOffsets: ["1d", "7d"],
+    notifyOffsetsDays: [1, 7],
+  });
+
+  await db.doc(`users/${E2E_ADMIN.uid}`).set({
+    uid: E2E_ADMIN.uid,
+    email: E2E_ADMIN.email,
+    displayName: E2E_ADMIN.displayName,
+    groupName: "",
+    group: "",
+    role: "manager",
     isOwner: false,
     locationId: LOCATION_ID,
     locationName: LOCATION_NAME,

@@ -16,6 +16,7 @@ import { TickerSettingsCard } from "@/features/settings/components/TickerSetting
 import type { UpcomingTickerSettings } from "@/features/calendar/hooks/useUpcomingTickerSettings";
 import { PagesSettingsCard } from "@/features/settings/components/PagesSettingsCard";
 import { LicenseSummaryCard, type LicenseAccess } from "@/features/settings/components/LicenseSummaryCard";
+import { appText } from "@/lib/i18n/app-copy-catalog";
 import { OwnerLocationsCard } from "@/features/settings/components/OwnerLocationsCard";
 import { ResourcesSummaryCard } from "@/features/settings/components/ResourcesSummaryCard";
 import { UsersSummaryCard } from "@/features/settings/components/UsersSummaryCard";
@@ -319,19 +320,23 @@ export function SettingsView({
             <article className="settings-panel">
               <div className="section-heading">
                 <div>
-                  <span className="eyebrow">Suport</span>
-                  <h2>Rapoarte de problemă</h2>
+                  <span className="eyebrow">{appText(language, "settings.support")}</span>
+                  <h2>{appText(language, "settings.errorReportsTitle")}</h2>
                 </div>
               </div>
-              <p className="muted-note">
-                {errorReports.length} rapoarte
-                {errorReports.filter((report) => report.status === "new").length > 0
-                  ? ` · ${errorReports.filter((report) => report.status === "new").length} nerezolvate`
-                  : ""}
-              </p>
+              <div className="settings-summary-list">
+                <div>
+                  <span>{appText(language, "settings.errorReportsTotal")}</span>
+                  <strong>{errorReports.length}</strong>
+                </div>
+                <div>
+                  <span>{appText(language, "settings.errorReportsUnresolved")}</span>
+                  <strong>{errorReports.filter((report) => report.status === "new").length}</strong>
+                </div>
+              </div>
               <div className="settings-card-actions">
                 <button className="primary-button compact" onClick={() => setErrorReportsOpen(true)} type="button">
-                  Deschide
+                  {appText(language, "settings.openAction")}
                 </button>
               </div>
             </article>

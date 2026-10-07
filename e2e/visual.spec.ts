@@ -105,14 +105,30 @@ test("capture ticker settings editing + empty-state band", async ({ page }) => {
 
   await page.getByRole("button", { name: /Setări/ }).first().click();
   await page.waitForTimeout(500);
-  await page.getByRole("button", { name: "Modifică" }).nth(0).scrollIntoViewIfNeeded();
   const tickerCard = page.locator("article.settings-panel", { hasText: "Bandă evenimente viitoare" });
   await tickerCard.getByRole("button", { name: "Modifică" }).click();
-  const days = tickerCard.locator('input[inputmode="numeric"]');
+  const modal = page.locator('[aria-labelledby="ticker-settings-title"]');
+  const days = modal.locator('input[inputmode="numeric"]');
   await days.fill("");
   await days.pressSequentially("014");
-  await page.screenshot({ path: "test-results/ticker-settings.png", fullPage: true });
+  await modal.screenshot({ path: "test-results/ticker-settings.png" });
   if ((await days.inputValue()) !== "14") {
     throw new Error(`days field shows "${await days.inputValue()}" instead of 14`);
   }
+});
+
+test("capture admin settings: pages summary + modal", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/login");
+  await page.locator('input[type="email"]').fill("admin@e2e.test");
+  await page.locator('input[type="password"]').first().fill("Test123456");
+  await page.locator('form button[type="submit"]').click();
+  await page.locator("main.kelunia-shell").waitFor({ timeout: 30_000 });
+  await page.getByRole("button", { name: /Setări/ }).first().click();
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: "test-results/admin-settings.png", fullPage: true });
+
+  const pagesCard = page.locator("article.settings-panel", { hasText: "Navigare" });
+  await pagesCard.getByRole("button", { name: "Modifică" }).click();
+  await page.locator('[aria-labelledby="pages-settings-title"]').screenshot({ path: "test-results/pages-modal.png" });
 });

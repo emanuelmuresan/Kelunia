@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import type { AppLanguage } from "@/context/AuthContext";
 import { appText, localeLabel, type UiCopyKey } from "@/lib/i18n/app-copy-catalog";
+import { getNewBookingPushPreference } from "@/lib/push-notifications";
 import type { PersonalDraft } from "@/lib/types/domain";
 
 type ProfileSummaryCardProps = {
@@ -78,14 +79,20 @@ export function ProfileSummaryCard({
             <strong>{personalDraft.lockOnHide ? t("settings.active") : t("settings.inactive")}</strong>
           </div>
           {!isOwner && (
-            <div>
-              <span>{t("settings.notifications")}</span>
-              <strong>
-                {personalDraft.notifyGroupBookings
-                  ? `${personalDraft.notifyOffsets.length} active`
-                  : t("settings.inactive")}
-              </strong>
-            </div>
+            <>
+              <div>
+                <span>{t("settings.notifNewBookingsShort")}</span>
+                <strong>{getNewBookingPushPreference() ? t("settings.active") : t("settings.inactive")}</strong>
+              </div>
+              <div>
+                <span>{t("settings.notifReminders")}</span>
+                <strong>
+                  {personalDraft.notifyGroupBookings
+                    ? t("settings.notifMoments").replace("{{count}}", String(personalDraft.notifyOffsets.length))
+                    : t("settings.inactive")}
+                </strong>
+              </div>
+            </>
           )}
         </div>
 
@@ -97,10 +104,10 @@ export function ProfileSummaryCard({
             {t("settings.password")}
           </button>
           <button className="secondary-button compact" onClick={onReportProblem} type="button">
-            Raportează o problemă
+            {t("settings.reportProblem")}
           </button>
           <button className="danger-button compact" onClick={onDeleteAccount} type="button">
-            Șterge contul
+            {t("settings.deleteAccount")}
           </button>
         </div>
 
