@@ -1296,6 +1296,11 @@ export default function KeluniaPage() {
         onOpenPasswordModal={openPasswordModal}
         onHandlePinToggle={handlePinToggle}
         onHandleBiometricsToggle={handleBiometricsToggle}
+        onApplyDevicePush={async () => {
+          if (user && profile) {
+            await registerKeluniaPushToken(user, profile);
+          }
+        }}
         onSaveNavigationSettings={saveNavigationSettings}
         onSelectLocation={(locationId) => setActiveLocationId(locationId)}
         onOpenLocationEditor={openLocationEditor}

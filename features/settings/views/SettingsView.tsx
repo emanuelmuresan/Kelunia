@@ -85,6 +85,7 @@ type SettingsViewProps = {
   onOpenPasswordModal: () => void;
   onHandlePinToggle: (checked: boolean) => void;
   onHandleBiometricsToggle: (checked: boolean) => void;
+  onApplyDevicePush: () => void | Promise<void>;
   onSaveNavigationSettings: () => void;
   onSelectLocation: (locationId: string) => void;
   onOpenLocationEditor: (location?: LocationItem) => void;
@@ -154,6 +155,7 @@ export function SettingsView({
   onOpenPasswordModal,
   onHandlePinToggle,
   onHandleBiometricsToggle,
+  onApplyDevicePush,
   onSaveNavigationSettings,
   onSelectLocation,
   onOpenLocationEditor,
@@ -398,6 +400,7 @@ export function SettingsView({
         onSave={onSavePersonalSettings}
         onHandlePinToggle={onHandlePinToggle}
         onHandleBiometricsToggle={onHandleBiometricsToggle}
+        onApplyDevicePush={onApplyDevicePush}
       />
     )}
 

@@ -4912,3 +4912,69 @@ img {
     box-shadow: 0 12px 24px rgba(24, 35, 48, 0.06);
   }
 }
+
+.notif-settings {
+  display: grid;
+  gap: 14px;
+}
+
+.notif-block {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.notif-block h4 {
+  margin: 0;
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.notif-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.notif-status {
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.notif-status-granted {
+  color: #0f7a4a;
+}
+
+.notif-status-denied {
+  color: var(--coral);
+}
+
+.notif-status-default,
+.notif-status-unsupported {
+  color: var(--amber);
+}
+
+.notif-settings .notif-offset-row {
+  display: grid;
+  grid-template-columns: 4.5rem 6.5rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.notif-settings .notif-offset-row input,
+.notif-settings .notif-offset-row select {
+  width: 100%;
+  min-width: 0;
+}
+
+.notif-settings .notif-offset-row span {
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.2;
+}

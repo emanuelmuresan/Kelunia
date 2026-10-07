@@ -179,3 +179,22 @@ export async function requestKeluniaNotificationPermission() {
   const permission = Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
   return permission === "granted";
 }
+
+export type KeluniaNotificationPermission = "granted" | "denied" | "default" | "unsupported";
+
+export async function getKeluniaNotificationPermission(): Promise<KeluniaNotificationPermission> {
+  if (canUseNativeNotifications()) {
+    try {
+      const current = await LocalNotifications.checkPermissions();
+      return current.display === "granted" ? "granted" : current.display === "denied" ? "denied" : "default";
+    } catch {
+      return "unsupported";
+    }
+  }
+
+  if (typeof window === "undefined" || !("Notification" in window)) {
+    return "unsupported";
+  }
+
+  return Notification.permission;
+}

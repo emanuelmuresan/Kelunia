@@ -64,3 +64,24 @@ test("capture mobile calendar + FAB + notify-now", async ({ page }) => {
     await page.screenshot({ path: "test-results/notify-now-mobile.png" });
   }
 });
+
+test("capture notification settings in the profile modal", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/login");
+  await page.locator('input[type="email"]').fill(USER.email);
+  await page.locator('input[type="password"]').first().fill(USER.password);
+  await page.locator('form button[type="submit"]').click();
+  await page.locator("main.kelunia-shell").waitFor({ timeout: 30_000 });
+
+  await page.getByRole("button", { name: /Setări/ }).first().click();
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: "test-results/settings-mobile.png", fullPage: true });
+
+  await page.getByRole("button", { name: "Modifică" }).first().click();
+  await page.locator('[aria-labelledby="profile-settings-title"]').waitFor();
+  await page.getByLabel("Primesc remindere pentru programările grupului meu").check();
+  await page.waitForTimeout(300);
+  await page.locator('[aria-labelledby="profile-settings-title"]').evaluate((node) => { node.scrollTop = node.scrollHeight; });
+  await page.waitForTimeout(200);
+  await page.locator('[aria-labelledby="profile-settings-title"]').screenshot({ path: "test-results/notification-settings.png" });
+});

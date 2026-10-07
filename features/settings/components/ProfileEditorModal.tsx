@@ -4,6 +4,8 @@ import { useState } from "react";
 
 import type { AppLanguage } from "@/context/AuthContext";
 import { appText, supportedLocales, type UiCopyKey } from "@/lib/i18n/app-copy-catalog";
+import { NotificationSettingsSection } from "@/features/settings/components/NotificationSettingsSection";
+import { getNewBookingPushPreference, setNewBookingPushPreference } from "@/lib/push-notifications";
 import type { GroupItem, PersonalDraft } from "@/lib/types/domain";
 
 type ProfileEditorModalProps = {
@@ -16,6 +18,7 @@ type ProfileEditorModalProps = {
   onSave: () => void | Promise<void>;
   onHandlePinToggle: (checked: boolean) => void;
   onHandleBiometricsToggle: (checked: boolean) => void;
+  onApplyDevicePush: () => void | Promise<void>;
 };
 
 function samePersonalDraft(first: PersonalDraft, second: PersonalDraft) {
@@ -37,17 +40,6 @@ function copyPersonalDraft(draft: PersonalDraft): PersonalDraft {
   return { ...draft, notifyOffsets: [...draft.notifyOffsets], notifyOffsetsDays: [...draft.notifyOffsetsDays] };
 }
 
-function syncLegacyNotificationFlags(nextOffsets: string[]) {
-  return {
-    notifyWeekBefore: nextOffsets.includes("7d"),
-    notifyDayBefore: nextOffsets.includes("1d"),
-    notifyOffsetsDays: nextOffsets
-      .filter((offset) => offset.endsWith("d"))
-      .map((offset) => Number(offset.slice(0, -1)))
-      .filter((offset) => Number.isInteger(offset) && offset >= 1 && offset <= 30),
-  };
-}
-
 /** Personal profile dialog: language, name, group, lock toggles, notification offsets. */
 export function ProfileEditorModal({
   isOwner,
@@ -59,62 +51,14 @@ export function ProfileEditorModal({
   onSave,
   onHandlePinToggle,
   onHandleBiometricsToggle,
+  onApplyDevicePush,
 }: ProfileEditorModalProps) {
   const language = personalDraft.language;
   const t = (key: UiCopyKey) => appText(language, key);
   const [baseline] = useState(() => copyPersonalDraft(personalDraft));
-  const profileDirty = !samePersonalDraft(personalDraft, baseline);
-
-  function updateNotificationOffset(index: number, value: string) {
-    const current = personalDraft.notifyOffsets[index] ?? "15m";
-    const unit = current.endsWith("d") ? "d" : current.endsWith("h") ? "h" : "m";
-    const max = unit === "m" ? 120 : unit === "h" ? 48 : 30;
-    const nextValue = Math.max(1, Math.min(max, Number(value) || 1));
-    const nextOffsets = personalDraft.notifyOffsets.map((offset, offsetIndex) =>
-      offsetIndex === index ? `${nextValue}${unit}` : offset
-    );
-
-    setPersonalDraft({
-      ...personalDraft,
-      notifyOffsets: nextOffsets,
-      ...syncLegacyNotificationFlags(nextOffsets),
-    });
-  }
-
-  function updateNotificationOffsetUnit(index: number, unit: "m" | "h" | "d") {
-    const current = personalDraft.notifyOffsets[index] ?? "15m";
-    const currentValue = Math.max(1, Number(current.slice(0, -1)) || 1);
-    const nextValue = unit === "m" ? Math.min(currentValue, 120) : unit === "h" ? Math.min(currentValue, 48) : Math.min(currentValue, 30);
-    const nextOffsets = personalDraft.notifyOffsets.map((offset, offsetIndex) =>
-      offsetIndex === index ? `${nextValue}${unit}` : offset
-    );
-
-    setPersonalDraft({
-      ...personalDraft,
-      notifyOffsets: nextOffsets,
-      ...syncLegacyNotificationFlags(nextOffsets),
-    });
-  }
-
-  function addNotificationOffset() {
-    const nextOffsets = [...personalDraft.notifyOffsets, "15m"].slice(0, 5);
-
-    setPersonalDraft({
-      ...personalDraft,
-      notifyOffsets: nextOffsets,
-      ...syncLegacyNotificationFlags(nextOffsets),
-    });
-  }
-
-  function removeNotificationOffset(index: number) {
-    const nextOffsets = personalDraft.notifyOffsets.filter((_, offsetIndex) => offsetIndex !== index);
-
-    setPersonalDraft({
-      ...personalDraft,
-      notifyOffsets: nextOffsets,
-      ...syncLegacyNotificationFlags(nextOffsets),
-    });
-  }
+  const [baselineNewBookingPush] = useState(() => getNewBookingPushPreference());
+  const [newBookingPush, setNewBookingPush] = useState(baselineNewBookingPush);
+  const profileDirty = !samePersonalDraft(personalDraft, baseline) || newBookingPush !== baselineNewBookingPush;
 
   function handleClose() {
     setPersonalDraft(copyPersonalDraft(baseline));
@@ -126,7 +70,18 @@ export function ProfileEditorModal({
       return;
     }
 
+    const devicePushChanged = newBookingPush !== baselineNewBookingPush;
+
+    if (devicePushChanged) {
+      setNewBookingPushPreference(newBookingPush);
+    }
+
     await onSave();
+
+    if (devicePushChanged) {
+      await onApplyDevicePush();
+    }
+
     onClose();
   }
 
@@ -234,72 +189,14 @@ export function ProfileEditorModal({
           </div>
 
           {!isOwner && (
-            <div className="settings-toggle-stack">
-              <label className="toggle-row">
-                <input
-                  type="checkbox"
-                  checked={personalDraft.notifyGroupBookings}
-                  onChange={(event) =>
-                    setPersonalDraft({
-                      ...personalDraft,
-                      notifyGroupBookings: event.target.checked,
-                    })
-                  }
-                />
-                {t("settings.notifications")}
-              </label>
-
-              {personalDraft.notifyGroupBookings && (
-                <div className="notification-options">
-                  <label className="toggle-row compact-toggle">
-                    <input
-                      type="checkbox"
-                      checked={personalDraft.notifyFixedGroupSchedules}
-                      onChange={(event) =>
-                        setPersonalDraft({
-                          ...personalDraft,
-                          notifyFixedGroupSchedules: event.target.checked,
-                        })
-                      }
-                    />
-                    {t("fixed.new")}
-                  </label>
-                  {personalDraft.notifyOffsets.map((offset, index) => {
-                    const unit = offset.endsWith("d") ? "d" : offset.endsWith("h") ? "h" : "m";
-                    const amount = Math.max(1, Number(offset.slice(0, -1)) || 1);
-
-                    return (
-                    <label key={`${offset}-${index}`}>
-                      {t("booking.offsetBefore")}
-                      <div className="inline-add">
-                        <input
-                          min={1}
-                          max={unit === "m" ? 120 : unit === "h" ? 48 : 30}
-                          type="number"
-                          value={amount}
-                          onFocus={(event) => event.currentTarget.select()}
-                          onChange={(event) => updateNotificationOffset(index, event.target.value)}
-                        />
-                        <select value={unit} onChange={(event) => updateNotificationOffsetUnit(index, event.target.value as "m" | "h" | "d")}>
-                          <option value="m">{t("booking.minute")}</option>
-                          <option value="h">{t("booking.hour")}</option>
-                          <option value="d">{t("booking.day")}</option>
-                        </select>
-                        <button className="secondary-button compact" onClick={() => removeNotificationOffset(index)} type="button">
-                          {t("action.delete")}
-                        </button>
-                      </div>
-                    </label>
-                    );
-                  })}
-                  {personalDraft.notifyOffsets.length < 5 && (
-                    <button className="secondary-button compact" onClick={addNotificationOffset} type="button">
-                      {t("booking.notifications")}
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
+            <NotificationSettingsSection
+              language={language}
+              personalDraft={personalDraft}
+              setPersonalDraft={setPersonalDraft}
+              newBookingPush={newBookingPush}
+              onNewBookingPushChange={setNewBookingPush}
+              onDeviceEnabled={onApplyDevicePush}
+            />
           )}
 
           <div className="modal-actions">
