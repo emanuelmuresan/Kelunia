@@ -105,57 +105,54 @@ export function accessCodeExpiryLabel(item: Pick<LocationCode, "expiresAt">, lan
   return appText(language, isAccessCodeExpired(item) ? "access.expiredOn" : "access.expiresOn").replace("{{date}}", label);
 }
 
-function roleShareLabel(role: UserRole) {
-  if (role === "manager") {
-    return "Administrator";
-  }
+const roleShareKeys = {
+  manager: "role.administrator",
+  member: "role.collaborator",
+  guest: "role.guest",
+} as const;
 
-  if (role === "member") {
-    return "Colaborator";
-  }
-
-  return "Oaspete";
-}
-
-function expiryShareDateLabel(item: Pick<LocationCode, "expiresAt">) {
+function expiryShareDateLabel(item: Pick<LocationCode, "expiresAt">, language: SupportedLocale) {
   const expiresAt = item.expiresAt as { toDate?: () => Date } | undefined;
 
   if (!expiresAt || typeof expiresAt.toDate !== "function") {
     return "";
   }
 
-  return expiresAt.toDate().toLocaleDateString("ro-RO", { day: "2-digit", month: "long", year: "numeric" });
+  return expiresAt.toDate().toLocaleDateString(dateLocales[language], { day: "2-digit", month: "long", year: "numeric" });
 }
 
 // Mirrors accessInviteText() in functions/src/index.ts so the text a manager
-// copies to paste into WhatsApp/SMS reads the same as the invite email.
+// copies to paste into WhatsApp/SMS reads the same as the invite email - in
+// whichever language the manager picked for the invitation.
 export function buildAccessInviteShareText(
   item: Pick<LocationCode, "code" | "role" | "groupName" | "locationName" | "expiresAt">,
   link: string,
-  customMessage?: string
+  customMessage?: string,
+  language: SupportedLocale = "ro"
 ) {
+  const t = (key: Parameters<typeof appText>[1]) => appText(language, key);
   const groupName = item.role === "manager" ? "" : item.groupName.trim();
-  const expiryLabel = expiryShareDateLabel(item);
-  const intro = customMessage?.trim() || `Ai primit o invitație pentru Kelunia, locația ${item.locationName}.`;
+  const expiryLabel = expiryShareDateLabel(item, language);
+  const intro = customMessage?.trim() || t("invite.defaultIntro").replace("{{location}}", item.locationName);
 
   return [
     intro,
     "",
-    `Locație: ${item.locationName}`,
-    `Rol: ${roleShareLabel(item.role)}`,
-    groupName ? `Grup: ${groupName}` : "",
+    `${t("invite.location")}: ${item.locationName}`,
+    `${t("invite.role")}: ${t(roleShareKeys[item.role])}`,
+    groupName ? `${t("invite.group")}: ${groupName}` : "",
     "",
-    "Pași:",
-    "1. Deschide linkul de mai jos pe telefon sau calculator.",
-    "2. Creează contul sau intră în cont dacă ai deja unul.",
-    "3. Confirmă emailul, dacă aplicația îți cere acest lucru.",
-    "4. Kelunia va folosi codul de acces pentru a te conecta la locația potrivită.",
+    t("invite.stepsTitle"),
+    `1. ${t("invite.step1")}`,
+    `2. ${t("invite.step2")}`,
+    `3. ${t("invite.step3")}`,
+    `4. ${t("invite.step4")}`,
     "",
-    `Link invitație: ${link}`,
-    `Cod acces: ${item.code}`,
-    expiryLabel ? `Acest cod expiră pe ${expiryLabel}. Dacă a trecut termenul, cere unul nou.` : "",
+    `${t("invite.linkLabel")}: ${link}`,
+    `${t("invite.codeLabel")}: ${item.code}`,
+    expiryLabel ? t("invite.expiresOn").replace("{{date}}", expiryLabel) : "",
     "",
-    "Dacă linkul nu se deschide corect, intră manual în aplicația Kelunia și folosește codul de acces de mai sus.",
+    t("invite.fallback"),
     "",
     "---",
     "Kelunia",

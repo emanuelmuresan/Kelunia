@@ -13,7 +13,7 @@ import {
 } from "firebase/firestore";
 
 import type { UserRole } from "@/context/AuthContext";
-import type { SupportedLocale } from "@/lib/i18n/app-copy-catalog";
+import { appText, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 import type { AuditAction, AuditEntityType } from "@/lib/audit";
 import { cloudFunctions } from "@/lib/firebase";
 import { accessCodeExpiryDays } from "@/lib/config/app";
@@ -105,6 +105,8 @@ export function useAccessCodes({
   };
   const [codesWorking, setCodesWorking] = useState(false);
   const [inviteDraft, setInviteDraft] = useState<AccessInviteDraft | null>(null);
+  // Language of the invitation text (email + copied message); starts as the app language.
+  const [inviteLanguage, setInviteLanguage] = useState<SupportedLocale>(language);
   const [codeGenerator, setCodeGenerator] = useState<CodeGeneratorState>({
     role: "",
     groupName: "",
@@ -132,31 +134,39 @@ export function useAccessCodes({
     return url.toString();
   }
 
-  function roleLabel(role: UserRole) {
-    if (role === "manager") {
-      return "Administrator";
-    }
+  function defaultInviteMessage(
+    params: {
+      code: string;
+      email: string;
+      groupName: string;
+      locationName: string;
+      role: UserRole;
+    },
+    messageLanguage: SupportedLocale
+  ) {
+    const roleKey = params.role === "manager" ? "role.administrator" : params.role === "member" ? "role.collaborator" : "role.guest";
+    const role = appText(messageLanguage, roleKey);
+    const roleLine = params.role === "manager"
+      ? appText(messageLanguage, "invite.composerRole").replace("{{role}}", role)
+      : appText(messageLanguage, "invite.composerRoleGroup")
+        .replace("{{role}}", role)
+        .replace("{{group}}", params.groupName || appText(messageLanguage, "invite.groupFallback"));
 
-    if (role === "member") {
-      return "Colaborator";
-    }
-
-    return "Oaspete";
+    return [
+      appText(messageLanguage, "invite.defaultIntro").replace("{{location}}", params.locationName),
+      roleLine,
+      "",
+      appText(messageLanguage, "invite.composerBody"),
+    ].join("\n");
   }
 
-  function defaultInviteMessage(params: {
-    code: string;
-    email: string;
-    groupName: string;
-    locationName: string;
-    role: UserRole;
-  }) {
-    return [
-      `Ai primit o invitatie pentru Kelunia, locatia ${params.locationName}.`,
-      `Rol: ${roleLabel(params.role)}${params.role === "manager" ? "" : `, grup: ${params.groupName || "setat in invitatie"}`}.`,
-      "",
-      "Deschide linkul din email, creeaza contul sau intra in cont, apoi Kelunia va folosi codul pentru a te conecta la locatia potrivita.",
-    ].join("\n");
+  // Switching language regenerates the composer text, unless it was edited by hand.
+  function changeInviteLanguage(nextLanguage: SupportedLocale) {
+    if (inviteDraft && inviteDraft.message === defaultInviteMessage(inviteDraft, inviteLanguage)) {
+      setInviteDraft({ ...inviteDraft, message: defaultInviteMessage(inviteDraft, nextLanguage) });
+    }
+
+    setInviteLanguage(nextLanguage);
   }
 
   function openInviteComposer(params: {
@@ -171,7 +181,7 @@ export function useAccessCodes({
     setInviteDraft({
       ...params,
       email: params.email.trim(),
-      message: defaultInviteMessage(params),
+      message: defaultInviteMessage(params, inviteLanguage),
     });
   }
 
@@ -191,6 +201,7 @@ export function useAccessCodes({
     setCodesError("");
     setCodesMessage("");
     setInviteDraft(null);
+    setInviteLanguage(language);
     setShowCodesModal(true);
   }
 
@@ -212,7 +223,7 @@ export function useAccessCodes({
     setCodesMessage("");
 
     const inviteUrl = inviteUrlForCode(item.code);
-    const shareText = buildAccessInviteShareText(item, inviteUrl);
+    const shareText = buildAccessInviteShareText(item, inviteUrl, undefined, inviteLanguage);
 
     try {
       await navigator.clipboard.writeText(shareText);
@@ -263,7 +274,7 @@ export function useAccessCodes({
         code: inviteDraft.code,
         toEmail: recipientEmail,
         message: inviteDraft.message,
-        language,
+        language: inviteLanguage,
       });
       setInviteDraft(null);
       setCodesMessage(msg("msg.inviteSent", { email: recipientEmail }));
@@ -389,7 +400,9 @@ export function useAccessCodes({
               locationName: location.name,
               expiresAt: (generatedPayload as { expiresAt?: unknown } | null)?.expiresAt,
             },
-            inviteUrlForCode(generatedCode)
+            inviteUrlForCode(generatedCode),
+            undefined,
+            inviteLanguage
           );
           await navigator.clipboard.writeText(shareText);
           setCodesMessage(msg("msg.inviteGeneratedCopied", { code: generatedCode }));
@@ -611,6 +624,7 @@ export function useAccessCodes({
   }
 
   return {
+    changeInviteLanguage,
     codeGenerator,
     codesError,
     codesWorking,
@@ -628,6 +642,7 @@ export function useAccessCodes({
     setShowCodesModal,
     showCodesModal,
     inviteDraft,
+    inviteLanguage,
     toggleAccessCodeActive,
     updateAccessCodeDetails,
   };

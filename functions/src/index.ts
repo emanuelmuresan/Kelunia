@@ -9,6 +9,7 @@ import { onDocumentCreated, onDocumentWritten } from "firebase-functions/v2/fire
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { Resend } from "resend";
+import { inviteCopy, type InviteCopy } from "./invite-i18n";
 import { createHash } from "node:crypto";
 import { connect } from "node:http2";
 
@@ -791,52 +792,50 @@ function passwordResetEmailHtml(link: string) {
   ].join("");
 }
 
-function roleLabel(role: UserRole) {
+function inviteRoleLabel(role: UserRole, copy: InviteCopy) {
   if (role === "manager") {
-    return "Administrator";
+    return copy.roleManager;
   }
 
   if (role === "member") {
-    return "Colaborator";
+    return copy.roleMember;
   }
 
-  return "Oaspete";
+  return copy.roleGuest;
 }
 
-function accessCodeExpiryDateLabel(accessCode: AccessCodeDocument) {
+function accessCodeExpiryDateLabel(accessCode: AccessCodeDocument, copy: InviteCopy) {
   if (!accessCode.expiresAt) {
     return "";
   }
 
-  return accessCode.expiresAt.toDate().toLocaleDateString("ro-RO", { day: "2-digit", month: "long", year: "numeric" });
+  return accessCode.expiresAt.toDate().toLocaleDateString(copy.dateLocale, { day: "2-digit", month: "long", year: "numeric" });
 }
 
 function accessInviteText(request: AccessInviteEmailRequest, accessCode: AccessCodeDocument) {
+  const copy = inviteCopy[emailLanguage(request.language)];
   const code = accessCode.code ?? request.code ?? "";
   const email = cleanEmail(request.toEmail);
   const link = appUrl(`/login?invite=${encodeURIComponent(code)}${email ? `&email=${encodeURIComponent(email)}` : ""}`);
   const groupName = accessCode.role === "manager" ? "" : accessCode.groupName?.trim();
   const customMessage = request.message?.trim();
-  const expiryLabel = accessCodeExpiryDateLabel(accessCode);
+  const expiryLabel = accessCodeExpiryDateLabel(accessCode, copy);
 
   return [
-    customMessage || `Ai primit o invitație pentru Kelunia, locația ${accessCode.locationName ?? ""}.`,
+    customMessage || copy.defaultIntro.replace("{{location}}", accessCode.locationName ?? ""),
     "",
-    `Locație: ${accessCode.locationName ?? ""}`,
-    `Rol: ${roleLabel(accessCode.role ?? "guest")}`,
-    groupName ? `Grup: ${groupName}` : "",
+    `${copy.location}: ${accessCode.locationName ?? ""}`,
+    `${copy.role}: ${inviteRoleLabel(accessCode.role ?? "guest", copy)}`,
+    groupName ? `${copy.group}: ${groupName}` : "",
     "",
-    "Pași:",
-    "1. Deschide linkul de mai jos pe telefon sau calculator.",
-    "2. Creează contul sau intră în cont dacă ai deja unul.",
-    "3. Confirmă emailul, dacă aplicația îți cere acest lucru.",
-    "4. Kelunia va folosi codul de acces pentru a te conecta la locația potrivită.",
+    `${copy.stepsTitle}:`,
+    ...copy.steps.map((step, index) => `${index + 1}. ${step}`),
     "",
-    `Link invitație: ${link}`,
-    `Cod acces: ${code}`,
-    expiryLabel ? `Acest cod expiră pe ${expiryLabel}. Dacă a trecut termenul, cere unul nou.` : "",
+    `${copy.linkLabel}: ${link}`,
+    `${copy.codeLabel}: ${code}`,
+    expiryLabel ? copy.expiresOn.replace("{{date}}", expiryLabel) : "",
     "",
-    "Dacă linkul nu se deschide corect, intră manual în aplicația Kelunia și folosește codul de acces de mai sus.",
+    copy.fallback,
     "",
     "---",
     "Kelunia",
@@ -844,37 +843,35 @@ function accessInviteText(request: AccessInviteEmailRequest, accessCode: AccessC
 }
 
 function accessInviteHtml(request: AccessInviteEmailRequest, accessCode: AccessCodeDocument) {
+  const copy = inviteCopy[emailLanguage(request.language)];
   const code = accessCode.code ?? request.code ?? "";
   const email = cleanEmail(request.toEmail);
   const link = appUrl(`/login?invite=${encodeURIComponent(code)}${email ? `&email=${encodeURIComponent(email)}` : ""}`);
   const groupName = accessCode.role === "manager" ? "" : accessCode.groupName?.trim();
-  const customMessage = escapeHtml(request.message?.trim() || `Ai primit o invitație pentru Kelunia, locația ${accessCode.locationName ?? ""}.`).replace(/\n/g, "<br />");
-  const expiryLabel = accessCodeExpiryDateLabel(accessCode);
+  const customMessage = escapeHtml(request.message?.trim() || copy.defaultIntro.replace("{{location}}", accessCode.locationName ?? "")).replace(/\n/g, "<br />");
+  const expiryLabel = accessCodeExpiryDateLabel(accessCode, copy);
 
   return [
     '<div style="font-family:Arial,sans-serif;line-height:1.6;color:#172033;max-width:640px">',
     '<h1 style="font-size:22px;margin:0 0 18px;color:#0f766e">Kelunia</h1>',
     `<p>${customMessage}</p>`,
     '<div style="background:#f6f9ff;border:1px solid #d9e4f2;border-radius:10px;padding:14px 16px;margin:18px 0">',
-    `<p style="margin:0 0 6px"><strong>Locație:</strong> ${escapeHtml(accessCode.locationName ?? "")}</p>`,
-    `<p style="margin:0 0 6px"><strong>Rol:</strong> ${escapeHtml(roleLabel(accessCode.role ?? "guest"))}</p>`,
-    groupName ? `<p style="margin:0"><strong>Grup:</strong> ${escapeHtml(groupName)}</p>` : "",
+    `<p style="margin:0 0 6px"><strong>${escapeHtml(copy.location)}:</strong> ${escapeHtml(accessCode.locationName ?? "")}</p>`,
+    `<p style="margin:0 0 6px"><strong>${escapeHtml(copy.role)}:</strong> ${escapeHtml(inviteRoleLabel(accessCode.role ?? "guest", copy))}</p>`,
+    groupName ? `<p style="margin:0"><strong>${escapeHtml(copy.group)}:</strong> ${escapeHtml(groupName)}</p>` : "",
     "</div>",
-    '<p style="font-weight:700;margin:18px 0 8px">Pașii necesari</p>',
+    `<p style="font-weight:700;margin:18px 0 8px">${escapeHtml(copy.stepsTitle)}</p>`,
     '<ol style="margin:0 0 18px;padding-left:20px">',
-    "<li>Deschide linkul pe telefon sau calculator.</li>",
-    "<li>Creează contul sau intră în cont dacă ai deja unul.</li>",
-    "<li>Confirmă emailul, dacă aplicația îți cere acest lucru.</li>",
-    "<li>Kelunia va folosi codul de acces pentru a te conecta la locația potrivită.</li>",
+    ...copy.steps.map((step) => `<li>${escapeHtml(step)}</li>`),
     "</ol>",
-    `<p><a href="${escapeHtml(link)}" style="display:inline-block;background:#0f766e;color:#fff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:700">Deschide invitația</a></p>`,
-    '<p style="margin:18px 0 8px;color:#667085">Cod acces</p>',
+    `<p><a href="${escapeHtml(link)}" style="display:inline-block;background:#0f766e;color:#fff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:700">${escapeHtml(copy.openButton)}</a></p>`,
+    `<p style="margin:18px 0 8px;color:#667085">${escapeHtml(copy.codeLabel)}</p>`,
     `<p style="font-size:24px;font-weight:700;letter-spacing:1px;margin:0 0 18px">${escapeHtml(code)}</p>`,
     expiryLabel
-      ? `<p style="font-size:13px;color:#b9503d;margin:0 0 18px"><strong>Acest cod expiră pe ${escapeHtml(expiryLabel)}.</strong> Dacă a trecut termenul, cere unul nou.</p>`
+      ? `<p style="font-size:13px;color:#b9503d;margin:0 0 18px"><strong>${escapeHtml(copy.expiresOn.replace("{{date}}", expiryLabel))}</strong></p>`
       : "",
-    `<p style="font-size:13px;color:#667085;margin-top:18px">Dacă butonul nu merge, deschide acest link: ${escapeHtml(link)}</p>`,
-    '<p style="font-size:13px;color:#667085;margin-top:8px">Dacă linkul nu se deschide corect, intră manual în aplicația Kelunia și folosește codul de acces de mai sus.</p>',
+    `<p style="font-size:13px;color:#667085;margin-top:18px">${escapeHtml(copy.buttonFallback)} ${escapeHtml(link)}</p>`,
+    `<p style="font-size:13px;color:#667085;margin-top:8px">${escapeHtml(copy.fallback)}</p>`,
     "</div>",
   ].join("");
 }

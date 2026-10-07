@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { UserRole } from "@/context/AuthContext";
 import type { AccessInviteDraft, CodeGeneratorState } from "@/features/access-codes/hooks/useAccessCodes";
-import { appText, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
+import { appText, supportedLocales, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 import { roomAccessLabel } from "@/lib/room-access";
 import type { GroupItem, LocationCode, LocationItem, RoomAccessMode, RoomItem } from "@/lib/types/domain";
 
@@ -17,6 +17,8 @@ interface AccessCodesModalProps {
   codesWorking: boolean;
   codesError: string;
   inviteDraft: AccessInviteDraft | null;
+  inviteLanguage: SupportedLocale;
+  onInviteLanguageChange: (language: SupportedLocale) => void;
   onClose: () => void;
   onCodeGeneratorChange: (nextGenerator: CodeGeneratorState) => void;
   onInviteDraftChange: (nextDraft: AccessInviteDraft | null) => void;
@@ -59,6 +61,8 @@ export function AccessCodesModal({
   codesWorking,
   codesError,
   inviteDraft,
+  inviteLanguage,
+  onInviteLanguageChange,
   onClose,
   onCodeGeneratorChange,
   onInviteDraftChange,
@@ -191,6 +195,15 @@ export function AccessCodesModal({
             {appText(language, "access.historyCodes")} ({historyCodes.length})
           </button>
         </div>
+
+        <label className="invite-language-field">
+          {appText(language, "invite.language")}
+          <select className="code-filter-select" value={inviteLanguage} onChange={(event) => onInviteLanguageChange(event.target.value as SupportedLocale)}>
+            {supportedLocales.map((locale) => (
+              <option key={locale.code} value={locale.code}>{locale.label}</option>
+            ))}
+          </select>
+        </label>
 
         <div className="code-toolbar">
           <button className="primary-button compact" onClick={() => setShowCreateForm((current) => !current)} type="button">

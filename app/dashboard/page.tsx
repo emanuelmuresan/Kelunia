@@ -109,7 +109,7 @@ import { useDashboardViewSync } from "@/features/dashboard/hooks/useDashboardVie
 const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
 
 export default function KeluniaPage() {
-  const { user, profile, role, isSuperAdmin, isOwner, loading: authLoading } = useAuth();
+  const { user, profile, role, isSuperAdmin, isOwner, loading: authLoading, updateProfile } = useAuth();
   const router = useRouter();
   const language = profile?.language ?? "ro";
 
@@ -655,6 +655,7 @@ export default function KeluniaPage() {
   );
 
   const {
+    changeInviteLanguage,
     codeGenerator,
     codesError,
     codesWorking,
@@ -663,6 +664,7 @@ export default function KeluniaPage() {
     extendAccessCodeExpiry,
     generateLocationCode,
     inviteDraft,
+    inviteLanguage,
     openCodesEditor,
     removeAccessCode,
     sendAccessInvite,
@@ -1045,7 +1047,23 @@ export default function KeluniaPage() {
     }
 
     setSettingsError("");
-    setSettingsMessage(msg("msg.settingsSaved"));
+    // Mirror what was just saved so the language, name and group apply at once
+    // (the profile is only read at sign-in).
+    updateProfile({
+      displayName: effectiveDraft.displayName,
+      groupName: isOwner ? "" : effectiveDraft.groupName,
+      usePin,
+      lockOnHide: usePin ? effectiveDraft.lockOnHide : false,
+      useBiometrics: usePin ? effectiveDraft.useBiometrics : false,
+      notifyGroupBookings: effectiveDraft.notifyGroupBookings,
+      notifyFixedGroupSchedules: effectiveDraft.notifyGroupBookings ? effectiveDraft.notifyFixedGroupSchedules : false,
+      notifyWeekBefore: effectiveDraft.notifyGroupBookings ? notificationOffsetDays.includes(7) : false,
+      notifyDayBefore: effectiveDraft.notifyGroupBookings ? notificationOffsetDays.includes(1) : false,
+      notifyOffsets: effectiveDraft.notifyGroupBookings ? notificationOffsets.map(notificationOffsetToKey) : [],
+      notifyOffsetsDays: effectiveDraft.notifyGroupBookings ? notificationOffsetDays : [],
+      language: effectiveDraft.language,
+    });
+    setSettingsMessage(appText(effectiveDraft.language, "msg.settingsSaved"));
     void recordAuditLog(
       "user",
       "update",
@@ -1402,6 +1420,8 @@ export default function KeluniaPage() {
         codesWorking={codesWorking}
         codesError={codesError}
         inviteDraft={inviteDraft}
+        inviteLanguage={inviteLanguage}
+        onInviteLanguageChange={changeInviteLanguage}
         onClose={() => setShowCodesModal(false)}
         onCodeGeneratorChange={setCodeGenerator}
         onInviteDraftChange={setInviteDraft}

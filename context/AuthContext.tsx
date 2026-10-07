@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useRef, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { appCheckReadyPromise, auth, db } from "@/lib/firebase";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { doc, getDoc, setDoc, type DocumentData, type DocumentReference } from "firebase/firestore";
@@ -49,6 +49,7 @@ interface AuthContextType {
   isOwner: boolean;
   isViewer: boolean;
   loading: boolean;
+  updateProfile: (patch: Partial<UserProfile>) => void;
 }
 
 const defaultLocationName = "Kelunia";
@@ -70,6 +71,7 @@ const AuthContext = createContext<AuthContextType>({
   isOwner: false,
   isViewer: true,
   loading: true,
+  updateProfile: () => undefined,
 });
 
 function normalizeRole(role: unknown): UserRole {
@@ -345,8 +347,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const isAdmin = role === "manager" || role === "member";
   const isViewer = role === "guest";
 
+  // The profile is read once at sign-in; after the user saves their own settings
+  // the caller mirrors the saved fields here so language/name/group apply at once.
+  const updateProfile = useCallback((patch: Partial<UserProfile>) => {
+    setProfile((current) => (current ? { ...current, ...patch } : current));
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, profile, role, isAdmin, isSuperAdmin, isOwner, isViewer, loading }}>
+    <AuthContext.Provider value={{ user, profile, role, isAdmin, isSuperAdmin, isOwner, isViewer, loading, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );

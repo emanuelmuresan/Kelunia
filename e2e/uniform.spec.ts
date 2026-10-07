@@ -62,6 +62,25 @@ test("clicking outside an untouched profile just closes it", async ({ page }) =>
   await expect(profile).toHaveCount(0);
 });
 
+test("the invitation language can be picked in the codes modal", async ({ page }) => {
+  await loginAsAdmin(page);
+
+  await page
+    .locator("article.settings-panel")
+    .filter({ has: page.getByRole("heading", { name: "Coduri" }) })
+    .getByRole("button", { name: "Modifică" })
+    .click();
+
+  const dialog = page.locator('[aria-label="Coduri de acces"]');
+  const languagePicker = dialog.locator(".invite-language-field select");
+  await expect(languagePicker).toHaveValue("ro");
+
+  await languagePicker.selectOption("en");
+  await expect(languagePicker).toHaveValue("en");
+  await dialog.screenshot({ path: "test-results/invite-language.png" });
+});
+
+// Runs last: it switches the seeded admin to English.
 test("messages follow the chosen language", async ({ page }) => {
   await loginAsAdmin(page);
 
@@ -71,12 +90,10 @@ test("messages follow the chosen language", async ({ page }) => {
   await profile.getByRole("button", { name: "Save" }).click();
   await expect(profile).toHaveCount(0);
 
-  // The saved language is picked up on the next load.
-  await page.reload();
-  await page.locator("main.kelunia-shell").waitFor({ timeout: 30_000 });
-  await page.getByRole("button", { name: /Settings/ }).first().click();
+  // The new language applies at once: toast in English and the navigation switched.
+  await expect(page.locator(".toast", { hasText: "Settings were saved." })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Settings$/ }).first()).toBeVisible();
 
-  // The profile is English now, so the delete toast must be too.
   await page
     .locator("article.settings-panel", { hasText: "Grupa B" })
     .getByRole("button", { name: "Edit" })
