@@ -196,3 +196,23 @@ test("capture inline colour picker", async ({ page }) => {
   await modal.evaluate((node) => { node.scrollTop = node.scrollHeight; });
   await modal.screenshot({ path: "test-results/color-picker.png" });
 });
+
+test("capture profile card, opened view and standalone report row", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/login");
+  await page.locator('input[type="email"]').fill("admin@e2e.test");
+  await page.locator('input[type="password"]').first().fill("Test123456");
+  await page.locator('form button[type="submit"]').click();
+  await page.locator("main.kelunia-shell").waitFor({ timeout: 30_000 });
+  await page.getByRole("button", { name: /Setări/ }).first().click();
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: "test-results/settings-top.png" });
+  await page.locator(".report-problem-panel").scrollIntoViewIfNeeded();
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: "test-results/settings-bottom.png" });
+
+  await page.locator("article.settings-panel").filter({ has: page.getByRole("heading", { name: "Setări personale" }) }).getByRole("button", { name: "Deschide" }).click();
+  const view = page.locator('[aria-labelledby="profile-view-title"]');
+  await view.waitFor();
+  await view.screenshot({ path: "test-results/profile-view.png" });
+});

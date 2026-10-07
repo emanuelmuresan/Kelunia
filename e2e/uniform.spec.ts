@@ -9,6 +9,22 @@ async function loginAsAdmin(page: Page) {
   await page.getByRole("button", { name: /Setări/ }).first().click();
 }
 
+// Settings -> "Setări personale" card -> Deschide -> the block's own Modifică.
+async function openProfileView(page: Page) {
+  await page
+    .locator("article.settings-panel")
+    .filter({ has: page.getByRole("heading", { name: "Setări personale" }) })
+    .getByRole("button", { name: "Deschide" })
+    .click();
+
+  return page.locator('[aria-labelledby="profile-view-title"]');
+}
+
+async function editProfileBlock(page: Page, block: string) {
+  const view = await openProfileView(page);
+  await view.locator(".settings-block", { hasText: block }).getByRole("button", { name: "Modifică" }).click();
+}
+
 test("deleting a group is undoable from the toast", async ({ page }) => {
   await loginAsAdmin(page);
 
@@ -34,7 +50,7 @@ test("deleting a group is undoable from the toast", async ({ page }) => {
 test("clicking outside an edited profile asks before discarding", async ({ page }) => {
   await loginAsAdmin(page);
 
-  await page.getByRole("button", { name: "Modifică setările" }).click();
+  await editProfileBlock(page, "Despre tine");
   const profile = page.locator('[aria-labelledby="profile-settings-title"]');
   await profile.locator("input").first().fill("Nume nou");
 
@@ -54,7 +70,7 @@ test("clicking outside an edited profile asks before discarding", async ({ page 
 test("clicking outside an untouched profile just closes it", async ({ page }) => {
   await loginAsAdmin(page);
 
-  await page.getByRole("button", { name: "Modifică setările" }).click();
+  await editProfileBlock(page, "Despre tine");
   const profile = page.locator('[aria-labelledby="profile-settings-title"]');
   await expect(profile).toBeVisible();
 
@@ -103,7 +119,8 @@ test("an administrator cannot change their own role", async ({ page }) => {
 test("the only administrator cannot delete their account", async ({ page }) => {
   await loginAsAdmin(page);
 
-  await page.getByRole("button", { name: "Șterge contul" }).click();
+  const profileView = await openProfileView(page);
+  await profileView.getByRole("button", { name: "Șterge contul" }).click();
   const dialog = page.locator('[aria-labelledby="delete-account-title"]');
   await expect(dialog.getByText("Ești singurul administrator al acestei locații.")).toBeVisible();
   await dialog.getByPlaceholder("admin@e2e.test").fill("admin@e2e.test");
@@ -178,7 +195,7 @@ test("closing a location needs the name typed and can be cancelled", async ({ pa
 test("messages follow the chosen language", async ({ page }) => {
   await loginAsAdmin(page);
 
-  await page.getByRole("button", { name: "Modifică setările" }).click();
+  await editProfileBlock(page, "Despre tine");
   const profile = page.locator('[aria-labelledby="profile-settings-title"]');
   await profile.locator("select").first().selectOption({ label: "English" });
   await profile.getByRole("button", { name: "Save" }).click();
@@ -187,6 +204,9 @@ test("messages follow the chosen language", async ({ page }) => {
   // The new language applies at once: toast in English and the navigation switched.
   await expect(page.locator(".toast", { hasText: "Settings were saved." })).toBeVisible();
   await expect(page.getByRole("button", { name: /^Settings$/ }).first()).toBeVisible();
+
+  // The profile view is still open behind the editor that just closed.
+  await page.locator('[aria-labelledby="profile-view-title"]').getByRole("button", { name: "Done" }).click();
 
   await page
     .locator("article.settings-panel", { hasText: "Grupa B" })

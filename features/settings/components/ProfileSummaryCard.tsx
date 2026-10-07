@@ -13,10 +13,7 @@ type ProfileSummaryCardProps = {
   isSuperAdmin: boolean;
   personalDraft: PersonalDraft;
   groupsLabel: string;
-  onEditProfile: () => void;
-  onOpenPasswordModal: () => void;
-  onDeleteAccount: () => void;
-  onReportProblem: () => void;
+  onOpenProfile: () => void;
 };
 
 /** "Personal" panel: read-only summary of the signed-in user's profile + card actions. */
@@ -26,10 +23,7 @@ export function ProfileSummaryCard({
   isSuperAdmin,
   personalDraft,
   groupsLabel,
-  onEditProfile,
-  onOpenPasswordModal,
-  onDeleteAccount,
-  onReportProblem,
+  onOpenProfile,
 }: ProfileSummaryCardProps) {
   const language: AppLanguage = personalDraft.language;
   const t = (key: UiCopyKey) => appText(language, key);
@@ -97,17 +91,8 @@ export function ProfileSummaryCard({
         </div>
 
         <div className="settings-card-actions">
-          <button className="primary-button compact" onClick={onEditProfile} type="button">
-            {t("settings.editSettings")}
-          </button>
-          <button className="secondary-button compact" onClick={onOpenPasswordModal} type="button">
-            {t("settings.password")}
-          </button>
-          <button className="secondary-button compact" onClick={onReportProblem} type="button">
-            {t("settings.reportProblem")}
-          </button>
-          <button className="danger-button compact" onClick={onDeleteAccount} type="button">
-            {t("settings.deleteAccount")}
+          <button className="primary-button compact" onClick={onOpenProfile} type="button">
+            {t("settings.openAction")}
           </button>
         </div>
 

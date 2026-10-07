@@ -5,12 +5,14 @@ import { useState } from "react";
 
 import type { AppLanguage } from "@/context/AuthContext";
 import { appText, supportedLocales, type UiCopyKey } from "@/lib/i18n/app-copy-catalog";
-import { SettingsBlock } from "@/features/settings/components/SettingsBlock";
 import { NotificationSettingsSection } from "@/features/settings/components/NotificationSettingsSection";
 import { getNewBookingPushPreference, setNewBookingPushPreference } from "@/lib/push-notifications";
 import type { GroupItem, PersonalDraft } from "@/lib/types/domain";
 
+export type ProfileSection = "identity" | "security" | "notifications";
+
 type ProfileEditorModalProps = {
+  section: ProfileSection;
   isOwner: boolean;
   groups: GroupItem[];
   groupsLabel: string;
@@ -44,6 +46,7 @@ function copyPersonalDraft(draft: PersonalDraft): PersonalDraft {
 
 /** Personal profile dialog: language, name, group, lock toggles, notification offsets. */
 export function ProfileEditorModal({
+  section,
   isOwner,
   groups,
   groupsLabel,
@@ -100,13 +103,16 @@ export function ProfileEditorModal({
       >
         <div className="section-heading">
           <div>
-            <span className="eyebrow">{t("settings.profile")}</span>
-            <h2 id="profile-settings-title">{t("settings.personal")}</h2>
+            <span className="eyebrow">{t("settings.personal")}</span>
+            <h2 id="profile-settings-title">
+              {t(section === "identity" ? "settings.blockIdentity" : section === "security" ? "settings.security" : "settings.notifications")}
+            </h2>
           </div>
         </div>
 
         <div className="settings-form">
-          <SettingsBlock title={t("settings.blockIdentity")}>
+          {section === "identity" && (
+          <>
           <label>
             {appText(personalDraft.language, "common.language")}
             <select
@@ -158,9 +164,10 @@ export function ProfileEditorModal({
               </select>
             </label>
           )}
-          </SettingsBlock>
+          </>
+          )}
 
-          <SettingsBlock title={t("settings.security")}>
+          {section === "security" && (
           <div className="settings-toggle-stack">
             <label className="toggle-row">
               <input
@@ -194,9 +201,9 @@ export function ProfileEditorModal({
               {t("settings.blockOnExit")}
             </label>
           </div>
-          </SettingsBlock>
+          )}
 
-          {!isOwner && (
+          {section === "notifications" && !isOwner && (
             <NotificationSettingsSection
               language={language}
               personalDraft={personalDraft}

@@ -1325,9 +1325,14 @@ img {
   font-weight: 740;
 }
 
-.settings-summary-list strong {
+.settings-summary-list span {
+  flex: 1 1 0;
   min-width: 0;
-  overflow-wrap: anywhere;
+}
+
+.settings-summary-list strong {
+  flex: 0 1 auto;
+  overflow-wrap: break-word;
   text-align: right;
 }
 
@@ -5095,4 +5100,37 @@ img {
 .color-picker-hex input {
   max-width: 9rem;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.settings-block-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.settings-block-head h4 {
+  margin: 0;
+}
+
+.settings-block .settings-summary-list {
+  margin-top: 4px;
+}
+
+.report-problem-panel {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.report-problem-panel h2 {
+  margin: 0 0 4px;
+  font-size: 1rem;
+}
+
+.report-problem-panel p {
+  margin: 0;
 }

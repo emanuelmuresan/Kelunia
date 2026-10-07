@@ -8,7 +8,8 @@ import { LandingInboxModal } from "@/features/settings/components/LandingInboxMo
 import { ResourcesManagerModal } from "@/features/settings/components/ResourcesManagerModal";
 import { UsersManagerModal } from "@/features/settings/components/UsersManagerModal";
 import { LocationClosureCard } from "@/features/locations/components/LocationClosureCard";
-import { ProfileEditorModal } from "@/features/settings/components/ProfileEditorModal";
+import { ProfileEditorModal, type ProfileSection } from "@/features/settings/components/ProfileEditorModal";
+import { ProfileSettingsModal } from "@/features/settings/components/ProfileSettingsModal";
 import { ProfileSummaryCard } from "@/features/settings/components/ProfileSummaryCard";
 import { ReportProblemModal } from "@/features/shell/components/ReportProblemModal";
 import { ErrorReportsModal } from "@/features/settings/components/ErrorReportsModal";
@@ -190,7 +191,8 @@ export function SettingsView({
   const [resourcesManagerOpen, setResourcesManagerOpen] = useState(false);
   const [usersManagerOpen, setUsersManagerOpen] = useState(false);
   const [inboxOpen, setInboxOpen] = useState(false);
-  const [profileEditorOpen, setProfileEditorOpen] = useState(false);
+  const [profileViewOpen, setProfileViewOpen] = useState(false);
+  const [profileEditorSection, setProfileEditorSection] = useState<ProfileSection | null>(null);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
   const [reportProblemOpen, setReportProblemOpen] = useState(false);
   const [errorReportsOpen, setErrorReportsOpen] = useState(false);
@@ -254,10 +256,7 @@ export function SettingsView({
         isSuperAdmin={isSuperAdmin}
         personalDraft={personalDraft}
         groupsLabel={groupsLabel}
-        onEditProfile={() => setProfileEditorOpen(true)}
-        onOpenPasswordModal={onOpenPasswordModal}
-        onDeleteAccount={() => setDeleteAccountOpen(true)}
-        onReportProblem={() => setReportProblemOpen(true)}
+        onOpenProfile={() => setProfileViewOpen(true)}
       />
 
       {userExists && (
@@ -382,6 +381,18 @@ export function SettingsView({
           )}
         </>
       )}
+
+      {userExists && (
+        <article className="settings-panel report-problem-panel">
+          <div>
+            <h2>{appText(language, "settings.support")}</h2>
+            <p className="muted-note">{appText(language, "settings.reportProblemHint")}</p>
+          </div>
+          <button className="secondary-button compact" onClick={() => setReportProblemOpen(true)} type="button">
+            {appText(language, "settings.reportProblem")}
+          </button>
+        </article>
+      )}
     </section>
 
     {resourcesManagerOpen && (
@@ -414,14 +425,28 @@ export function SettingsView({
       />
     )}
 
-    {profileEditorOpen && (
+    {profileViewOpen && (
+      <ProfileSettingsModal
+        isOwner={isOwner}
+        isSuperAdmin={isSuperAdmin}
+        groupsLabel={groupsLabel}
+        personalDraft={personalDraft}
+        onEditSection={setProfileEditorSection}
+        onOpenPasswordModal={onOpenPasswordModal}
+        onDeleteAccount={() => setDeleteAccountOpen(true)}
+        onClose={() => setProfileViewOpen(false)}
+      />
+    )}
+
+    {profileEditorSection && (
       <ProfileEditorModal
+        section={profileEditorSection}
         isOwner={isOwner}
         groups={groups}
         groupsLabel={groupsLabel}
         personalDraft={personalDraft}
         setPersonalDraft={setPersonalDraft}
-        onClose={() => setProfileEditorOpen(false)}
+        onClose={() => setProfileEditorSection(null)}
         onSave={onSavePersonalSettings}
         onHandlePinToggle={onHandlePinToggle}
         onHandleBiometricsToggle={onHandleBiometricsToggle}
