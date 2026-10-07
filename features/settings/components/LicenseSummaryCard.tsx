@@ -1,9 +1,12 @@
 "use client";
 
+// Blocurile „Licență” (plan, stare, valabilitate) și „Coduri de acces” (număr de coduri, administratori și limita planului)
+// din secțiunea Acces; butonul „Deschide” duce către fereastra codurilor de acces.
 import { SettingsBlock } from "@/features/settings/components/SettingsBlock";
 import type { AppLanguage } from "@/context/AuthContext";
 import { appText, type UiCopyKey } from "@/lib/i18n/app-copy-catalog";
 
+// Datele de licență afișate: plan, stare și zilele rămase.
 export type LicenseAccess = {
   planLabel: string;
   statusLabel: string;
@@ -11,6 +14,7 @@ export type LicenseAccess = {
   daysRemaining: number | null;
 };
 
+// Textul valabilității: expirată, fără dată, expiră azi/mâine sau în N zile.
 function licenseRemainingLabel(licenseAccess: LicenseAccess, t: (key: UiCopyKey) => string) {
   if (licenseAccess.status === "expired") {
     return t("settings.licenseExpired");
@@ -33,6 +37,7 @@ function licenseRemainingLabel(licenseAccess: LicenseAccess, t: (key: UiCopyKey)
   return t("settings.licenseExpiresInDays").replace("{{days}}", String(days));
 }
 
+// Proprietățile cardului: licența, contoarele și acțiunea de deschidere a codurilor.
 type LicenseSummaryCardProps = {
   language: AppLanguage;
   licenseAccess: LicenseAccess;
@@ -43,6 +48,7 @@ type LicenseSummaryCardProps = {
   onOpenCodesEditor: () => void;
 };
 
+// Componenta cardului.
 /** "Codes" panel: license plan/status summary + access-code counts. */
 export function LicenseSummaryCard({
   language,
@@ -57,6 +63,7 @@ export function LicenseSummaryCard({
 
   return (
     <>
+      {/* Blocul „Licență”. */}
       <SettingsBlock title={t("settings.blockLicense")}>
         <div className="settings-summary-list">
           <div>
@@ -74,6 +81,7 @@ export function LicenseSummaryCard({
         </div>
       </SettingsBlock>
 
+      {/* Blocul „Coduri de acces”; butonul apare doar celor care pot gestiona codurile. */}
       <SettingsBlock
         title={t("settings.blockCodes")}
         action={canManageAccessCodes ? <button className="secondary-button compact" onClick={onOpenCodesEditor} type="button">{t("settings.openAction")}</button> : undefined}

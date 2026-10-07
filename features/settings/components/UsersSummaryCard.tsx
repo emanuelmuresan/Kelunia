@@ -1,5 +1,6 @@
 "use client";
 
+// Rezumatul utilizatorilor locației (total, administratori, colaboratori și oaspeți) cu butonul „Deschide” către UsersManagerModal.
 import { SettingsBlock } from "@/features/settings/components/SettingsBlock";
 import type { AppLanguage } from "@/context/AuthContext";
 import { appText, type UiCopyKey } from "@/lib/i18n/app-copy-catalog";
@@ -12,6 +13,7 @@ type UsersSummaryCardProps = {
 };
 
 /** Users panel: account counts + a button into the users manager modal. */
+// Numără conturile și administratorii din lista utilizatorilor.
 export function UsersSummaryCard({ language, managedUsers, onOpenUsersManager }: UsersSummaryCardProps) {
   const t = (key: UiCopyKey) => appText(language, key);
   const managerCount = managedUsers.filter((item) => item.role === "manager").length;

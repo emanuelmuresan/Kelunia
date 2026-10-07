@@ -1,5 +1,7 @@
 "use client";
 
+// Setările de notificări ale utilizatorului: starea permisiunii pe acest dispozitiv, notificări pentru rezervări noi
+// și memento-uri înainte de începerea rezervărilor grupului (până la 5 momente, în minute, ore sau zile).
 import { useEffect, useState } from "react";
 
 import type { AppLanguage } from "@/context/AuthContext";
@@ -12,6 +14,7 @@ import {
 import { SettingsBlock } from "@/features/settings/components/SettingsBlock";
 import type { PersonalDraft } from "@/lib/types/domain";
 
+// Proprietățile secțiunii: ciorna, preferința dispozitivului și funcțiile de actualizare.
 type NotificationSettingsSectionProps = {
   language: AppLanguage;
   personalDraft: PersonalDraft;
@@ -21,6 +24,7 @@ type NotificationSettingsSectionProps = {
   onDeviceEnabled: () => void | Promise<void>;
 };
 
+// Etichetele stării permisiunii de notificare.
 const statusKeys: Record<KeluniaNotificationPermission, UiCopyKey> = {
   granted: "settings.notifStatusGranted",
   denied: "settings.notifStatusDenied",
@@ -28,6 +32,7 @@ const statusKeys: Record<KeluniaNotificationPermission, UiCopyKey> = {
   unsupported: "settings.notifStatusUnsupported",
 };
 
+// Câmpurile vechi (notifyWeekBefore, notifyDayBefore, notifyOffsetsDays) se actualizează odată cu lista de momente, pentru compatibilitate.
 function syncLegacyNotificationFlags(nextOffsets: string[]) {
   return {
     notifyWeekBefore: nextOffsets.includes("7d"),
@@ -39,6 +44,7 @@ function syncLegacyNotificationFlags(nextOffsets: string[]) {
   };
 }
 
+// Unitatea unui moment („15m”, „2h”, „7d”) și limita fiecărei unități.
 function offsetUnit(offset: string) {
   return offset.endsWith("d") ? "d" : offset.endsWith("h") ? "h" : "m";
 }
@@ -48,6 +54,7 @@ function unitMax(unit: "m" | "h" | "d") {
 }
 
 /** Device status, new-booking pings and pre-start reminders, each with its own plain-language label. */
+// Componenta secțiunii.
 export function NotificationSettingsSection({
   language,
   personalDraft,
@@ -57,9 +64,11 @@ export function NotificationSettingsSection({
   onDeviceEnabled,
 }: NotificationSettingsSectionProps) {
   const t = (key: UiCopyKey) => appText(language, key);
+  // Starea permisiunii de notificare și dacă se cere permisiunea chiar acum.
   const [permission, setPermission] = useState<KeluniaNotificationPermission>("default");
   const [enabling, setEnabling] = useState(false);
 
+  // La montare se citește starea permisiunii.
   useEffect(() => {
     let cancelled = false;
 
@@ -74,6 +83,7 @@ export function NotificationSettingsSection({
     };
   }, []);
 
+  // Cere permisiunea și (re)înregistrează dispozitivul pentru push.
   async function enableDevice() {
     setEnabling(true);
 
@@ -86,6 +96,7 @@ export function NotificationSettingsSection({
     }
   }
 
+  // Modifică lista momentelor: valoarea sau unitatea unuia, ștergerea și adăugarea unuia nou.
   function applyOffsets(nextOffsets: string[]) {
     setPersonalDraft({
       ...personalDraft,
@@ -107,8 +118,10 @@ export function NotificationSettingsSection({
     applyOffsets(personalDraft.notifyOffsets.map((offset, offsetIndex) => (offsetIndex === index ? `${amount}${unit}` : offset)));
   }
 
+  // Structura secțiunii.
   return (
     <div className="notif-settings">
+      {/* Blocul „Acest dispozitiv”: starea permisiunii și notificările pentru rezervări noi. */}
       <SettingsBlock title={t("settings.notifDevice")}>
         <div className="notif-status-row">
           <span className={`notif-status notif-status-${permission}`}>{t(statusKeys[permission])}</span>
@@ -126,6 +139,7 @@ export function NotificationSettingsSection({
         <small className="muted-note">{t("settings.notifNewBookingsHint")}</small>
       </SettingsBlock>
 
+      {/* Blocul „Memento-uri”: momentele de notificare înainte de începerea rezervărilor grupului. */}
       <SettingsBlock title={t("settings.notifReminders")}>
         <label className="toggle-row">
           <input
@@ -192,6 +206,7 @@ export function NotificationSettingsSection({
         )}
       </SettingsBlock>
 
+      {/* Nota de subsol. */}
       <small className="muted-note">{t("settings.notifFootnote")}</small>
     </div>
   );

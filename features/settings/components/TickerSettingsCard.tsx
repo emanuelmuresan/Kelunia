@@ -1,5 +1,7 @@
 "use client";
 
+// Blocul „Banda de evenimente” din Setări: rezumatul setărilor (afișare, număr de zile, culori) și fereastra de modificare.
+// Setările benzii sunt salvate doar pe acest dispozitiv (vezi useUpcomingTickerSettings).
 import { SettingsBlock } from "@/features/settings/components/SettingsBlock";
 import { useState } from "react";
 
@@ -15,6 +17,7 @@ type TickerSettingsCardProps = {
 };
 
 /** Per-device summary of the upcoming-events band; editing happens in a modal. */
+// Componenta blocului; salvarea aplică setările și închide fereastra.
 export function TickerSettingsCard({ language, settings, onChange }: TickerSettingsCardProps) {
   const t = (key: UiCopyKey) => appText(language, key);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -26,6 +29,7 @@ export function TickerSettingsCard({ language, settings, onChange }: TickerSetti
 
   return (
     <>
+      {/* Blocul cu rezumatul; „Modifică” deschide fereastra de editare. */}
       <SettingsBlock
         title={t("settings.tickerTitle")}
         action={
@@ -67,6 +71,7 @@ export function TickerSettingsCard({ language, settings, onChange }: TickerSetti
         </div>
       </SettingsBlock>
 
+      {/* Fereastra de modificare a benzii. */}
       {editorOpen && (
         <TickerEditorModal language={language} settings={settings} onSave={save} onClose={() => setEditorOpen(false)} />
       )}

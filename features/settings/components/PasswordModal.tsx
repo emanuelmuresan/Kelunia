@@ -1,13 +1,17 @@
 "use client";
 
+// Fereastra „Schimbă parola”: parola curentă, parola nouă și confirmarea, plus trimiterea unui email de resetare.
+// Validarea și schimbarea parolei sunt în usePasswordManagement.
 import { appText, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 
+// Ciorna parolelor: curentă, nouă și confirmare.
 type PasswordDraft = {
   current: string;
   next: string;
   confirm: string;
 };
 
+// Proprietățile ferestrei: ciorna, mesajele și acțiunile.
 type PasswordModalProps = {
   open: boolean;
   passwordDraft: PasswordDraft;
@@ -20,6 +24,7 @@ type PasswordModalProps = {
   language?: SupportedLocale;
 };
 
+// Componenta ferestrei.
 export function PasswordModal({
   open,
   passwordDraft,
@@ -31,10 +36,12 @@ export function PasswordModal({
   onReset,
   language = "ro",
 }: PasswordModalProps) {
+  // Fereastra închisă nu se randează.
   if (!open) {
     return null;
   }
 
+  // Structura ferestrei.
   return (
     <div className="modal-backdrop" role="presentation">
       <div
@@ -43,6 +50,7 @@ export function PasswordModal({
         aria-modal="true"
         aria-label={appText(language, "settings.password")}
       >
+        {/* Antetul ferestrei. */}
         <div className="modal-head">
           <div>
             <span className="eyebrow">{appText(language, "settings.account")}</span>
@@ -58,6 +66,7 @@ export function PasswordModal({
           </button>
         </div>
 
+        {/* Câmpurile parolelor, mesajele și butoanele. */}
         <div className="settings-form">
           <label>
             {appText(language, "settings.currentPassword")}

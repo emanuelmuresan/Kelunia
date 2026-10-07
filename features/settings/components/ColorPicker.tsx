@@ -1,5 +1,6 @@
 "use client";
 
+// Alegerea unei culori: pastile cu culori gata făcute și un câmp #RRGGBB; folosit la culoarea grupurilor și a benzii de evenimente.
 import { useEffect, useState } from "react";
 
 type ColorPickerProps = {
@@ -10,6 +11,7 @@ type ColorPickerProps = {
   onChange: (hex: string) => void;
 };
 
+// Formatul acceptat pentru culoare: șase cifre hexazecimale.
 const hexPattern = /^#[0-9a-f]{6}$/i;
 
 /**
@@ -18,6 +20,7 @@ const hexPattern = /^#[0-9a-f]{6}$/i;
  * surrounding form's own Save button.
  */
 export function ColorPicker({ value, palette, hexLabel, disabled = false, onChange }: ColorPickerProps) {
+  // Câmpul text se sincronizează cu valoarea aleasă; o valoare completă și validă este trimisă imediat, iar la ieșire din câmp revine la ultima valabilă.
   const [hexText, setHexText] = useState(value);
 
   useEffect(() => {

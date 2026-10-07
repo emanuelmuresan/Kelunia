@@ -1,5 +1,7 @@
 "use client";
 
+// Fereastra „Șterge contul” (dreptul de ștergere GDPR): cere emailul contului ca să confirme, apoi apelează funcția cloud deleteMyAccount
+// și trimite utilizatorul la login. Ultimul administrator al unei locații nu își poate șterge contul.
 import { useState } from "react";
 import { signOut } from "firebase/auth";
 import { httpsCallable } from "firebase/functions";
@@ -8,6 +10,7 @@ import type { AppLanguage } from "@/context/AuthContext";
 import { auth, cloudFunctions } from "@/lib/firebase";
 import { appText } from "@/lib/i18n/app-copy-catalog";
 
+// Proprietățile ferestrei: emailul contului, dacă e singurul administrator și limba.
 type DeleteAccountModalProps = {
   accountEmail: string;
   isSoleAdmin?: boolean;
@@ -15,6 +18,7 @@ type DeleteAccountModalProps = {
   onClose: () => void;
 };
 
+// Se randează doar cât e deschisă, deci starea se resetează la fiecare deschidere.
 /** GDPR "delete my account" flow. Rendered only while open, so state resets each time. */
 export function DeleteAccountModal({ accountEmail, isSoleAdmin = false, language, onClose }: DeleteAccountModalProps) {
   const t = (key: Parameters<typeof appText>[1]) => appText(language, key);
@@ -22,6 +26,7 @@ export function DeleteAccountModal({ accountEmail, isSoleAdmin = false, language
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
 
+  // Închiderea este blocată cât timp ștergerea e în curs.
   function close() {
     if (working) {
       return;
@@ -30,6 +35,8 @@ export function DeleteAccountModal({ accountEmail, isSoleAdmin = false, language
     onClose();
   }
 
+  // Validează emailul scris, apelează funcția cloud (care șterge contul și datele personale), deconectează și reîncarcă pagina de login.
+  // Motivul „last-admin” trimis de server arată mesajul despre ultimul administrator.
   async function deleteCurrentAccount() {
     const cleanEmail = email.trim().toLowerCase();
 
@@ -64,6 +71,7 @@ export function DeleteAccountModal({ accountEmail, isSoleAdmin = false, language
     }
   }
 
+  // Structura ferestrei.
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={close}>
       <section
@@ -73,6 +81,7 @@ export function DeleteAccountModal({ accountEmail, isSoleAdmin = false, language
         aria-labelledby="delete-account-title"
         onMouseDown={(event) => event.stopPropagation()}
       >
+        {/* Antetul ferestrei. */}
         <div className="section-heading">
           <div>
             <span className="eyebrow">Account &amp; Privacy</span>
@@ -80,6 +89,7 @@ export function DeleteAccountModal({ accountEmail, isSoleAdmin = false, language
           </div>
         </div>
 
+        {/* Explicația a ceea ce se șterge, câmpul de confirmare, eroarea și butoanele. */}
         <div className="settings-form">
           <p className="muted-note">
             Se șterge contul tău Kelunia, profilul personal, setările PIN/biometrie, tokenurile de notificări și datele personale controlate de Kelunia.

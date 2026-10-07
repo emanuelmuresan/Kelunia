@@ -1,11 +1,14 @@
 "use client";
 
+// Fereastra „Spații și grupuri”: două coloane (camere și grupuri) cu butoane de adăugare, modificare și ștergere pentru fiecare element.
+// Cele temporare arată data până la care sunt valabile sau „expirat”. Scrierile sunt în useSpaceEditor.
 import type { AppLanguage } from "@/context/AuthContext";
 import { dateKey } from "@/lib/dates";
 import { appText, type UiCopyKey } from "@/lib/i18n/app-copy-catalog";
 import { isSpaceExpired } from "@/lib/space-expiry";
 import type { GroupItem, RoomItem, SpaceKind } from "@/lib/types/domain";
 
+// Proprietățile ferestrei: listele, etichetele personalizate și acțiunile.
 type ResourcesManagerModalProps = {
   language: AppLanguage;
   title: string;
@@ -32,8 +35,10 @@ export function ResourcesManagerModal({
   onOpenSpaceEditor,
   onRemoveSpaceItem,
 }: ResourcesManagerModalProps) {
+  // Componenta ferestrei; ziua de azi servește la recunoașterea elementelor expirate.
   const t = (key: UiCopyKey) => appText(language, key);
   const todayKey = dateKey(new Date());
+  // Nota de valabilitate a unui element temporar.
   const expiryNote = (item: { activeUntil?: string }) =>
     item.activeUntil ? (
       <small className={isSpaceExpired(item, todayKey) ? "code-expiry-expired" : "code-expiry"}>
@@ -43,6 +48,7 @@ export function ResourcesManagerModal({
       </small>
     ) : null;
 
+  // Structura ferestrei.
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
       <section
@@ -52,6 +58,7 @@ export function ResourcesManagerModal({
         aria-labelledby="resources-manager-title"
         onMouseDown={(event) => event.stopPropagation()}
       >
+        {/* Antetul ferestrei. */}
         <div className="modal-head">
           <div>
             <span className="eyebrow">{t("settings.organization")}</span>
@@ -59,7 +66,9 @@ export function ResourcesManagerModal({
           </div>
         </div>
 
+        {/* Cele două coloane: camere și grupuri. */}
         <div className="split-list">
+          {/* Coloana camerelor: adăugare doar pentru cine poate edita locația. */}
           <div className="mini-column">
             <div className="mini-section-head">
               <h3>{roomsLabel}</h3>
@@ -93,6 +102,7 @@ export function ResourcesManagerModal({
             </div>
           </div>
 
+          {/* Coloana grupurilor, cu pastila de culoare a fiecărui grup. */}
           <div className="mini-column">
             <div className="mini-section-head">
               <h3>{groupsLabel}</h3>
@@ -131,6 +141,7 @@ export function ResourcesManagerModal({
           </div>
         </div>
 
+        {/* Închiderea ferestrei. */}
         <div className="modal-actions">
           <button className="primary-button" onClick={onClose} type="button">
             {t("action.done")}

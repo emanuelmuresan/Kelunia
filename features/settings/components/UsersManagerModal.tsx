@@ -1,5 +1,7 @@
 "use client";
 
+// Fereastra „Utilizatori” din Setări > Acces: tabelul utilizatorilor locației, cu schimbarea rolului, a accesului la camere și ștergerea profilului.
+// Proprietarul și propriul cont nu pot fi modificate; scrierile sunt făcute de useManagedUserActions.
 import { useState } from "react";
 
 import type { AppLanguage, UserRole } from "@/context/AuthContext";
@@ -7,12 +9,14 @@ import { appText, type UiCopyKey } from "@/lib/i18n/app-copy-catalog";
 import { roomAccessLabel } from "@/lib/room-access";
 import type { ManagedUser, RoomAccessMode, RoomItem } from "@/lib/types/domain";
 
+// Ciorna modificărilor unui utilizator: rol și acces la camere.
 type ManagedUserDraft = {
   role: UserRole;
   roomAccess: RoomAccessMode;
   allowedRoomIds: string[];
 };
 
+// Proprietățile ferestrei: utilizatorii, camerele, permisiunile și acțiunile.
 type UsersManagerModalProps = {
   language: AppLanguage;
   managedUsers: ManagedUser[];
@@ -30,6 +34,7 @@ type UsersManagerModalProps = {
   onRemoveManagedUser: (managedUser: ManagedUser) => void;
 };
 
+// Compară două liste de camere fără să țină cont de ordine.
 function sameRoomIds(first: string[], second: string[]) {
   if (first.length !== second.length) {
     return false;
@@ -40,6 +45,7 @@ function sameRoomIds(first: string[], second: string[]) {
 }
 
 /** Per-location user table: change role / room access / remove account. */
+// Componenta ferestrei.
 export function UsersManagerModal({
   language,
   managedUsers,
@@ -52,10 +58,12 @@ export function UsersManagerModal({
   onUpdateManagedUserRoomAccess,
   onRemoveManagedUser,
 }: UsersManagerModalProps) {
+  // Starea: ce utilizatori sunt în editare și ciornele lor.
   const t = (key: UiCopyKey) => appText(language, key);
   const [editing, setEditing] = useState<Record<string, boolean>>({});
   const [drafts, setDrafts] = useState<Record<string, ManagedUserDraft>>({});
 
+  // Ciorna unui utilizator (cea în editare sau valorile curente), deschiderea și închiderea editorului și schimbarea ciornei.
   function draftFor(managedUser: ManagedUser): ManagedUserDraft {
     return drafts[managedUser.id] ?? {
       role: managedUser.role,
@@ -93,6 +101,7 @@ export function UsersManagerModal({
     setDrafts((current) => ({ ...current, [managedUser.id]: nextDraft }));
   }
 
+  // Salvează: întâi schimbă rolul (cu confirmările din hook), apoi accesul la camere dacă s-a modificat.
   async function saveEditor(managedUser: ManagedUser) {
     const draft = draftFor(managedUser);
     const nextRoomAccess = draft.role === "manager" ? "all" : draft.roomAccess;
@@ -116,6 +125,7 @@ export function UsersManagerModal({
     closeEditor(managedUser.id);
   }
 
+  // Structura ferestrei.
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
       <section
@@ -125,6 +135,7 @@ export function UsersManagerModal({
         aria-labelledby="users-manager-title"
         onMouseDown={(event) => event.stopPropagation()}
       >
+        {/* Antetul ferestrei, cu numărul de utilizatori. */}
         <div className="modal-head">
           <div>
             <span className="eyebrow">{t("settings.users")}</span>
@@ -132,6 +143,7 @@ export function UsersManagerModal({
           </div>
         </div>
 
+        {/* Tabelul utilizatorilor. */}
         <div className="users-table">
           {managedUsers.map((managedUser) => {
             const userDraft = draftFor(managedUser);
@@ -156,6 +168,7 @@ export function UsersManagerModal({
               canManageMembers &&
               managedUser.locationId === currentLocationId;
 
+            // Un rând pe utilizator: date, rol și acces la camere (editabile doar în modul de editare), plus acțiunile.
             return (
               <div className="user-row" key={managedUser.id}>
                 <div>
@@ -276,6 +289,7 @@ export function UsersManagerModal({
           })}
         </div>
 
+        {/* Închiderea ferestrei. */}
         <div className="modal-actions">
           <button className="primary-button" onClick={onClose} type="button">
             {t("action.done")}

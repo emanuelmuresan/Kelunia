@@ -1,5 +1,6 @@
 "use client";
 
+// Rezumatul camerelor și grupurilor locației (număr și primele trei nume) cu butonul „Deschide” către ResourcesManagerModal.
 import { SettingsBlock } from "@/features/settings/components/SettingsBlock";
 import type { AppLanguage } from "@/context/AuthContext";
 import { appText, type UiCopyKey } from "@/lib/i18n/app-copy-catalog";

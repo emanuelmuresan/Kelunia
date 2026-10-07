@@ -1,5 +1,7 @@
 "use client";
 
+// Setările de navigare ale unei locații (documentul settings/calendar_<locationId>): numele paginilor, ce pagini se văd (programul fix și lista;
+// calendarul e mereu vizibil) și etichetele camerelor și grupurilor. Păstrează valorile salvate și ciornele din ferestrele de editare.
 import { useAppText } from "@/features/shell/hooks/useAppText";
 import { useEffect, useState } from "react";
 import type { User } from "firebase/auth";
@@ -16,6 +18,7 @@ import {
 import { db } from "@/lib/firebase";
 import type { WriteTarget } from "@/lib/types/domain";
 
+// Parametrii: locația, permisiunile și funcțiile din dashboard.
 type UseCalendarSettingsParams = {
   userExists: boolean;
   locationId: string;
@@ -28,6 +31,7 @@ type UseCalendarSettingsParams = {
   setSettingsMessage: (value: string) => void;
 };
 
+// Hook-ul setărilor de navigare.
 export function useCalendarSettings({
   userExists,
   locationId,
@@ -40,6 +44,7 @@ export function useCalendarSettings({
   setSettingsMessage,
 }: UseCalendarSettingsParams) {
   const msg = useAppText();
+  // Pentru fiecare setare există valoarea salvată și o ciornă pe care o modifică ferestrele de editare.
   const [fixedSectionTitle, setFixedSectionTitle] = useState(defaultFixedSectionTitle);
   const [fixedSectionDraft, setFixedSectionDraft] = useState(defaultFixedSectionTitle);
   const [fixedPageEnabled, setFixedPageEnabled] = useState(true);
@@ -55,6 +60,7 @@ export function useCalendarSettings({
   const [groupsLabel, setGroupsLabel] = useState(defaultGroupsLabel);
   const [groupsLabelDraft, setGroupsLabelDraft] = useState(defaultGroupsLabel);
 
+  // Fără utilizator sau fără locație se folosesc valorile implicite.
   useEffect(() => {
     if (!userExists || !locationId) {
       setFixedSectionTitle(defaultFixedSectionTitle);
@@ -74,6 +80,7 @@ export function useCalendarSettings({
       return;
     }
 
+    // Urmărește documentul de setări în timp real; valorile lipsă sau goale devin cele implicite, iar paginile sunt vizibile dacă nu sunt oprite explicit.
     return onSnapshot(
       doc(db, "settings", `calendar_${locationId}`),
       (snapshot) => {
@@ -101,6 +108,7 @@ export function useCalendarSettings({
         setGroupsLabel(nextGroupsLabel);
         setGroupsLabelDraft(nextGroupsLabel);
       },
+      // La eroare de citire se revine la valorile implicite.
       (error) => {
         console.warn("Numele sectiunii din calendar nu a putut fi citit:", error);
         setFixedSectionTitle(defaultFixedSectionTitle);
@@ -121,6 +129,7 @@ export function useCalendarSettings({
     );
   }, [locationId, userExists]);
 
+  // Salvează setările: numele nu pot fi goale; scrie documentul complet și înregistrează în audit starea de dinainte și de după.
   async function saveNavigationSettings() {
     if (!canEditCurrentLocation) {
       return;
@@ -188,6 +197,7 @@ export function useCalendarSettings({
     }
   }
 
+  // Valorile salvate, ciornele și acțiunile expuse dashboard-ului.
   return {
     fixedPageEnabled,
     fixedPageEnabledDraft,

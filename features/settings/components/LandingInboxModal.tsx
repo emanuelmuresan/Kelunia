@@ -1,5 +1,7 @@
 "use client";
 
+// Inbox-ul mesajelor din pagina publică (doar proprietar): lista mesajelor (Community, contact, newsletter) și, pentru fiecare, conversația,
+// răspunsul pe email și schimbarea stării (citită, aprobată, respinsă; aprobarea deschide codurile de licență).
 import { useState } from "react";
 
 import { useCommunityApplicationMessages } from "@/features/landing/hooks/useCommunityApplications";
@@ -7,6 +9,7 @@ import { db } from "@/lib/firebase";
 import { communityDateLabel } from "@/lib/licensing";
 import type { CommunityApplication, CommunityApplicationStatus } from "@/lib/types/domain";
 
+// Proprietățile ferestrei: mesajele, eroarea și acțiunile.
 type LandingInboxModalProps = {
   applications: CommunityApplication[];
   applicationsError: string;
@@ -18,6 +21,7 @@ type LandingInboxModalProps = {
   onOpenLicenseCodes: () => void;
 };
 
+// Etichetele stării unui mesaj și ale sursei lui.
 function statusLabel(status: CommunityApplicationStatus) {
   if (status === "reviewed") return "citită";
   if (status === "replied") return "răspuns salvat";
@@ -32,6 +36,7 @@ function sourceLabel(source: string) {
   return "Community";
 }
 
+// Componenta ferestrei.
 /** Owner landing-page inbox: message list + per-application reply thread. */
 export function LandingInboxModal({
   applications,
@@ -43,12 +48,14 @@ export function LandingInboxModal({
   onUpdateStatus,
   onOpenLicenseCodes,
 }: LandingInboxModalProps) {
+  // Starea: mesajul deschis, răspunsul scris, erorile și încărcarea.
   const [selected, setSelected] = useState<CommunityApplication | null>(null);
   const [replyDraft, setReplyDraft] = useState("");
   const [replyError, setReplyError] = useState("");
   const [replyMessage, setReplyMessage] = useState("");
   const [replyWorking, setReplyWorking] = useState(false);
 
+  // Mesajul deschis, actualizat din lista curentă, și conversația lui în timp real.
   const active = selected
     ? applications.find((application) => application.id === selected.id) ?? selected
     : null;
@@ -59,6 +66,7 @@ export function LandingInboxModal({
     enabled: Boolean(active),
   });
 
+  // Deschide un mesaj (și îl marchează citit dacă e nou) sau îl închide.
   function openApplication(application: CommunityApplication) {
     setSelected(application);
     setReplyDraft("");
@@ -77,6 +85,7 @@ export function LandingInboxModal({
     setReplyMessage("");
   }
 
+  // Salvează răspunsul (minimum 5 caractere); funcția cloud îl trimite pe email.
   async function saveReply() {
     if (!active) {
       return;
@@ -105,6 +114,7 @@ export function LandingInboxModal({
     }
   }
 
+  // Schimbă starea mesajului; la „aprobată” se închide mesajul și se deschid codurile de licență.
   async function updateStatus(status: CommunityApplicationStatus) {
     if (!active) {
       return;
@@ -130,8 +140,10 @@ export function LandingInboxModal({
     }
   }
 
+  // Fereastra listei și, separat, fereastra mesajului ales.
   return (
     <>
+      {/* Fereastra listei. */}
       <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
         <section
           className="modal-card community-message-card"
@@ -140,6 +152,7 @@ export function LandingInboxModal({
           aria-labelledby="landing-inbox-title"
           onMouseDown={(event) => event.stopPropagation()}
         >
+          {/* Antetul ferestrei. */}
           <div className="section-heading">
             <div>
               <span className="eyebrow">Inbox</span>
@@ -150,6 +163,7 @@ export function LandingInboxModal({
             </button>
           </div>
 
+          {/* Numărul de mesaje primite și al celor necitite. */}
           <p className="muted-note">
             {applications.length} mesaje primite
             {unreadCount > 0 ? ` · ${unreadCount} necitite` : ""}
@@ -157,6 +171,7 @@ export function LandingInboxModal({
 
           {applicationsError && <p className="error-line">{applicationsError}</p>}
 
+          {/* Lista mesajelor; se deschid cu clic sau tastatură. */}
           <div className="mini-list message-inbox-list">
             {applications.length === 0 ? (
               <p className="empty-line">Nu există mesaje de pe landing page.</p>
@@ -206,6 +221,7 @@ export function LandingInboxModal({
         </section>
       </div>
 
+      {/* Fereastra mesajului ales. */}
       {active && (
         <div className="modal-backdrop" role="presentation" onMouseDown={closeApplication}>
           <section
@@ -215,6 +231,7 @@ export function LandingInboxModal({
             aria-labelledby="community-message-title"
             onMouseDown={(event) => event.stopPropagation()}
           >
+            {/* Antetul: sursa și numele organizației. */}
             <div className="section-heading">
               <div>
                 <span className="eyebrow">{sourceLabel(active.source)}</span>
@@ -225,6 +242,7 @@ export function LandingInboxModal({
               </button>
             </div>
 
+            {/* Detaliile: expeditor, data, starea și conversația. */}
             <div className="message-detail">
               <div className="message-meta">
                 <span>De la</span>
@@ -239,6 +257,7 @@ export function LandingInboxModal({
                 <strong>{statusLabel(active.status)}</strong>
               </div>
 
+              {/* Conversația: cererea inițială și răspunsurile trimise. */}
               <div className="message-thread">
                 <article className="message-bubble inbound">
                   <small>Cererea inițială</small>
@@ -258,6 +277,7 @@ export function LandingInboxModal({
                 ))}
               </div>
 
+              {/* Câmpul de răspuns. */}
               <label className="reply-composer">
                 Răspuns
                 <textarea
@@ -271,6 +291,7 @@ export function LandingInboxModal({
               {replyMessage && <p className="success-line">{replyMessage}</p>}
             </div>
 
+            {/* Acțiuni: trimite răspunsul, aprobă, respinge sau închide. */}
             <div className="modal-actions community-actions">
               <button className="primary-button" disabled={replyWorking} onClick={saveReply} type="button">
                 Trimite răspunsul

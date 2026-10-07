@@ -1,3 +1,5 @@
+// Un bloc de setări cu titlu, indiciu opțional și (opțional) un buton în antet, de exemplu „Modifică” sau „Deschide” doar pentru acest bloc.
+// Folosit în toate ferestrele de setări ca să separe setările fără legătură între ele.
 import type { ReactNode } from "react";
 
 type SettingsBlockProps = {

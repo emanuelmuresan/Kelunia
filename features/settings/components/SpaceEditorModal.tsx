@@ -1,5 +1,7 @@
 "use client";
 
+// Fereastra de adăugare/modificare a unei camere sau a unui grup: nume, culoare (doar la grupuri) și perioada de valabilitate.
+// Starea și salvarea sunt în useSpaceEditor; aici sunt doar câmpurile.
 import type { SpaceEditor } from "@/lib/types/domain";
 import { ColorPicker } from "@/features/settings/components/ColorPicker";
 import { SettingsBlock } from "@/features/settings/components/SettingsBlock";
@@ -7,6 +9,7 @@ import { dateKey } from "@/lib/dates";
 import { groupColorPalette, normalizeGroupColor } from "@/lib/group-colors";
 import { appText, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 
+// Proprietățile ferestrei: elementul în editare, eroarea, etichetele și acțiunile.
 type SpaceEditorModalProps = {
   spaceEditor: SpaceEditor | null;
   spaceError: string;
@@ -18,6 +21,7 @@ type SpaceEditorModalProps = {
   onSave: () => void;
 };
 
+// Componenta ferestrei.
 export function SpaceEditorModal({
   spaceEditor,
   spaceError,
@@ -28,13 +32,16 @@ export function SpaceEditorModal({
   onChange,
   onSave,
 }: SpaceEditorModalProps) {
+  // Fără element în editare fereastra este închisă.
   if (!spaceEditor) {
     return null;
   }
 
+  // Tipul elementului și eticheta lui (cameră sau grup, cu numele personalizat al locației).
   const isRoom = spaceEditor.kind === "room";
   const itemLabel = isRoom ? roomLabel : groupLabel;
 
+  // Structura ferestrei.
   return (
     <div className="modal-backdrop" role="presentation">
       <div
@@ -43,6 +50,7 @@ export function SpaceEditorModal({
         aria-modal="true"
         aria-label={appText(language, "settings.space")}
       >
+        {/* Antetul: „Adaugă” sau „Modifică”, cu eticheta elementului. */}
         <div className="modal-head">
           <div>
             <span className="eyebrow">{itemLabel}</span>
@@ -58,6 +66,7 @@ export function SpaceEditorModal({
           </button>
         </div>
 
+        {/* Câmpurile formularului. */}
         <div className="settings-form">
           <label>
             {appText(language, "settings.name")}
@@ -74,6 +83,7 @@ export function SpaceEditorModal({
             />
           </label>
 
+          {/* Culoarea grupului, din paletă sau în format #RRGGBB (doar la grupuri). */}
           {!isRoom && (
             <div className="color-field">
               <span>{appText(language, "settings.color")}</span>
@@ -86,6 +96,7 @@ export function SpaceEditorModal({
             </div>
           )}
 
+          {/* Valabilitatea: un element temporar (implicit 7 zile) dispare din alegeri după data aleasă. */}
           <SettingsBlock title={appText(language, "settings.blockPeriod")}>
           <label className="toggle-row compact-toggle">
             <input
@@ -115,8 +126,10 @@ export function SpaceEditorModal({
           ) : null}
           </SettingsBlock>
 
+          {/* Eroarea de la salvare. */}
           {spaceError && <p className="error-line">{spaceError}</p>}
 
+          {/* Butoanele de renunțare și salvare. */}
           <div className="modal-actions">
             <button className="secondary-button" onClick={onClose} type="button">
               {appText(language, "action.cancel")}

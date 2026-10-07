@@ -1,5 +1,7 @@
 "use client";
 
+// Secțiunea „Pagini” a locației, în trei blocuri (vizibilitate, numele paginilor, etichetele elementelor), fiecare cu propriul „Modifică”
+// care deschide PagesEditorModal doar pentru blocul respectiv. Calendarul este mereu vizibil; lista și programele fixe pot fi ascunse.
 import { SettingsBlock } from "@/features/settings/components/SettingsBlock";
 import { useState } from "react";
 
@@ -7,6 +9,7 @@ import type { AppLanguage } from "@/context/AuthContext";
 import { PagesEditorModal, type PagesSection } from "@/features/settings/components/PagesEditorModal";
 import { appText, type UiCopyKey } from "@/lib/i18n/app-copy-catalog";
 
+// Proprietățile cardului: ciornele setărilor de navigare și funcțiile care le modifică, venite din dashboard.
 type PagesSettingsCardProps = {
   language: AppLanguage;
   canEditCurrentLocation: boolean;
@@ -31,6 +34,7 @@ type PagesSettingsCardProps = {
   onSaveNavigationSettings: () => void;
 };
 
+// Componenta cardului; afișează valorile curente, iar modificarea se face în fereastră.
 /** "Pages" panel: read-only summary of the per-location navigation; editing happens in a modal. */
 export function PagesSettingsCard(props: PagesSettingsCardProps) {
   const {
@@ -52,12 +56,14 @@ export function PagesSettingsCard(props: PagesSettingsCardProps) {
   const t = (key: UiCopyKey) => appText(language, key);
   const [editorSection, setEditorSection] = useState<PagesSection | null>(null);
 
+  // Numele afișate: valoarea scrisă de utilizator sau cea implicită.
   const fixedName = fixedSectionDraft.trim() || defaultFixedSectionTitle;
   const listName = listViewDraft.trim() || t("nav.list");
   const resourcesName = resourcesSectionDraft.trim() || defaultResourcesSectionTitle;
   const roomsName = roomsLabelDraft.trim() || defaultRoomsLabel;
   const groupsName = groupsLabelDraft.trim() || defaultGroupsLabel;
 
+  // Butonul „Modifică” al unui bloc (doar cine poate edita locația) deschide editorul pentru acel bloc.
   const editButton = (section: PagesSection) =>
     canEditCurrentLocation ? (
       <button className="secondary-button compact" onClick={() => setEditorSection(section)} type="button">
@@ -65,8 +71,10 @@ export function PagesSettingsCard(props: PagesSettingsCardProps) {
       </button>
     ) : undefined;
 
+  // Structura cardului.
   return (
     <>
+      {/* Blocul „Vizibilitate”: calendarul este mereu activ, lista și programele fixe pot fi oprite. */}
       <SettingsBlock title={t("settings.blockVisibility")} action={editButton("visibility")}>
         <div className="settings-summary-list">
           <div>
@@ -84,6 +92,7 @@ export function PagesSettingsCard(props: PagesSettingsCardProps) {
         </div>
       </SettingsBlock>
 
+      {/* Blocul „Numele paginilor”. */}
       <SettingsBlock title={t("settings.blockSectionNames")} action={editButton("names")}>
         <div className="settings-summary-list">
           <div>
@@ -101,6 +110,7 @@ export function PagesSettingsCard(props: PagesSettingsCardProps) {
         </div>
       </SettingsBlock>
 
+      {/* Blocul „Etichetele elementelor” (camere, grupuri). */}
       <SettingsBlock title={t("settings.blockItemNames")} action={editButton("labels")}>
         <div className="settings-summary-list">
           <div>
@@ -114,6 +124,7 @@ export function PagesSettingsCard(props: PagesSettingsCardProps) {
         </div>
       </SettingsBlock>
 
+      {/* Fereastra de modificare a blocului ales. */}
       {editorSection && (
         <PagesEditorModal
           section={editorSection}

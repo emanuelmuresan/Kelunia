@@ -1,5 +1,8 @@
 "use client";
 
+// Pagina „Setări”: patru carduri compacte (Profil, Configurare, Acces, Suport), fiecare cu „Deschide”, plus panoul proprietarului.
+// Fiecare card deschide o fereastră cu blocuri de setări; fiecare bloc are propriul „Modifică” sau „Deschide”.
+// Aici sunt doar legăturile dintre carduri și ferestre; starea și scrierile vin din dashboard și din hook-urile din features/.
 import { useState } from "react";
 import { useAuth, type AppLanguage, type UserRole } from "@/context/AuthContext";
 import { DeleteAccountModal } from "@/features/settings/components/DeleteAccountModal";
@@ -39,6 +42,7 @@ import type {
   SpaceKind,
 } from "@/lib/types/domain";
 
+// Proprietățile paginii: permisiunile, ciornele setărilor, datele locației, listele și toate acțiunile primite din dashboard.
 type SettingsViewProps = {
   settingsError: string;
   onSettingsMessage: (text: string) => void;
@@ -116,6 +120,7 @@ type SettingsViewProps = {
   onResolveErrorReport: (reportId: string) => Promise<void>;
 };
 
+// Componenta paginii.
 export function SettingsView({
   settingsError,
   onSettingsMessage,
@@ -189,12 +194,14 @@ export function SettingsView({
 }: SettingsViewProps) {
   const { user, profile } = useAuth();
   const language: AppLanguage = personalDraft.language;
+  // Rolul utilizatorului stabilește ce secțiuni se văd: proprietarul fără locație alesă nu are setări de locație.
   const showLocationSettings = !isOwner || Boolean(currentLocationId);
   const hasAdminSections = isSuperAdmin || isOwner;
   const resourcesTitle = resourcesSectionDraft.trim() || defaultResourcesSectionTitle;
   const roomsLabel = roomsLabelDraft.trim() || defaultRoomsLabel;
   const groupsLabel = groupsLabelDraft.trim() || defaultGroupsLabel;
 
+  // Ce fereastră sau secțiune este deschisă în acest moment.
   const [newsletterPanelOpen, setNewsletterPanelOpen] = useState(false);
   const [resourcesManagerOpen, setResourcesManagerOpen] = useState(false);
   const [usersManagerOpen, setUsersManagerOpen] = useState(false);
@@ -216,6 +223,7 @@ export function SettingsView({
     isSuperAdmin &&
     !locationClosing &&
     !visibleManagedUsers.some((item) => item.role === "manager" && !item.isOwner && item.id !== user?.uid);
+  // Abonații newsletter: cei activi, plus emailurile mai vechi rămase doar ca mesaje din pagina publică.
   const activeNewsletterSubscribers = newsletterSubscribers.filter(
     (subscriber) => subscriber.status === "active" && !subscriber.unsubscribed
   );
@@ -246,11 +254,15 @@ export function SettingsView({
 
     return [...rows.values()];
   })();
+  // Mesajele noi din pagina publică, afișate ca număr necitit.
   const unreadLandingMessageCount = communityApplications.filter((application) => application.status === "new").length;
 
+  // Structura paginii: cardurile, apoi ferestrele secțiunilor și ale acțiunilor.
   return (
     <>
+    {/* Cardurile din pagina Setări. */}
     <section className="settings-grid">
+      {/* Avertismentul de PIN resetat și eroarea ultimei acțiuni. */}
       {pinResetRequired && (
         <p className="error-line settings-alert">
           Din motive de securitate, PIN-ul de blocare a fost resetat. Activează din nou „Blocare cu PIN”
@@ -259,6 +271,7 @@ export function SettingsView({
       )}
       {settingsError && <p className="error-line settings-alert">{settingsError}</p>}
 
+      {/* Fără utilizator se arată doar legătura către conectare. */}
       {!userExists && (
         <article className="settings-panel">
           <div className="empty-state">
@@ -270,6 +283,7 @@ export function SettingsView({
         </article>
       )}
 
+      {/* Cardurile: Profil, Configurare, Acces (doar manageri și proprietar), Suport și, pentru proprietar, panoul locațiilor. */}
       {userExists && (
         <>
           <SettingsSectionCard
@@ -302,6 +316,7 @@ export function SettingsView({
             onOpen={() => setOpenSection("support")}
           />
 
+          {/* Panoul proprietarului: locații, licențe, newsletter și inbox. */}
           {isOwner && (
             <OwnerLocationsCard
               language={language}
@@ -324,6 +339,7 @@ export function SettingsView({
       )}
     </section>
 
+    {/* Configurare: pagini, banda de evenimente, camere și grupuri. */}
     {openSection === "config" && (
       <SettingsSectionModal
         language={language}
@@ -331,6 +347,7 @@ export function SettingsView({
         description={appText(language, "settings.sectionConfigDesc")}
         onClose={() => setOpenSection(null)}
       >
+        {/* Pagini (doar manageri și proprietar, când există o locație). */}
         {hasAdminSections && showLocationSettings && (
           <PagesSettingsCard
             language={language}
@@ -357,8 +374,10 @@ export function SettingsView({
           />
         )}
 
+        {/* Banda de evenimente (setare pe acest dispozitiv). */}
         <TickerSettingsCard language={language} settings={tickerSettings} onChange={onTickerSettingsChange} />
 
+        {/* Camere și grupuri. */}
         {hasAdminSections && showLocationSettings && (
           <ResourcesSummaryCard
             language={language}
@@ -373,6 +392,7 @@ export function SettingsView({
       </SettingsSectionModal>
     )}
 
+    {/* Acces: licență și coduri, utilizatori și închiderea locației (doar manageri și proprietar). */}
     {openSection === "access" && hasAdminSections && (
       <SettingsSectionModal
         language={language}
@@ -380,6 +400,7 @@ export function SettingsView({
         description={appText(language, "settings.sectionAccessDesc")}
         onClose={() => setOpenSection(null)}
       >
+        {/* Licență și coduri, utilizatori și închiderea locației. */}
         {showLocationSettings && (
           <>
             <LicenseSummaryCard
@@ -398,6 +419,7 @@ export function SettingsView({
               onOpenUsersManager={() => setUsersManagerOpen(true)}
             />
 
+            {/* Închiderea locației, doar dacă există o locație aleasă. */}
             {currentLocationId && (
               <LocationClosureCard
                 language={language}
@@ -412,6 +434,7 @@ export function SettingsView({
       </SettingsSectionModal>
     )}
 
+    {/* Suport: raportarea unei probleme și, pentru proprietar, rapoartele primite. */}
     {openSection === "support" && (
       <SettingsSectionModal
         language={language}
@@ -419,6 +442,7 @@ export function SettingsView({
         description={appText(language, isOwner ? "settings.sectionSupportOwnerDesc" : "settings.sectionSupportDesc")}
         onClose={() => setOpenSection(null)}
       >
+        {/* Raportarea unei probleme (buton separat, pentru toți utilizatorii). */}
         <SettingsBlock
           title={appText(language, "settings.reportProblem")}
           hint={appText(language, "settings.reportProblemHint")}
@@ -431,6 +455,7 @@ export function SettingsView({
           {null}
         </SettingsBlock>
 
+        {/* Rapoartele de probleme, doar pentru proprietar. */}
         {isOwner && (
           <SettingsBlock
             title={appText(language, "settings.errorReportsTitle")}
@@ -455,6 +480,7 @@ export function SettingsView({
       </SettingsSectionModal>
     )}
 
+    {/* Ferestrele deschise din blocuri: camere și grupuri, utilizatori, profil (citire și editare), ștergerea contului. */}
     {resourcesManagerOpen && (
       <ResourcesManagerModal
         language={language}
@@ -523,6 +549,7 @@ export function SettingsView({
       />
     )}
 
+    {/* Ferestrele proprietarului: newsletter, inbox și rapoartele de probleme. */}
     {newsletterPanelOpen && (
       <NewsletterModal
         subscriberRows={newsletterSubscriberRows}
@@ -546,6 +573,7 @@ export function SettingsView({
       />
     )}
 
+    {/* Fereastra „Raportează o problemă”. */}
     <ReportProblemModal open={reportProblemOpen} onClose={() => setReportProblemOpen(false)} />
 
     {errorReportsOpen && (

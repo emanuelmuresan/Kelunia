@@ -1,5 +1,6 @@
 "use client";
 
+// Panoul proprietarului: lista locațiilor (cu plan, stare și expirare) și trei unelte: licențe, newsletter și inbox-ul mesajelor din pagina publică.
 import { useEffect, useState } from "react";
 
 import type { AppLanguage } from "@/context/AuthContext";
@@ -7,6 +8,7 @@ import { appText, type UiCopyKey } from "@/lib/i18n/app-copy-catalog";
 import { billingStatusLabel, dateFromFirestoreValue, planLabel } from "@/lib/licensing";
 import type { LocationItem } from "@/lib/types/domain";
 
+// Textul scurt despre expirarea unei locații: după data de probă sau de abonament.
 function locationExpiryLabel(location: LocationItem) {
   const trialEnd = dateFromFirestoreValue(location.trialEndsAt);
   const subscriptionEnd = dateFromFirestoreValue(location.subscriptionExpiresAt);
@@ -33,6 +35,7 @@ function locationExpiryLabel(location: LocationItem) {
   return `mai are ${days} zile`;
 }
 
+// Proprietățile panoului: locațiile, contoarele și acțiunile de deschidere.
 type OwnerLocationsCardProps = {
   language: AppLanguage;
   locations: LocationItem[];
@@ -50,6 +53,7 @@ type OwnerLocationsCardProps = {
   onEnableOwnerNotifications: () => Promise<void>;
 };
 
+// Componenta panoului.
 /** Owner-only panel: workspace locations list + license / newsletter / inbox tool cards. */
 export function OwnerLocationsCard({
   language,
@@ -68,11 +72,13 @@ export function OwnerLocationsCard({
   onEnableOwnerNotifications,
 }: OwnerLocationsCardProps) {
   const t = (key: UiCopyKey) => appText(language, key);
+  // Starea permisiunii de notificare a browserului (pentru notificările de mesaje noi).
   const [notificationPermission, setNotificationPermission] = useState<
     NotificationPermission | "unsupported"
   >("unsupported");
   const notificationsEnabled = notificationPermission === "granted";
 
+  // La montare se citește permisiunea; după activare se citește din nou.
   useEffect(() => {
     refreshNotificationPermission();
   }, []);
@@ -91,8 +97,10 @@ export function OwnerLocationsCard({
     refreshNotificationPermission();
   }
 
+  // Structura panoului.
   return (
     <article className="settings-panel">
+      {/* Titlul panoului. */}
       <div className="section-heading">
         <div>
           <span className="eyebrow">{t("role.owner")}</span>
@@ -102,6 +110,7 @@ export function OwnerLocationsCard({
 
       <p className="muted-note">{locations.length} locatii in workspace.</p>
 
+      {/* Lista locațiilor: „Deschide” o alege ca locație curentă, „Licență” deschide editorul ei. */}
       <div className="mini-list">
         {locations.length === 0 ? (
           <p className="empty-line">{t("settings.noItems")}</p>
@@ -136,6 +145,7 @@ export function OwnerLocationsCard({
         )}
       </div>
 
+      {/* Uneltele proprietarului: licențe, newsletter și inbox. */}
       <div className="owner-tool-grid">
         <div className="owner-tool-card">
           <div>
@@ -165,6 +175,7 @@ export function OwnerLocationsCard({
           </div>
         </div>
 
+        {/* Inbox: mesajele primite, notificările și deschiderea listei. */}
         <div className="owner-tool-card">
           <div>
             <span className="eyebrow">Inbox</span>

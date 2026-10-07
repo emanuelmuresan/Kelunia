@@ -1,12 +1,16 @@
 "use client";
 
+// Fereastra „Newsletter” (doar proprietar): abonații activi, ultimele campanii cu starea lor și fereastra de scriere a unui email
+// către toți abonații sau către unul singur. Campania se scrie în Firestore, iar funcția cloud o trimite prin Resend.
 import { useState } from "react";
 
 import { communityDateLabel } from "@/lib/licensing";
 import type { NewsletterCampaign } from "@/lib/types/domain";
 
+// Un abonat afișat în listă.
 type NewsletterSubscriberRow = { id: string; email: string; createdAt?: unknown };
 
+// Proprietățile ferestrei: abonații, campaniile, eroarea de citire și funcția de creare a campaniei.
 type NewsletterModalProps = {
   subscriberRows: NewsletterSubscriberRow[];
   campaigns: NewsletterCampaign[];
@@ -15,6 +19,7 @@ type NewsletterModalProps = {
   onSendNewsletterCampaign: (subject: string, body: string, recipientEmail?: string) => Promise<void>;
 };
 
+// Textul stării unei campanii.
 function campaignStatusLabel(status: NewsletterCampaign["status"]) {
   if (status === "sending") return "se trimite";
   if (status === "sent") return "trimis";
@@ -23,6 +28,7 @@ function campaignStatusLabel(status: NewsletterCampaign["status"]) {
   return "în așteptare";
 }
 
+// Componenta ferestrei.
 /** Owner newsletter: subscriber list + campaign history, and the compose dialog. */
 export function NewsletterModal({
   subscriberRows,
@@ -31,6 +37,7 @@ export function NewsletterModal({
   onClose,
   onSendNewsletterCampaign,
 }: NewsletterModalProps) {
+  // Starea: ciorna emailului, mesajele, încărcarea, fereastra de scriere și destinatarul unic (dacă există).
   const [draft, setDraft] = useState({ subject: "", body: "" });
   const [message, setMessage] = useState("");
   const [localError, setLocalError] = useState("");
@@ -38,6 +45,7 @@ export function NewsletterModal({
   const [composerOpen, setComposerOpen] = useState(false);
   const [targetEmail, setTargetEmail] = useState("");
 
+  // Copiază emailurile abonaților în clipboard.
   async function copyEmails() {
     const emails = subscriberRows.map((subscriber) => subscriber.email).join(", ");
 
@@ -58,6 +66,7 @@ export function NewsletterModal({
     }
   }
 
+  // Deschide fereastra de scriere, pentru toți abonații sau pentru un singur abonat.
   function openComposer(recipientEmail = "") {
     setTargetEmail(recipientEmail);
     setDraft({ subject: "", body: "" });
@@ -71,6 +80,7 @@ export function NewsletterModal({
     setTargetEmail("");
   }
 
+  // Validează abonații, subiectul (minimum 4 caractere) și mesajul (minimum 20), apoi creează campania.
   async function send() {
     const subject = draft.subject.trim();
     const body = draft.body.trim();
@@ -113,8 +123,10 @@ export function NewsletterModal({
     }
   }
 
+  // Fereastra principală și, separat, fereastra de scriere.
   return (
     <>
+      {/* Fereastra principală. */}
       <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
         <section
           className="modal-card community-message-card"
@@ -123,6 +135,7 @@ export function NewsletterModal({
           aria-labelledby="newsletter-panel-title"
           onMouseDown={(event) => event.stopPropagation()}
         >
+          {/* Antetul ferestrei. */}
           <div className="section-heading">
             <div>
               <span className="eyebrow">Newsletter</span>
@@ -133,6 +146,7 @@ export function NewsletterModal({
             </button>
           </div>
 
+          {/* Sumar: abonați activi și campanii. */}
           <div className="settings-summary-list compact-summary-list">
             <div>
               <span>Abonati activi</span>
@@ -144,9 +158,11 @@ export function NewsletterModal({
             </div>
           </div>
 
+          {/* Mesajele de eroare și de succes. */}
           {(newsletterError || localError) && <p className="error-line">{newsletterError || localError}</p>}
           {message && <p className="success-line">{message}</p>}
 
+          {/* Copierea emailurilor și trimiterea către toți abonații. */}
           <div className="modal-actions">
             <button className="secondary-button" onClick={copyEmails} type="button">
               Copiaza emailurile
@@ -156,6 +172,7 @@ export function NewsletterModal({
             </button>
           </div>
 
+          {/* Lista abonaților, fiecare cu butonul „Trimite” către acel abonat. */}
           <div className="mini-list newsletter-list">
             {subscriberRows.length === 0 ? (
               <p className="empty-line">Nu exista abonati activi.</p>
@@ -178,6 +195,7 @@ export function NewsletterModal({
             )}
           </div>
 
+          {/* Ultimele 5 campanii. */}
           <div className="newsletter-campaign-list">
             {campaigns.slice(0, 5).map((campaign) => (
               <div className="mini-row" key={campaign.id}>
@@ -194,6 +212,7 @@ export function NewsletterModal({
         </section>
       </div>
 
+      {/* Fereastra de scriere a emailului. */}
       {composerOpen && (
         <div className="modal-backdrop" role="presentation" onMouseDown={closeComposer}>
           <section

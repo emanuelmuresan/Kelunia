@@ -1,10 +1,13 @@
 "use client";
 
+// Fereastra „Rapoarte de problemă” (doar proprietar): lista rapoartelor trimise de utilizatori, cu detaliile tehnice la cerere
+// și butonul „Marchează rezolvat”. Datele vin din useErrorReports.
 import { useState } from "react";
 
 import { communityDateLabel } from "@/lib/licensing";
 import type { ErrorReport } from "@/features/settings/hooks/useErrorReports";
 
+// Proprietățile ferestrei: rapoartele, eroarea de citire și acțiunile.
 type ErrorReportsModalProps = {
   reports: ErrorReport[];
   reportsError: string;
@@ -12,11 +15,14 @@ type ErrorReportsModalProps = {
   onResolve: (reportId: string) => Promise<void>;
 };
 
+// Componenta ferestrei.
 export function ErrorReportsModal({ reports, reportsError, onClose, onResolve }: ErrorReportsModalProps) {
+  // Starea: raportul cu detalii deschise și raportul în curs de marcare; numărul celor nerezolvate.
   const [expanded, setExpanded] = useState<string | null>(null);
   const [working, setWorking] = useState("");
   const openCount = reports.filter((report) => report.status === "new").length;
 
+  // Marchează un raport ca rezolvat; o eroare doar se scrie în consolă.
   async function resolve(reportId: string) {
     setWorking(reportId);
 
@@ -29,6 +35,7 @@ export function ErrorReportsModal({ reports, reportsError, onClose, onResolve }:
     }
   }
 
+  // Structura ferestrei.
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
       <section
@@ -38,6 +45,7 @@ export function ErrorReportsModal({ reports, reportsError, onClose, onResolve }:
         aria-labelledby="error-reports-title"
         onMouseDown={(event) => event.stopPropagation()}
       >
+        {/* Antetul ferestrei. */}
         <div className="section-heading">
           <div>
             <span className="eyebrow">Suport</span>
@@ -48,12 +56,14 @@ export function ErrorReportsModal({ reports, reportsError, onClose, onResolve }:
           </button>
         </div>
 
+        {/* Numărul de rapoarte și eroarea de citire. */}
         <p className="muted-note">
           {reports.length} rapoarte{openCount > 0 ? ` · ${openCount} nerezolvate` : ""}
         </p>
 
         {reportsError && <p className="error-line">{reportsError}</p>}
 
+        {/* Rapoartele: mesajul utilizatorului, autorul, data, pagina și, la cerere, detaliile tehnice. */}
         <div className="mini-list message-inbox-list">
           {reports.length === 0 ? (
             <p className="empty-line">Niciun raport încă.</p>
@@ -100,6 +110,7 @@ export function ErrorReportsModal({ reports, reportsError, onClose, onResolve }:
           )}
         </div>
 
+        {/* Închiderea ferestrei. */}
         <div className="modal-actions">
           <button className="primary-button" onClick={onClose} type="button">Închide</button>
         </div>

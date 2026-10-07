@@ -1,5 +1,6 @@
 "use client";
 
+// Rapoartele de probleme trimise de utilizatori (colecția errorReports), citite în timp real doar de proprietar, cu marcarea ca rezolvate.
 import { useEffect, useState } from "react";
 import {
   collection,
@@ -14,6 +15,7 @@ import {
 } from "firebase/firestore";
 import type { User } from "firebase/auth";
 
+// Un raport de problemă: mesajul utilizatorului, eroarea tehnică, pagina, browserul, versiunea și starea.
 export type ErrorReport = {
   id: string;
   message: string;
@@ -27,6 +29,7 @@ export type ErrorReport = {
   createdAt?: unknown;
 };
 
+// Normalizează documentul din Firestore.
 function normalize(id: string, data: Record<string, unknown>): ErrorReport {
   return {
     id,
@@ -42,12 +45,14 @@ function normalize(id: string, data: Record<string, unknown>): ErrorReport {
   };
 }
 
+// Parametrii: baza de date, utilizatorul și dacă hook-ul este activ (proprietar).
 type UseErrorReportsParams = {
   db: Firestore;
   user: User | null;
   enabled: boolean;
 };
 
+// Hook-ul rapoartelor: ultimele 50, cele mai noi primele.
 export function useErrorReports({ db, user, enabled }: UseErrorReportsParams) {
   const [reports, setReports] = useState<ErrorReport[]>([]);
   const [error, setError] = useState("");
@@ -71,6 +76,7 @@ export function useErrorReports({ db, user, enabled }: UseErrorReportsParams) {
     );
   }, [db, enabled]);
 
+  // Marchează un raport ca rezolvat, cu autorul și momentul.
   async function resolveReport(reportId: string) {
     await updateDoc(doc(db, "errorReports", reportId), {
       status: "resolved",

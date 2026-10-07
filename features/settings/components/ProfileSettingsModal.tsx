@@ -1,5 +1,7 @@
 "use client";
 
+// Fereastra „Setări personale”, deschisă din cardul Profil: toate setările personale în citire, grupate în blocuri
+// (identitate, securitate, notificări, cont), fiecare cu propriul „Modifică” care deschide ProfileEditorModal pentru acel bloc.
 import type { AppLanguage } from "@/context/AuthContext";
 import type { ProfileSection } from "@/features/settings/components/ProfileEditorModal";
 import { SettingsBlock } from "@/features/settings/components/SettingsBlock";
@@ -7,6 +9,7 @@ import { getNewBookingPushPreference } from "@/lib/push-notifications";
 import { appText, localeLabel, type UiCopyKey } from "@/lib/i18n/app-copy-catalog";
 import type { PersonalDraft } from "@/lib/types/domain";
 
+// Proprietățile ferestrei: rolul, ciorna setărilor personale și acțiunile (modificare, parolă, ștergerea contului).
 type ProfileSettingsModalProps = {
   isOwner: boolean;
   isSuperAdmin: boolean;
@@ -22,6 +25,7 @@ type ProfileSettingsModalProps = {
  * "Personal settings" opened from its card: every setting laid out read-only, grouped
  * in blocks, each block with its own "Modifică" (editing one block never touches the others).
  */
+// Componenta ferestrei.
 export function ProfileSettingsModal({
   isOwner,
   isSuperAdmin,
@@ -32,6 +36,7 @@ export function ProfileSettingsModal({
   onDeleteAccount,
   onClose,
 }: ProfileSettingsModalProps) {
+  // Limba ferestrei este cea aleasă în ciorna personală; butonul „Modifică” al fiecărui bloc și eticheta tipului de blocare.
   const language: AppLanguage = personalDraft.language;
   const t = (key: UiCopyKey) => appText(language, key);
   const editButton = (section: ProfileSection) => (
@@ -45,6 +50,7 @@ export function ProfileSettingsModal({
       ? t("settings.lockPin")
       : t("settings.lockNone");
 
+  // Structura ferestrei.
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
       <section
@@ -54,6 +60,7 @@ export function ProfileSettingsModal({
         aria-labelledby="profile-view-title"
         onMouseDown={(event) => event.stopPropagation()}
       >
+        {/* Antetul ferestrei. */}
         <div className="section-heading">
           <div>
             <span className="eyebrow">{t("settings.profile")}</span>
@@ -61,7 +68,9 @@ export function ProfileSettingsModal({
           </div>
         </div>
 
+        {/* Blocurile, în citire. */}
         <div className="settings-form">
+          {/* Identitate: nume, rol, limbă și (pentru ne-proprietari) grupul. */}
           <SettingsBlock title={t("settings.blockIdentity")} action={editButton("identity")}>
             <div className="settings-summary-list">
               <div>
@@ -85,6 +94,7 @@ export function ProfileSettingsModal({
             </div>
           </SettingsBlock>
 
+          {/* Securitate: tipul de blocare și blocarea la ieșire, plus butonul pentru parolă. */}
           <SettingsBlock title={t("settings.security")} action={editButton("security")}>
             <div className="settings-summary-list">
               <div>
@@ -103,6 +113,7 @@ export function ProfileSettingsModal({
             </div>
           </SettingsBlock>
 
+          {/* Notificări (doar pentru cei care nu sunt proprietari): notificările pentru rezervări noi și memento-urile. */}
           {!isOwner && (
             <SettingsBlock title={t("settings.notifications")} action={editButton("notifications")}>
               <div className="settings-summary-list">
@@ -122,6 +133,7 @@ export function ProfileSettingsModal({
             </SettingsBlock>
           )}
 
+          {/* Contul: ștergerea contului. */}
           <SettingsBlock title={t("settings.accountBlock")}>
             <div className="settings-card-actions">
               <button className="danger-button compact" onClick={onDeleteAccount} type="button">

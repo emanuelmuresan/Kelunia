@@ -1,10 +1,12 @@
 "use client";
 
+// Cele două componente din pagina Setări: cardul compact al unei secțiuni (SettingsSectionCard) și fereastra ei deschisă (SettingsSectionModal).
 import type { ReactNode } from "react";
 
 import type { AppLanguage } from "@/context/AuthContext";
 import { appText } from "@/lib/i18n/app-copy-catalog";
 
+// Proprietățile cardului: titlu, explicație și acțiunea „Deschide”.
 type SettingsSectionCardProps = {
   title: string;
   description: string;
@@ -27,6 +29,7 @@ export function SettingsSectionCard({ title, description, language, onOpen }: Se
   );
 }
 
+// Proprietățile ferestrei secțiunii: titlu, explicație și blocurile din interior.
 type SettingsSectionModalProps = {
   title: string;
   description: string;
