@@ -126,7 +126,7 @@ export function UsersManagerModal({
         <div className="modal-head">
           <div>
             <span className="eyebrow">{t("settings.users")}</span>
-            <h2 id="users-manager-title">{managedUsers.length} conturi</h2>
+            <h2 id="users-manager-title">{t("settings.usersCount").replace("{{count}}", String(managedUsers.length))}</h2>
           </div>
         </div>
 

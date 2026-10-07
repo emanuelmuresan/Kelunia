@@ -13,7 +13,7 @@ type UseBookingDeepLinkParams = {
   bookings: Booking[];
   setActiveView: Dispatch<SetStateAction<AppView>>;
   setSelectedBooking: Dispatch<SetStateAction<Booking | null>>;
-  setSelectedBookingNotice: Dispatch<SetStateAction<string>>;
+  setSelectedBookingNotice: (value: string) => void;
 };
 
 /**

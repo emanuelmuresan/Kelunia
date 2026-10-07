@@ -36,7 +36,6 @@ import type {
 
 type SettingsViewProps = {
   settingsError: string;
-  settingsMessage: string;
   pinResetRequired: boolean;
   userExists: boolean;
   isOwner: boolean;
@@ -111,7 +110,6 @@ type SettingsViewProps = {
 
 export function SettingsView({
   settingsError,
-  settingsMessage,
   pinResetRequired,
   userExists,
   isOwner,
@@ -237,7 +235,6 @@ export function SettingsView({
         </p>
       )}
       {settingsError && <p className="error-line settings-alert">{settingsError}</p>}
-      {settingsMessage && <p className="success-line settings-alert">{settingsMessage}</p>}
 
       <ProfileSummaryCard
         userExists={userExists}

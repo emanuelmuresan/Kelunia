@@ -553,7 +553,7 @@ export function LicenseCodesModal({
                 }}
                 type="button"
               >
-                {editingLicense.active ? t("action.cancel") : t("action.activate")}
+                {editingLicense.active ? t("action.deactivate") : t("action.activate")}
               </button>
               <button className="primary-button" disabled={working} onClick={saveEdit} type="button">
                 {t("action.save")}

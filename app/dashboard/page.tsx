@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
 import { httpsCallable } from "firebase/functions";
@@ -121,10 +121,8 @@ export default function KeluniaPage() {
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
-  const [selectedBookingNotice, setSelectedBookingNotice] = useState("");
   const [notifyingSelectedBooking, setNotifyingSelectedBooking] = useState(false);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
-  const [settingsMessage, setSettingsMessage] = useState("");
   const [settingsError, setSettingsError] = useState("");
 
 
@@ -146,6 +144,23 @@ export default function KeluniaPage() {
   const { isOnline, setIsOnline } = useOnlineStatus();
   const { tickerSettings, updateTickerSettings } = useUpcomingTickerSettings();
   const { toasts, pushToast, dismissToast } = useToasts();
+  const setSelectedBookingNotice = useCallback(
+    (value: string) => {
+      if (value) {
+        pushToast({ message: value });
+      }
+    },
+    [pushToast]
+  );
+  // Success confirmations are transient toasts everywhere; errors stay inline.
+  const setSettingsMessage = useCallback(
+    (value: string) => {
+      if (value) {
+        pushToast({ message: value });
+      }
+    },
+    [pushToast]
+  );
 
   useEffect(() => {
     if (!authLoading && user && !user.emailVerified) {
@@ -640,7 +655,6 @@ export default function KeluniaPage() {
   const {
     codeGenerator,
     codesError,
-    codesMessage,
     codesWorking,
     copyAccessCode,
     copyInviteLink,
@@ -832,7 +846,7 @@ export default function KeluniaPage() {
       );
     } catch (error) {
       console.error("Notificarea nu a putut fi trimisa:", error);
-      setSelectedBookingNotice(error instanceof Error ? error.message : "Notificarea nu a putut fi trimisa.");
+      pushToast({ message: error instanceof Error ? error.message : "Notificarea nu a putut fi trimisa.", tone: "error" });
     } finally {
       setNotifyingSelectedBooking(false);
     }
@@ -1263,7 +1277,6 @@ export default function KeluniaPage() {
       {displayedView === "settings" && (
       <SettingsView
         settingsError={settingsError}
-        settingsMessage={settingsMessage}
         pinResetRequired={Boolean(profile?.pinResetRequired) && !pinConfiguredLocally}
         userExists={Boolean(user)}
         isOwner={isOwner}
@@ -1329,7 +1342,10 @@ export default function KeluniaPage() {
         onSendNewsletterCampaign={sendNewsletterCampaign}
         onEnableOwnerNotifications={enableOwnerNotifications}
         tickerSettings={tickerSettings}
-        onTickerSettingsChange={updateTickerSettings}
+        onTickerSettingsChange={(patch) => {
+          updateTickerSettings(patch);
+          setSettingsMessage(appText(language, "settings.tickerSaved"));
+        }}
         errorReports={errorReports}
         errorReportsError={errorReportsError}
         onResolveErrorReport={resolveReport}
@@ -1381,7 +1397,6 @@ export default function KeluniaPage() {
         accessCodes={accessCodes}
         codesWorking={codesWorking}
         codesError={codesError}
-        codesMessage={codesMessage}
         inviteDraft={inviteDraft}
         onClose={() => setShowCodesModal(false)}
         onCodeGeneratorChange={setCodeGenerator}
@@ -1531,7 +1546,6 @@ export default function KeluniaPage() {
           }
         }}
         notificationBusy={notifyingSelectedBooking}
-        notificationMessage={selectedBookingNotice}
         onClose={() => {
           setSelectedBooking(null);
           setSelectedBookingNotice("");

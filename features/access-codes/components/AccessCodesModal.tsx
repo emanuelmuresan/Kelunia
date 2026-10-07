@@ -16,7 +16,6 @@ interface AccessCodesModalProps {
   accessCodes: LocationCode[];
   codesWorking: boolean;
   codesError: string;
-  codesMessage: string;
   inviteDraft: AccessInviteDraft | null;
   onClose: () => void;
   onCodeGeneratorChange: (nextGenerator: CodeGeneratorState) => void;
@@ -33,10 +32,10 @@ interface AccessCodesModalProps {
   onToggleActive: (item: LocationCode) => void;
   onRemove: (item: LocationCode) => void;
   onExtendExpiry: (item: LocationCode) => void;
-  accessCodeUsageLabel: (item: LocationCode) => string;
+  accessCodeUsageLabel: (item: LocationCode, language: SupportedLocale) => string;
   isAccessCodeFull: (item: LocationCode) => boolean;
   isAccessCodeExpired: (item: LocationCode) => boolean;
-  accessCodeExpiryLabel: (item: LocationCode) => string;
+  accessCodeExpiryLabel: (item: LocationCode, language: SupportedLocale) => string;
   onCopyInviteLink: (item: LocationCode) => void;
   onSendInvite: (item: LocationCode) => void;
   onSendInviteEmail: () => void;
@@ -59,7 +58,6 @@ export function AccessCodesModal({
   accessCodes,
   codesWorking,
   codesError,
-  codesMessage,
   inviteDraft,
   onClose,
   onCodeGeneratorChange,
@@ -427,10 +425,10 @@ export function AccessCodesModal({
                     </>
                   )}
                   <span className="code-usage">
-                    {accessCodeUsageLabel(item)}
-                    {accessCodeExpiryLabel(item) && (
+                    {accessCodeUsageLabel(item, language)}
+                    {accessCodeExpiryLabel(item, language) && (
                       <small className={isAccessCodeExpired(item) ? "code-expiry-expired" : "code-expiry"}>
-                        {" "}· {accessCodeExpiryLabel(item)}
+                        {" "}· {accessCodeExpiryLabel(item, language)}
                       </small>
                     )}
                   </span>
@@ -439,14 +437,14 @@ export function AccessCodesModal({
                       {appText(language, "action.copy")}
                     </button>
                     <button onClick={() => onCopyInviteLink(item)} type="button">
-                      Mesaj
+                      {appText(language, "access.copyMessage")}
                     </button>
                     <button onClick={() => onSendInvite(item)} disabled={!item.active || isAccessCodeFull(item) || isAccessCodeExpired(item)} type="button">
-                      Email
+                      {appText(language, "access.sendEmail")}
                     </button>
                     {isAccessCodeExpired(item) && (
                       <button onClick={() => onExtendExpiry(item)} type="button">
-                        Prelungește
+                        {appText(language, "access.extend")}
                       </button>
                     )}
                     {isEditingCode ? (
@@ -469,7 +467,7 @@ export function AccessCodesModal({
                       </button>
                     )}
                     <button onClick={() => onToggleActive(item)} type="button">
-                      {item.active ? appText(language, "action.cancel") : appText(language, "action.activate")}
+                      {item.active ? appText(language, "action.deactivate") : appText(language, "action.activate")}
                     </button>
                     <button
                       onClick={() => onRemove(item)}
@@ -486,7 +484,6 @@ export function AccessCodesModal({
         </div>
 
         {codesError && <p className="error-line manager-alert">{codesError}</p>}
-        {codesMessage && <p className="success-line manager-alert">{codesMessage}</p>}
 
         <div className="modal-actions">
           <button className="primary-button" onClick={onClose} type="button">{appText(language, "action.done")}</button>

@@ -79,7 +79,7 @@ export function LocationEditorModal({
             <input
               autoFocus
               value={locationEditor.name}
-              placeholder="ex. Kelunia Bucuresti"
+              placeholder={appText(language, "settings.locationPlaceholder")}
               onChange={(event) =>
                 onChange({
                   ...locationEditor,

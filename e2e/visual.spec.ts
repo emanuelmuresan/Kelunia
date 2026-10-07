@@ -132,3 +132,28 @@ test("capture admin settings: pages summary + modal", async ({ page }) => {
   await pagesCard.getByRole("button", { name: "Modifică" }).click();
   await page.locator('[aria-labelledby="pages-settings-title"]').screenshot({ path: "test-results/pages-modal.png" });
 });
+
+test("capture unified row actions + toast", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/login");
+  await page.locator('input[type="email"]').fill("admin@e2e.test");
+  await page.locator('input[type="password"]').first().fill("Test123456");
+  await page.locator('form button[type="submit"]').click();
+  await page.locator("main.kelunia-shell").waitFor({ timeout: 30_000 });
+  await page.getByRole("button", { name: /Setări/ }).first().click();
+
+  await page
+    .locator("article.settings-panel")
+    .filter({ has: page.getByRole("heading", { name: "Spații și grupuri" }) })
+    .getByRole("button", { name: "Modifică" })
+    .click();
+  await page.locator('[aria-labelledby="resources-manager-title"]').screenshot({ path: "test-results/resources-rows.png" });
+  await page.locator('[aria-labelledby="resources-manager-title"]').getByRole("button", { name: "Gata" }).click();
+
+  const ticker = page.locator("article.settings-panel", { hasText: "Bandă evenimente viitoare" });
+  await ticker.getByRole("button", { name: "Modifică" }).click();
+  await page.locator('[aria-labelledby="ticker-settings-title"]').getByLabel("Afișează banda sus (doar pe acest dispozitiv)").check();
+  await page.locator('[aria-labelledby="ticker-settings-title"]').getByRole("button", { name: "Salvează" }).click();
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: "test-results/toast-after-save.png" });
+});

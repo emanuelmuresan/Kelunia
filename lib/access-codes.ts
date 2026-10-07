@@ -1,5 +1,6 @@
 import type { UserRole } from "@/context/AuthContext";
 import { defaultLocationName, memberAccessCodeMaxUses } from "@/lib/config/app";
+import { appText, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 import { normalizeRoomAccess } from "@/lib/room-access";
 import type { LocationCode } from "@/lib/types/domain";
 
@@ -54,16 +55,27 @@ export function normalizeAccessCode(id: string, data: Record<string, unknown>): 
   };
 }
 
-export function accessCodeUsageLabel(item: LocationCode) {
+const dateLocales: Record<SupportedLocale, string> = {
+  ro: "ro-RO",
+  en: "en-GB",
+  es: "es-ES",
+  it: "it-IT",
+  fr: "fr-FR",
+  pt: "pt-PT",
+};
+
+export function accessCodeUsageLabel(item: LocationCode, language: SupportedLocale = "ro") {
   if (!item.active) {
-    return "Oprit";
+    return appText(language, "access.usageOff");
   }
 
   if (item.maxUses === null) {
-    return `${item.usedCount} folosiri`;
+    return appText(language, "access.usesMany").replace("{{count}}", String(item.usedCount));
   }
 
-  return `${item.usedCount}/${item.maxUses} folosiri`;
+  return appText(language, "access.usesOf")
+    .replace("{{used}}", String(item.usedCount))
+    .replace("{{max}}", String(item.maxUses));
 }
 
 export function isAccessCodeFull(item: LocationCode) {
@@ -82,15 +94,15 @@ export function isAccessCodeExpired(item: Pick<LocationCode, "expiresAt">) {
   return expiresAt.toMillis() <= Date.now();
 }
 
-export function accessCodeExpiryLabel(item: Pick<LocationCode, "expiresAt">) {
+export function accessCodeExpiryLabel(item: Pick<LocationCode, "expiresAt">, language: SupportedLocale = "ro") {
   const expiresAt = item.expiresAt as { toDate?: () => Date } | undefined;
 
   if (!expiresAt || typeof expiresAt.toDate !== "function") {
     return "";
   }
 
-  const label = expiresAt.toDate().toLocaleDateString("ro-RO", { day: "2-digit", month: "short", year: "numeric" });
-  return isAccessCodeExpired(item) ? `Expirat pe ${label}` : `Expiră pe ${label}`;
+  const label = expiresAt.toDate().toLocaleDateString(dateLocales[language], { day: "2-digit", month: "short", year: "numeric" });
+  return appText(language, isAccessCodeExpired(item) ? "access.expiredOn" : "access.expiresOn").replace("{{date}}", label);
 }
 
 function roleShareLabel(role: UserRole) {

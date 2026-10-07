@@ -17,16 +17,10 @@ type TickerSettingsCardProps = {
 export function TickerSettingsCard({ language, settings, onChange }: TickerSettingsCardProps) {
   const t = (key: UiCopyKey) => appText(language, key);
   const [editorOpen, setEditorOpen] = useState(false);
-  const [message, setMessage] = useState("");
 
   function save(next: UpcomingTickerSettings) {
-    try {
-      onChange(next);
-      setMessage(t("settings.tickerSaved"));
-      setEditorOpen(false);
-    } catch {
-      setMessage(t("settings.tickerSaveFailed"));
-    }
+    onChange(next);
+    setEditorOpen(false);
   }
 
   return (
@@ -38,8 +32,6 @@ export function TickerSettingsCard({ language, settings, onChange }: TickerSetti
             <h2>{t("settings.tickerTitle")}</h2>
           </div>
         </div>
-
-        {message && <p className="success-line">{message}</p>}
 
         <div className="settings-summary-list">
           <div>
@@ -63,7 +55,7 @@ export function TickerSettingsCard({ language, settings, onChange }: TickerSetti
         </div>
 
         <div className="settings-card-actions">
-          <button className="primary-button compact" onClick={() => { setMessage(""); setEditorOpen(true); }} type="button">
+          <button className="primary-button compact" onClick={() => setEditorOpen(true)} type="button">
             {t("settings.edit")}
           </button>
         </div>

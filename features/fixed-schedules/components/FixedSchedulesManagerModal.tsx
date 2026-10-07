@@ -96,20 +96,12 @@ export function FixedSchedulesManagerModal({
                 </span>
 
                 <div className="row-actions">
-                  <button
-                    onClick={() => onEdit(item)}
-                    type="button"
-                    aria-label={appText(language, "booking.edit")}
-                  >
-                    ✎
+                  <button className="secondary-button compact" onClick={() => onEdit(item)} type="button">
+                    {appText(language, "booking.edit")}
                   </button>
 
-                  <button
-                    onClick={() => onRemove(item.id)}
-                    type="button"
-                    aria-label={appText(language, "action.delete")}
-                  >
-                    ×
+                  <button className="secondary-button compact danger-button" onClick={() => onRemove(item.id)} type="button">
+                    {appText(language, "action.delete")}
                   </button>
                 </div>
               </div>

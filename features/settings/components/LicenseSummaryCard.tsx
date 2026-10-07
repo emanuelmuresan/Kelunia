@@ -10,26 +10,26 @@ export type LicenseAccess = {
   daysRemaining: number | null;
 };
 
-function licenseRemainingLabel(licenseAccess: LicenseAccess) {
+function licenseRemainingLabel(licenseAccess: LicenseAccess, t: (key: UiCopyKey) => string) {
   if (licenseAccess.status === "expired") {
-    return "Expirata";
+    return t("settings.licenseExpired");
   }
 
   if (licenseAccess.daysRemaining === null) {
-    return licenseAccess.status === "active" ? "Fara data de expirare" : "Nespecificat";
+    return licenseAccess.status === "active" ? t("settings.licenseNoDate") : t("settings.licenseUnspecified");
   }
 
   const days = Math.max(0, licenseAccess.daysRemaining);
 
   if (days === 0) {
-    return "Expira azi";
+    return t("settings.licenseExpiresToday");
   }
 
   if (days === 1) {
-    return "Expira maine";
+    return t("settings.licenseExpiresTomorrow");
   }
 
-  return `Expira in ${days} zile`;
+  return t("settings.licenseExpiresInDays").replace("{{days}}", String(days));
 }
 
 type LicenseSummaryCardProps = {
@@ -75,12 +75,12 @@ export function LicenseSummaryCard({
 
         <div>
           <span>{t("settings.validity")}</span>
-          <strong>{licenseRemainingLabel(licenseAccess)}</strong>
+          <strong>{licenseRemainingLabel(licenseAccess, t)}</strong>
         </div>
 
         <div>
           <span>{t("settings.currentLocation")}</span>
-          <strong>{currentLocationCodeCount} coduri</strong>
+          <strong>{t("settings.codesCount").replace("{{count}}", String(currentLocationCodeCount))}</strong>
         </div>
 
         <div>

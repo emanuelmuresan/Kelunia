@@ -79,8 +79,8 @@ export function ResourcesManagerModal({
                     <span>{room.name}{expiryNote(room)}</span>
                     {canEditCurrentLocation && (
                       <div className="row-actions">
-                        <button onClick={() => onOpenSpaceEditor("room", room)} type="button" aria-label={t("settings.edit")}>
-                          ✎
+                        <button className="secondary-button compact" onClick={() => onOpenSpaceEditor("room", room)} type="button">
+                          {t("settings.edit")}
                         </button>
                         <button className="secondary-button compact danger-button" onClick={() => onRemoveSpaceItem("room", room.id)} type="button">
                           {t("action.delete")}
@@ -116,8 +116,8 @@ export function ResourcesManagerModal({
                     </span>
                     {canEditCurrentLocation && (
                       <div className="row-actions">
-                        <button onClick={() => onOpenSpaceEditor("group", group)} type="button" aria-label={t("settings.edit")}>
-                          ✎
+                        <button className="secondary-button compact" onClick={() => onOpenSpaceEditor("group", group)} type="button">
+                          {t("settings.edit")}
                         </button>
                         <button className="secondary-button compact danger-button" onClick={() => onRemoveSpaceItem("group", group.id)} type="button">
                           {t("action.delete")}

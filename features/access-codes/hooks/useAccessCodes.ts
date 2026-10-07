@@ -95,7 +95,12 @@ export function useAccessCodes({
 }: UseAccessCodesParams) {
   const [showCodesModal, setShowCodesModal] = useState(false);
   const [codesError, setCodesError] = useState("");
-  const [codesMessage, setCodesMessage] = useState("");
+  // Success confirmations are toasts; only errors stay inline in the modal.
+  const setCodesMessage = (value: string) => {
+    if (value) {
+      pushToast({ message: value });
+    }
+  };
   const [codesWorking, setCodesWorking] = useState(false);
   const [inviteDraft, setInviteDraft] = useState<AccessInviteDraft | null>(null);
   const [codeGenerator, setCodeGenerator] = useState<CodeGeneratorState>({
@@ -606,7 +611,6 @@ export function useAccessCodes({
   return {
     codeGenerator,
     codesError,
-    codesMessage,
     codesWorking,
     copyAccessCode,
     copyInviteLink,

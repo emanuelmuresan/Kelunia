@@ -1,6 +1,8 @@
 "use client";
 
+import { useAuth } from "@/context/AuthContext";
 import type { Toast } from "@/features/shell/hooks/useToasts";
+import { appText } from "@/lib/i18n/app-copy-catalog";
 
 type ToastStackProps = {
   toasts: Toast[];
@@ -8,6 +10,8 @@ type ToastStackProps = {
 };
 
 export function ToastStack({ toasts, onDismiss }: ToastStackProps) {
+  const { profile } = useAuth();
+
   if (toasts.length === 0) {
     return null;
   }
@@ -31,7 +35,7 @@ export function ToastStack({ toasts, onDismiss }: ToastStackProps) {
             </button>
           )}
 
-          <button className="toast-close" type="button" aria-label="Închide" onClick={() => onDismiss(toast.id)}>
+          <button className="toast-close" type="button" aria-label={appText(profile?.language ?? "ro", "booking.close")} onClick={() => onDismiss(toast.id)}>
             ×
           </button>
         </div>

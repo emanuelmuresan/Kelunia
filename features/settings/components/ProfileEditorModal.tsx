@@ -212,7 +212,7 @@ export function ProfileEditorModal({
               {t("action.cancel")}
             </button>
             <button className="primary-button" disabled={!profileDirty} onClick={handleSave} type="button">
-              {t("settings.saveChanges")}
+              {t("action.save")}
             </button>
           </div>
         </div>

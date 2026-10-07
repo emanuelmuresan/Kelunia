@@ -63,7 +63,7 @@ export function SpaceEditorModal({
             <input
               autoFocus
               value={spaceEditor.name}
-              placeholder={isRoom ? "ex. Sala mica" : "ex. Grupa 1"}
+              placeholder={appText(language, isRoom ? "settings.spacePlaceholderRoom" : "settings.spacePlaceholderGroup")}
               onChange={(event) =>
                 onChange({
                   ...spaceEditor,

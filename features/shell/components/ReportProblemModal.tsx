@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { useAuth } from "@/context/AuthContext";
 import { useDismissGuard } from "@/features/shell/components/ConfirmDialog";
+import { appText } from "@/lib/i18n/app-copy-catalog";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 
 import { auth, db } from "@/lib/firebase";
@@ -20,7 +21,8 @@ export function ReportProblemModal({ open, errorContext, onClose }: ReportProble
   const [done, setDone] = useState(false);
   const [error, setError] = useState("");
   const { profile } = useAuth();
-  const requestClose = useDismissGuard(text.trim().length > 0 && !done && !sending, onClose, profile?.language ?? "ro");
+  const language = profile?.language ?? "ro";
+  const requestClose = useDismissGuard(text.trim().length > 0 && !done && !sending, onClose, language);
 
   if (!open) {
     return null;
@@ -72,18 +74,18 @@ export function ReportProblemModal({ open, errorContext, onClose }: ReportProble
         <div className="section-heading">
           <div>
             <span className="eyebrow">Suport</span>
-            <h2 id="report-problem-title">Raportează o problemă</h2>
+            <h2 id="report-problem-title">{appText(language, "settings.reportProblem")}</h2>
           </div>
-          <button className="icon-button" onClick={onClose} type="button" aria-label="Închide">
+          <button className="icon-button" onClick={onClose} type="button" aria-label={appText(language, "booking.close")}>
             ×
           </button>
         </div>
 
         {done ? (
           <>
-            <p className="success-line">Mulțumim — raportul a fost trimis administratorului.</p>
+            <p className="success-line">{appText(language, "report.thanks")}</p>
             <div className="modal-actions">
-              <button className="primary-button" onClick={onClose} type="button">Închide</button>
+              <button className="primary-button" onClick={onClose} type="button">{appText(language, "booking.close")}</button>
             </div>
           </>
         ) : (
@@ -93,7 +95,7 @@ export function ReportProblemModal({ open, errorContext, onClose }: ReportProble
               <textarea
                 value={text}
                 onChange={(event) => setText(event.target.value)}
-                placeholder="Descrie pe scurt ce făceai și ce nu a mers."
+                placeholder={appText(language, "report.placeholder")}
                 rows={5}
               />
             </label>
