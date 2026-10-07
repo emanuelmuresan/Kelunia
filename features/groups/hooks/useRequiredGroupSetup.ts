@@ -1,5 +1,6 @@
 "use client";
 
+import { useAppText } from "@/features/shell/hooks/useAppText";
 import { useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import type { User } from "firebase/auth";
 import { doc, setDoc, type Firestore } from "firebase/firestore";
@@ -43,6 +44,7 @@ export function useRequiredGroupSetup({
   setPersonalDraft,
   setGroupSetupError,
 }: UseRequiredGroupSetupParams) {
+  const msg = useAppText();
   const [groupSetupDraft, setGroupSetupDraft] = useState("");
   const [groupSetupCompleted, setGroupSetupCompleted] = useState(false);
 
@@ -63,17 +65,17 @@ export function useRequiredGroupSetup({
     }
 
     if (!groupSetupDraft.trim()) {
-      setGroupSetupError("Alege grupul din care faci parte.");
+      setGroupSetupError(msg("msg.chooseYourGroup"));
       return;
     }
 
     if (!currentLocationId) {
-      setGroupSetupError("Contul nu are încă o locație asociată. Verifică dacă ai folosit codul corect.");
+      setGroupSetupError(msg("msg.noLocationYet"));
       return;
     }
 
     if (!groups.some((group) => group.name === groupSetupDraft)) {
-      setGroupSetupError("Alege un grup existent în locația ta.");
+      setGroupSetupError(msg("msg.chooseExistingGroup"));
       return;
     }
 
@@ -108,7 +110,7 @@ export function useRequiredGroupSetup({
       setGroupSetupCompleted(true);
     } catch (error) {
       console.error("Grupul nu a putut fi salvat:", error);
-      setGroupSetupError("Grupul nu a putut fi salvat. Verifică regulile Firebase.");
+      setGroupSetupError(msg("msg.groupSaveFailed"));
     }
   }
 

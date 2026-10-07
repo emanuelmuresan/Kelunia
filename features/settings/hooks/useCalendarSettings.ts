@@ -1,5 +1,6 @@
 "use client";
 
+import { useAppText } from "@/features/shell/hooks/useAppText";
 import { useEffect, useState } from "react";
 import type { User } from "firebase/auth";
 import { doc, onSnapshot, setDoc, Timestamp } from "firebase/firestore";
@@ -38,6 +39,7 @@ export function useCalendarSettings({
   setSettingsError,
   setSettingsMessage,
 }: UseCalendarSettingsParams) {
+  const msg = useAppText();
   const [fixedSectionTitle, setFixedSectionTitle] = useState(defaultFixedSectionTitle);
   const [fixedSectionDraft, setFixedSectionDraft] = useState(defaultFixedSectionTitle);
   const [fixedPageEnabled, setFixedPageEnabled] = useState(true);
@@ -126,17 +128,17 @@ export function useCalendarSettings({
     const nextGroupsLabel = groupsLabelDraft.trim();
 
     if (!title) {
-      setSettingsError("Scrie numele paginii de programări fixe.");
+      setSettingsError(msg("msg.fixedPageNameRequired"));
       return;
     }
 
     if (!listTitle) {
-      setSettingsError("Scrie numele butonului pentru listă.");
+      setSettingsError(msg("msg.listButtonNameRequired"));
       return;
     }
 
     if (!resourcesTitle || !nextRoomsLabel || !nextGroupsLabel) {
-      setSettingsError("Completeaza numele pentru sectiunea de sali si grupuri.");
+      setSettingsError(msg("msg.resourcesSectionNameRequired"));
       return;
     }
 
@@ -168,10 +170,10 @@ export function useCalendarSettings({
       };
       await setDoc(doc(db, "settings", `calendar_${locationId}`), afterSettings);
       await recordAuditLog("settings", "update", `calendar_${locationId}`, beforeSettings, afterSettings);
-      setSettingsMessage("Paginile au fost salvate.");
+      setSettingsMessage(msg("msg.pagesSaved"));
     } catch (error) {
       console.error("Paginile nu au putut fi salvate:", error);
-      setSettingsError("Paginile nu au putut fi salvate. Verifică regulile Firebase.");
+      setSettingsError(msg("msg.pagesSaveFailed"));
     }
   }
 

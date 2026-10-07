@@ -49,7 +49,11 @@ export function useCurrentLocationContext({
     ? currentLocation?.name || ""
     : currentLocation?.name || profile?.locationName || defaultLocationName;
   const headerTitle = locationName || (!user ? "Kelunia" : "");
-  const licenseAccess = useMemo(() => locationLicenseAccess(currentLocation), [currentLocation]);
+  const licenseLanguage = profile?.language ?? "ro";
+  const licenseAccess = useMemo(
+    () => locationLicenseAccess(currentLocation, new Date(), licenseLanguage),
+    [currentLocation, licenseLanguage]
+  );
 
   return {
     currentLocation,

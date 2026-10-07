@@ -1,5 +1,6 @@
 "use client";
 
+import { useAppText } from "@/features/shell/hooks/useAppText";
 import { useEffect, useState, type Dispatch, type FormEvent, type SetStateAction } from "react";
 import type { User } from "firebase/auth";
 import { httpsCallable } from "firebase/functions";
@@ -89,6 +90,7 @@ export function useBookingEditor({
   user,
   pushToast,
 }: UseBookingEditorParams) {
+  const msg = useAppText();
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<BookingForm>(emptyForm);
@@ -210,36 +212,36 @@ export function useBookingEditor({
     }
 
     if (!user || !canManageBookings) {
-      setFormError(licenseAccess.isReadOnly ? licenseAccess.message : "Ai nevoie de drepturi de colaborator sau administrator pentru programări.");
+      setFormError(licenseAccess.isReadOnly ? licenseAccess.message : msg("msg.bookingNeedRights"));
       return;
     }
 
     if (!formData.startDate) {
-      setFormError("Alege data programării.");
+      setFormError(msg("msg.chooseDate"));
       return;
     }
 
     if (!formData.group || !formData.room) {
-      setFormError("Alege grupul și sala.");
+      setFormError(msg("msg.chooseGroupRoom"));
       return;
     }
 
     const selectedRoom = rooms.find((room) => room.id === formData.roomId || room.name === formData.room);
 
     if (!selectedRoom) {
-      setFormError("Alege o sala la care ai acces.");
+      setFormError(msg("msg.chooseAccessibleRoom"));
       return;
     }
 
     const normalizedEndDate = formData.endDate || formData.startDate;
 
     if (normalizedEndDate < formData.startDate) {
-      setFormError("Data de final trebuie să fie după data de început.");
+      setFormError(msg("msg.endDateAfterStart"));
       return;
     }
 
     if (timeToMinutes(formData.endTime) <= timeToMinutes(formData.startTime)) {
-      setFormError("Ora de final trebuie să fie după ora de început.");
+      setFormError(msg("msg.endTimeAfterStart"));
       return;
     }
 
@@ -251,7 +253,7 @@ export function useBookingEditor({
     });
 
     if (conflict) {
-      setFormError(`Există deja o programare: ${conflict}.`);
+      setFormError(msg("msg.bookingConflict", { conflict }));
       return;
     }
 
@@ -266,25 +268,25 @@ export function useBookingEditor({
 
     if (formData.notifyOnThisBooking) {
       if (bookingNotificationOffsets.length === 0) {
-        setFormError("Alege cel puțin un moment pentru notificarea programării.");
+        setFormError(msg("msg.chooseBookingNotifMoment"));
         return;
       }
 
       const notificationsAllowed = await requestKeluniaNotificationPermission();
 
       if (!notificationsAllowed) {
-        setFormError("Notificările nu au fost permise pe acest dispozitiv.");
+        setFormError(msg("msg.notifDenied"));
         return;
       }
     }
 
     if (formData.notifyGroupOnThisBooking && groupNotificationOffsets.length === 0) {
-      setFormError("Alege cel puțin un moment pentru reminderul de grup.");
+      setFormError(msg("msg.chooseGroupReminderMoment"));
       return;
     }
 
     if ((formData.notifyGroupOnThisBooking || shouldNotifyGroupNow) && formData.notifyGroupAudience === "selected" && selectedGroupRecipients.length === 0) {
-      setFormError("Alege cel puțin o persoană din grup sau trimite către tot grupul.");
+      setFormError(msg("msg.choosePersonOrGroup"));
       return;
     }
 
@@ -368,7 +370,7 @@ export function useBookingEditor({
       setEditingId(null);
     } catch (error) {
       console.error("Programarea nu a putut fi salvată:", error);
-      setFormError(error instanceof Error ? `Programarea nu a putut fi salvată: ${error.message}` : "Programarea nu a putut fi salvată.");
+      setFormError(error instanceof Error ? msg("msg.bookingSaveFailedDetail", { detail: error.message }) : msg("msg.bookingSaveFailed"));
     }
   }
 
@@ -396,7 +398,7 @@ export function useBookingEditor({
       ).catch(() => undefined);
     } catch (error) {
       console.error("Anularea ștergerii nu a reușit:", error);
-      setFormError("Anularea ștergerii nu a reușit. Reîncarcă și încearcă din nou.");
+      setFormError(msg("msg.undoFailed"));
     }
   }
 
@@ -411,7 +413,7 @@ export function useBookingEditor({
       await updateDoc(doc(db, "events", booking.id), deletedPayload);
     } catch (error) {
       console.error("Programarea nu a putut fi ștearsă:", error);
-      setFormError("Programarea nu a putut fi ștearsă.");
+      setFormError(msg("msg.bookingDeleteFailed"));
       return;
     }
 
@@ -433,8 +435,8 @@ export function useBookingEditor({
     ).catch((error) => console.warn("Jurnalul de audit pentru ștergere nu a putut fi scris:", error));
 
     pushToast({
-      message: "Programare ștearsă",
-      actionLabel: "Anulează",
+      message: msg("msg.bookingDeleted"),
+      actionLabel: msg("msg.undo"),
       onAction: () => restoreBooking(booking),
     });
   }

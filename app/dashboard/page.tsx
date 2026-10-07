@@ -1,5 +1,6 @@
 "use client";
 
+import { useAppText } from "@/features/shell/hooks/useAppText";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
@@ -31,7 +32,6 @@ import {
   defaultLocationName,
   defaultResourcesSectionTitle,
   defaultRoomsLabel,
-  offlineReadOnlyMessage,
   shortDayLabels,
 } from "@/lib/config/app";
 import { addDays, dateKey, parseDateKey } from "@/lib/dates";
@@ -144,6 +144,8 @@ export default function KeluniaPage() {
   const { isOnline, setIsOnline } = useOnlineStatus();
   const { tickerSettings, updateTickerSettings } = useUpcomingTickerSettings();
   const { toasts, pushToast, dismissToast } = useToasts();
+  const msg = useAppText();
+  const offlineReadOnlyMessage = msg("msg.offline");
   const setSelectedBookingNotice = useCallback(
     (value: string) => {
       if (value) {
@@ -717,12 +719,12 @@ export default function KeluniaPage() {
     const allowed = await requestKeluniaNotificationPermission();
 
     if (allowed) {
-      setSettingsMessage("Notificările pentru mesajele noi sunt activate pe acest dispozitiv.");
+      setSettingsMessage(msg("msg.ownerNotifOn"));
       setSettingsError("");
       return;
     }
 
-    setSettingsError("Notificările nu au fost permise pe acest dispozitiv.");
+    setSettingsError(msg("msg.notifDenied"));
   }
 
   useOwnerLandingNotifications({ user, isOwner, communityApplications });
@@ -837,16 +839,18 @@ export default function KeluniaPage() {
 
       setSelectedBookingNotice(
         !hasKeluniaPushConfig()
-          ? "Reminderul a fost salvat, dar notificările push PWA trebuie configurate în Firebase."
+          ? msg("msg.reminderNoPushConfig")
           : pushSent > 0
-            ? `Reminderul a fost trimis către ${pushSent} dispozitiv${pushSent === 1 ? "" : "e"}.`
+            ? pushSent === 1
+              ? msg("msg.reminderSentOne")
+              : msg("msg.reminderSentMany", { count: pushSent })
             : pushRegistered
-              ? "Reminderul a fost trimis, dar nu am găsit încă alte dispozitive active pentru grup."
-              : "Reminderul a fost trimis, dar pe acest dispozitiv notificările nu sunt activate."
+              ? msg("msg.reminderNoDevices")
+              : msg("msg.reminderThisDeviceOff")
       );
     } catch (error) {
       console.error("Notificarea nu a putut fi trimisa:", error);
-      pushToast({ message: error instanceof Error ? error.message : "Notificarea nu a putut fi trimisa.", tone: "error" });
+      pushToast({ message: error instanceof Error ? error.message : msg("msg.notifySendFailed"), tone: "error" });
     } finally {
       setNotifyingSelectedBooking(false);
     }
@@ -941,7 +945,7 @@ export default function KeluniaPage() {
       closePinSetup();
 
       if (wantsBiometrics && !biometricReady) {
-        setSettingsError("Biometria nu este disponibila pe acest dispozitiv. PIN-ul ramane activ ca metoda de blocare.");
+        setSettingsError(msg("msg.biometricsUnavailable"));
       }
 
       await savePersonalSettings({
@@ -967,7 +971,7 @@ export default function KeluniaPage() {
     }
 
     if (!isSuperAdmin && !personalDraft.groupName.trim()) {
-      setSettingsError("Alege un grup înainte să salvezi.");
+      setSettingsError(msg("msg.chooseGroupBeforeSave"));
       return;
     }
 
@@ -993,14 +997,14 @@ export default function KeluniaPage() {
 
     if (effectiveDraft.notifyGroupBookings) {
       if (notificationOffsets.length === 0) {
-        setSettingsError("Alege cel puțin un moment pentru notificări.");
+        setSettingsError(msg("msg.chooseNotifMoment"));
         return;
       }
 
       const notificationsAllowed = await requestKeluniaNotificationPermission();
 
       if (!notificationsAllowed) {
-        setSettingsError("Notificările nu au fost permise pe acest dispozitiv.");
+        setSettingsError(msg("msg.notifDenied"));
         return;
       }
 
@@ -1035,13 +1039,13 @@ export default function KeluniaPage() {
       await setDoc(doc(db, "users", user.uid), payload, { merge: true });
     } catch (error) {
       console.error("Setările nu au putut fi salvate:", error);
-      setSettingsError("Setările nu au putut fi salvate. Verifică regulile Firebase.");
+      setSettingsError(msg("msg.settingsSaveFailed"));
       setSettingsMessage("");
       return;
     }
 
     setSettingsError("");
-    setSettingsMessage("Setările au fost salvate.");
+    setSettingsMessage(msg("msg.settingsSaved"));
     void recordAuditLog(
       "user",
       "update",

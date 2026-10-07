@@ -1,5 +1,6 @@
 "use client";
 
+import { useAppText } from "@/features/shell/hooks/useAppText";
 import { useState } from "react";
 import type { User } from "firebase/auth";
 import { addDoc, collection, doc, Timestamp, updateDoc, type Firestore } from "firebase/firestore";
@@ -38,6 +39,7 @@ export function useLocationEditor({
   setSettingsError,
   setSettingsMessage,
 }: UseLocationEditorParams) {
+  const msg = useAppText();
   const [locationEditor, setLocationEditor] = useState<LocationEditor | null>(null);
   const [locationError, setLocationError] = useState("");
 
@@ -70,7 +72,7 @@ export function useLocationEditor({
     const name = locationEditor.name.trim();
 
     if (!name) {
-      setLocationError("Scrie numele locației.");
+      setLocationError(msg("msg.locationNameRequired"));
       return;
     }
 
@@ -97,7 +99,7 @@ export function useLocationEditor({
             const durationDays = Number.parseInt(durationText, 10);
 
             if (!Number.isFinite(durationDays) || durationDays < 1 || durationDays > 3660) {
-              setLocationError("Valabilitatea trebuie sa fie intre 1 si 3660 zile.");
+              setLocationError(msg("msg.durationRange"));
               return;
             }
 
@@ -130,10 +132,10 @@ export function useLocationEditor({
       }
 
       setLocationEditor(null);
-      setSettingsMessage(locationEditor.id ? "Locația a fost actualizată." : "Locația a fost adăugată.");
+      setSettingsMessage(locationEditor.id ? msg("msg.locationUpdated") : msg("msg.locationAdded"));
     } catch (error) {
       console.error("Locația nu a putut fi salvată:", error);
-      setLocationError("Locația nu a putut fi salvată. Verifică regulile Firebase.");
+      setLocationError(msg("msg.locationSaveFailed"));
     }
   }
 

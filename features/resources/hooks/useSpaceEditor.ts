@@ -1,5 +1,6 @@
 "use client";
 
+import { useAppText } from "@/features/shell/hooks/useAppText";
 import { useState } from "react";
 import type { User } from "firebase/auth";
 import { addDoc, collection, deleteField, doc, Timestamp, updateDoc, type Firestore } from "firebase/firestore";
@@ -46,6 +47,7 @@ export function useSpaceEditor({
   setSettingsError,
   setSettingsMessage,
 }: UseSpaceEditorParams) {
+  const msg = useAppText();
   const [spaceEditor, setSpaceEditor] = useState<SpaceEditor | null>(null);
   const [spaceError, setSpaceError] = useState("");
 
@@ -80,14 +82,14 @@ export function useSpaceEditor({
     const label = spaceEditor.kind === "room" ? "Sala" : "Grupul";
 
     if (!name) {
-      setSpaceError(spaceEditor.kind === "room" ? "Scrie numele sălii." : "Scrie numele grupului.");
+      setSpaceError(spaceEditor.kind === "room" ? msg("msg.roomNameRequired") : msg("msg.groupNameRequired"));
       return;
     }
 
     const activeUntil = spaceEditor.activeUntil?.trim() ?? "";
 
     if (activeUntil && !readActiveUntil(activeUntil)) {
-      setSpaceError("Alege o dată validă pentru perioada provizorie.");
+      setSpaceError(msg("msg.chooseValidDate"));
       return;
     }
 
@@ -96,7 +98,7 @@ export function useSpaceEditor({
       : false;
 
     if (activeUntil && !unchangedActiveUntil && activeUntil < dateKey(new Date())) {
-      setSpaceError("Data limită nu poate fi în trecut.");
+      setSpaceError(msg("msg.dateInPast"));
       return;
     }
 
@@ -138,12 +140,12 @@ export function useSpaceEditor({
       setSpaceEditor(null);
       setSettingsMessage(
         spaceEditor.kind === "room"
-          ? `Sala a fost ${spaceEditor.id ? "actualizată" : "adăugată"}.`
-          : `Grupul a fost ${spaceEditor.id ? "actualizat" : "adăugat"}.`
+          ? msg(spaceEditor.id ? "msg.roomUpdated" : "msg.roomAdded")
+          : msg(spaceEditor.id ? "msg.groupUpdated" : "msg.groupAdded")
       );
     } catch (error) {
       console.error(`${label} nu a putut fi salvată:`, error);
-      setSpaceError("Firebase nu permite încă această modificare. Actualizează regulile Firestore pentru administrator.");
+      setSpaceError(msg("msg.spaceSaveFailed"));
     }
   }
 
@@ -163,13 +165,13 @@ export function useSpaceEditor({
       await updateLocationCounterSafely(db, currentLocationId, kind === "room" ? "roomCount" : "groupCount", -1);
       await recordAuditLog(kind, "delete", itemId, previousItem, previousItem ? { ...previousItem, ...deletedPayload } : deletedPayload);
       pushToast({
-        message: kind === "room" ? "Sala a fost ștearsă" : "Grupul a fost șters",
-        actionLabel: "Anulează",
+        message: kind === "room" ? msg("msg.roomDeleted") : msg("msg.groupDeleted"),
+        actionLabel: msg("msg.undo"),
         onAction: () => restoreSpaceItem(kind, itemId),
       });
     } catch (error) {
       console.error("Elementul nu a putut fi șters:", error);
-      setSettingsError("Firebase nu permite încă ștergerea. Actualizează regulile Firestore pentru administrator.");
+      setSettingsError(msg("msg.spaceDeleteFailed"));
     }
   }
 
@@ -188,7 +190,7 @@ export function useSpaceEditor({
       await updateLocationCounterSafely(db, currentLocationId, kind === "room" ? "roomCount" : "groupCount", 1);
     } catch (error) {
       console.error("Anularea ștergerii nu a reușit:", error);
-      setSettingsError("Anularea ștergerii nu a reușit. Reîncarcă și încearcă din nou.");
+      setSettingsError(msg("msg.undoFailed"));
     }
   }
 

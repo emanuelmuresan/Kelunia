@@ -1,3 +1,4 @@
+import { appText, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 import type {
   BillingStatus,
   LocationItem,
@@ -207,9 +208,9 @@ export function planIncludesFeature(plan: LocationPlan, feature: PlanFeature) {
   return planAccessRank[normalizedPlan] >= planAccessRank[minimumPlan];
 }
 
-export function planLabel(plan: LocationPlan) {
+export function planLabel(plan: LocationPlan, language: SupportedLocale = "ro") {
   if (plan === "trial") {
-    return "Trial";
+    return appText(language, "license.planTrial");
   }
 
   if (plan === "business") {
@@ -223,28 +224,28 @@ export function planLabel(plan: LocationPlan) {
   return "Standard";
 }
 
-export function billingStatusLabel(status: BillingStatus) {
+export function billingStatusLabel(status: BillingStatus, language: SupportedLocale = "ro") {
   if (status === "active") {
-    return "Activ";
+    return appText(language, "license.statusActive");
   }
 
   if (status === "trialing") {
-    return "Trial";
+    return appText(language, "license.planTrial");
   }
 
   if (status === "past_due") {
-    return "Plata intarziata";
+    return appText(language, "license.statusPastDue");
   }
 
   if (status === "paused") {
-    return "Pauzat";
+    return appText(language, "license.statusPaused");
   }
 
   if (status === "expired") {
-    return "Expirat";
+    return appText(language, "license.statusExpired");
   }
 
-  return "Anulat";
+  return appText(language, "license.statusCanceled");
 }
 
 export function dateFromFirestoreValue(value: unknown): Date | null {
@@ -289,7 +290,7 @@ export function communityDateLabel(value: unknown): string {
   });
 }
 
-export function locationLicenseAccess(location?: LocationItem | null, now = new Date()): LocationLicenseAccess {
+export function locationLicenseAccess(location?: LocationItem | null, now = new Date(), language: SupportedLocale = "ro"): LocationLicenseAccess {
   const plan = normalizeLocationPlan(location?.plan);
   const status = normalizeBillingStatus(location?.billingStatus);
   const features = featuresForPlan(plan);
@@ -301,8 +302,8 @@ export function locationLicenseAccess(location?: LocationItem | null, now = new 
   const subscriptionExpired = status === "active" && Boolean(subscriptionExpiresAt) && subscriptionExpiresAt!.getTime() < now.getTime();
   const blockedStatus = status === "past_due" || status === "paused" || status === "canceled" || status === "expired";
   const canWrite = !trialExpired && !subscriptionExpired && !blockedStatus;
-  const label = planLabel(plan);
-  const statusLabel = billingStatusLabel(trialExpired || subscriptionExpired ? "expired" : status);
+  const label = planLabel(plan, language);
+  const statusLabel = billingStatusLabel(trialExpired || subscriptionExpired ? "expired" : status, language);
 
   return {
     plan,
@@ -314,7 +315,7 @@ export function locationLicenseAccess(location?: LocationItem | null, now = new 
     isReadOnly: !canWrite,
     message: canWrite
       ? ""
-      : `Licenta ${label} este ${statusLabel.toLowerCase()}. Datele raman vizibile, dar modificarile sunt oprite pana la reactivare.`,
+      : appText(language, "license.readOnlyMessage").replace("{{plan}}", label).replace("{{status}}", statusLabel.toLowerCase()),
     trialEndsAt,
     daysRemaining,
   };

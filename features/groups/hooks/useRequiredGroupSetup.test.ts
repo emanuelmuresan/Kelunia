@@ -3,6 +3,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useRequiredGroupSetup } from "./useRequiredGroupSetup";
 
+vi.mock("@/context/AuthContext", () => ({
+  useAuth: () => ({ profile: null }),
+}));
+
 vi.mock("firebase/firestore", () => ({
   doc: vi.fn((_db: unknown, ...segments: string[]) => ({ path: segments.join("/") })),
   setDoc: vi.fn(() => Promise.resolve()),

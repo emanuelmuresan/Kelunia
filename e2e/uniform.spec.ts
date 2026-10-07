@@ -61,3 +61,30 @@ test("clicking outside an untouched profile just closes it", async ({ page }) =>
   await page.mouse.click(4, 4);
   await expect(profile).toHaveCount(0);
 });
+
+test("messages follow the chosen language", async ({ page }) => {
+  await loginAsAdmin(page);
+
+  await page.getByRole("button", { name: "Modifică setările" }).click();
+  const profile = page.locator('[aria-labelledby="profile-settings-title"]');
+  await profile.locator("select").first().selectOption({ label: "English" });
+  await profile.getByRole("button", { name: "Save" }).click();
+  await expect(profile).toHaveCount(0);
+
+  // The saved language is picked up on the next load.
+  await page.reload();
+  await page.locator("main.kelunia-shell").waitFor({ timeout: 30_000 });
+  await page.getByRole("button", { name: /Settings/ }).first().click();
+
+  // The profile is English now, so the delete toast must be too.
+  await page
+    .locator("article.settings-panel", { hasText: "Grupa B" })
+    .getByRole("button", { name: "Edit" })
+    .click();
+  const dialog = page.locator('[aria-labelledby="resources-manager-title"]');
+  await dialog.locator(".mini-row", { hasText: "Grupa B" }).getByRole("button", { name: "Delete" }).click();
+
+  const toast = page.locator(".toast", { hasText: "The group was deleted" });
+  await expect(toast).toBeVisible();
+  await expect(toast.getByRole("button", { name: "Undo" })).toBeVisible();
+});

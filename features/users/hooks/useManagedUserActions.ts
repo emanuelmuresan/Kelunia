@@ -1,5 +1,6 @@
 "use client";
 
+import { useAppText } from "@/features/shell/hooks/useAppText";
 import { useConfirm } from "@/features/shell/components/ConfirmDialog";
 import { deleteDoc, doc, updateDoc, type Firestore } from "firebase/firestore";
 
@@ -41,6 +42,7 @@ export function useManagedUserActions({
   setSettingsMessage,
 }: UseManagedUserActionsParams) {
   const confirmAction = useConfirm();
+  const msg = useAppText();
 
   async function updateManagedUserRole(managedUser: ManagedUser, nextRole: UserRole) {
     if (!canManageMembers || managedUser.isOwner || managedUser.locationId !== currentLocationId) {
@@ -63,7 +65,7 @@ export function useManagedUserActions({
     ).length;
 
     if (nextRole === "manager" && otherSuperAdmins >= currentLocationManagerLimit) {
-      setSettingsError(`Aceasta locatie poate avea maximum ${currentLocationManagerLimit} administratori.`);
+      setSettingsError(msg("msg.managerLimitMax", { count: currentLocationManagerLimit }));
       return;
     }
 
@@ -84,10 +86,10 @@ export function useManagedUserActions({
         allowedRoomIds,
       });
       await recordAuditLog("user", "update", managedUser.id, managedUser, updatedUser, managedUser.locationId, managedUser.locationName || locationName);
-      setSettingsMessage("Rolul a fost actualizat.");
+      setSettingsMessage(msg("msg.roleUpdated"));
     } catch (error) {
       console.error("Rolul nu a putut fi actualizat:", error);
-      setSettingsError("Rolul nu a putut fi actualizat. Verifica regulile Firebase.");
+      setSettingsError(msg("msg.roleUpdateFailed"));
     }
   }
 
@@ -107,14 +109,14 @@ export function useManagedUserActions({
     const allowedRoomIds = roomAccess === "selected" ? normalizeAllowedRoomIds(nextAllowedRoomIds) : [];
 
     if (roomAccess === "selected" && allowedRoomIds.length === 0) {
-      setSettingsError("Alege cel putin o sala sau lasa acces la toate salile.");
+      setSettingsError(msg("msg.chooseRoomOrAll"));
       return;
     }
 
     const validRoomIds = new Set(rooms.map((room) => room.id));
 
     if (allowedRoomIds.some((roomId) => !validRoomIds.has(roomId))) {
-      setSettingsError("Una dintre salile alese nu mai exista.");
+      setSettingsError(msg("msg.roomNoLongerExists"));
       return;
     }
 
@@ -129,10 +131,10 @@ export function useManagedUserActions({
         allowedRoomIds,
       });
       await recordAuditLog("user", "update", managedUser.id, managedUser, updatedUser, managedUser.locationId, managedUser.locationName || locationName);
-      setSettingsMessage("Accesul la sali a fost actualizat.");
+      setSettingsMessage(msg("msg.roomAccessUpdated"));
     } catch (error) {
       console.error("Accesul la sali nu a putut fi actualizat:", error);
-      setSettingsError("Accesul la sali nu a putut fi actualizat. Verifica regulile Firebase.");
+      setSettingsError(msg("msg.roomAccessUpdateFailed"));
     }
   }
 
@@ -147,8 +149,8 @@ export function useManagedUserActions({
     }
 
     const confirmed = await confirmAction({
-      message: `Ștergi contul ${managedUser.email}? Acțiunea nu poate fi anulată.`,
-      confirmLabel: "Șterge contul",
+      message: msg("msg.confirmDeleteAccount", { email: managedUser.email }),
+      confirmLabel: msg("settings.deleteAccount"),
       tone: "danger",
     });
 
@@ -159,10 +161,10 @@ export function useManagedUserActions({
     try {
       await deleteDoc(doc(db, "users", managedUser.id));
       await recordAuditLog("user", "delete", managedUser.id, managedUser, null, managedUser.locationId, managedUser.locationName || locationName);
-      setSettingsMessage("Contul a fost sters.");
+      setSettingsMessage(msg("msg.accountDeleted"));
     } catch (error) {
       console.error("Contul nu a putut fi sters:", error);
-      setSettingsError("Contul nu a putut fi sters. Verifica regulile Firebase.");
+      setSettingsError(msg("msg.accountDeleteFailed"));
     }
   }
 

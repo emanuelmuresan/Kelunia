@@ -1,5 +1,6 @@
 "use client";
 
+import { useAppText } from "@/features/shell/hooks/useAppText";
 import { useConfirm } from "@/features/shell/components/ConfirmDialog";
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { registerPlugin } from "@capacitor/core";
@@ -45,6 +46,7 @@ export function useAppLock({
   setSettingsError,
 }: UseAppLockParams) {
   const confirmAction = useConfirm();
+  const msg = useAppText();
   const [appLocked, setAppLocked] = useState(false);
   const [unlockPin, setUnlockPin] = useState("");
   const [unlockError, setUnlockError] = useState("");
@@ -83,7 +85,7 @@ export function useAppLock({
   }, [lockSessionKey, pinLockEnabled]);
 
   async function confirmSignOut() {
-    const confirmed = await confirmAction({ message: "Vrei să ieși din cont?", confirmLabel: "Ieși din cont" });
+    const confirmed = await confirmAction({ message: msg("msg.confirmSignOut"), confirmLabel: msg("msg.signOutAction") });
 
     if (!confirmed) {
       return;
@@ -111,9 +113,7 @@ export function useAppLock({
 
     setPersonalDraft((current) => ({ ...current, usePin: false, useBiometrics: false, lockOnHide: false }));
     markAppUnlocked();
-    setSettingsError(
-      "PIN-ul a fost resetat din motive de securitate. Activeaza din nou „Blocare cu PIN” din Setari si alege un cod nou."
-    );
+    setSettingsError(msg("msg.pinReset"));
   }
 
   async function unlockWithPin() {

@@ -1,5 +1,6 @@
 "use client";
 
+import { useAppText } from "@/features/shell/hooks/useAppText";
 import { useState } from "react";
 import type { User } from "firebase/auth";
 import { httpsCallable } from "firebase/functions";
@@ -93,6 +94,7 @@ export function useAccessCodes({
   user,
   language = "ro",
 }: UseAccessCodesParams) {
+  const msg = useAppText();
   const [showCodesModal, setShowCodesModal] = useState(false);
   const [codesError, setCodesError] = useState("");
   // Success confirmations are toasts; only errors stay inline in the modal.
@@ -198,10 +200,10 @@ export function useAccessCodes({
 
     try {
       await navigator.clipboard.writeText(code);
-      setCodesMessage(`Codul ${code} a fost copiat.`);
+      setCodesMessage(msg("msg.codeCopied", { code }));
     } catch (error) {
       console.warn("Codul nu a putut fi copiat:", error);
-      setCodesError(`Codul este ${code}. Copiaza-l manual daca browserul nu permite copierea automata.`);
+      setCodesError(msg("msg.codeCopyManual", { code }));
     }
   }
 
@@ -214,10 +216,10 @@ export function useAccessCodes({
 
     try {
       await navigator.clipboard.writeText(shareText);
-      setCodesMessage("Mesajul de invitatie a fost copiat.");
+      setCodesMessage(msg("msg.inviteCopied"));
     } catch (error) {
       console.warn("Mesajul nu a putut fi copiat:", error);
-      setCodesError(`Linkul este ${inviteUrl}. Copiaza-l manual daca browserul nu permite copierea automata.`);
+      setCodesError(msg("msg.linkCopyManual", { url: inviteUrl }));
     }
   }
 
@@ -243,7 +245,7 @@ export function useAccessCodes({
     const recipientEmail = inviteDraft.email.trim();
 
     if (!recipientEmail) {
-      setCodesError("Scrie emailul persoanei invitate.");
+      setCodesError(msg("msg.inviteEmailRequired"));
       return;
     }
 
@@ -264,10 +266,10 @@ export function useAccessCodes({
         language,
       });
       setInviteDraft(null);
-      setCodesMessage(`Invitatia a fost trimisa prin Kelunia catre ${recipientEmail}.`);
+      setCodesMessage(msg("msg.inviteSent", { email: recipientEmail }));
     } catch (error) {
       console.error("Invitatia nu a putut fi trimisa:", error);
-      setCodesError(error instanceof Error ? error.message : "Invitatia nu a putut fi trimisa.");
+      setCodesError(error instanceof Error ? error.message : msg("msg.inviteSendFailed"));
     } finally {
       setCodesWorking(false);
     }
@@ -278,7 +280,7 @@ export function useAccessCodes({
     const location = locations.find((item) => item.id === codeGenerator.locationId);
 
     if (!canEditCurrentLocation || !location || !selectedRole) {
-      setCodesError("Alege locatia si rolul.");
+      setCodesError(msg("msg.chooseLocationRole"));
       return;
     }
 
@@ -287,12 +289,12 @@ export function useAccessCodes({
     }
 
     if (selectedRole === "manager" && currentLocationManagerCapacityUsed >= currentLocationManagerLimit) {
-      setCodesError(`Aceasta locatie are deja limita de ${currentLocationManagerLimit} administratori sau invitatii active de administrator.`);
+      setCodesError(msg("msg.managerLimit", { count: currentLocationManagerLimit }));
       return;
     }
 
     if (selectedRole !== "manager" && !codeGenerator.groupName.trim()) {
-      setCodesError("Alege grupul pentru acest cod.");
+      setCodesError(msg("msg.chooseGroupForCode"));
       return;
     }
 
@@ -300,14 +302,14 @@ export function useAccessCodes({
     const selectedRoomIds = roomAccess === "selected" ? normalizeAllowedRoomIds(codeGenerator.allowedRoomIds) : [];
 
     if (roomAccess === "selected" && selectedRoomIds.length === 0) {
-      setCodesError("Alege cel putin o sala pentru acest cod sau lasa acces la toate salile.");
+      setCodesError(msg("msg.chooseRoomForCode"));
       return;
     }
 
     const validRoomIds = new Set(rooms.map((room) => room.id));
 
     if (selectedRoomIds.some((roomId) => !validRoomIds.has(roomId))) {
-      setCodesError("Una dintre salile alese nu mai exista.");
+      setCodesError(msg("msg.roomNoLongerExists"));
       return;
     }
 
@@ -376,7 +378,7 @@ export function useAccessCodes({
           locationName: location.name,
           role: selectedRole,
         });
-        setCodesMessage(`Cod generat: ${generatedCode}. Verifica invitatia si apasa Trimite.`);
+        setCodesMessage(msg("msg.codeGeneratedVerify", { code: generatedCode }));
       } else {
         try {
           const shareText = buildAccessInviteShareText(
@@ -390,14 +392,14 @@ export function useAccessCodes({
             inviteUrlForCode(generatedCode)
           );
           await navigator.clipboard.writeText(shareText);
-          setCodesMessage(`Mesaj de invitatie generat si copiat pentru codul ${generatedCode}.`);
+          setCodesMessage(msg("msg.inviteGeneratedCopied", { code: generatedCode }));
         } catch {
-          setCodesMessage(`Cod generat: ${generatedCode}`);
+          setCodesMessage(msg("msg.codeGenerated", { code: generatedCode }));
         }
       }
     } catch (error) {
       console.error("Codul nu a putut fi generat:", error);
-      setCodesError(error instanceof Error ? error.message : "Codul nu a putut fi generat.");
+      setCodesError(error instanceof Error ? error.message : msg("msg.codeGenerateFailed"));
     } finally {
       setCodesWorking(false);
     }
@@ -422,12 +424,12 @@ export function useAccessCodes({
     const managerCapacityAfterCurrentCode = currentLocationManagerCapacityUsed - (currentCodeUsesManagerSlot ? 1 : 0);
 
     if (nextRole === "manager" && managerCapacityAfterCurrentCode >= currentLocationManagerLimit) {
-      setCodesError(`Aceasta locatie are deja limita de ${currentLocationManagerLimit} administratori sau invitatii active de administrator.`);
+      setCodesError(msg("msg.managerLimit", { count: currentLocationManagerLimit }));
       return;
     }
 
     if (nextRole !== "manager" && !nextGroupName.trim()) {
-      setCodesError("Alege grupul pentru acest cod.");
+      setCodesError(msg("msg.chooseGroupForCode"));
       return;
     }
 
@@ -435,14 +437,14 @@ export function useAccessCodes({
     const selectedRoomIds = roomAccess === "selected" ? normalizeAllowedRoomIds(nextAllowedRoomIds) : [];
 
     if (roomAccess === "selected" && selectedRoomIds.length === 0) {
-      setCodesError("Alege cel putin o sala pentru acest cod sau lasa acces la toate salile.");
+      setCodesError(msg("msg.chooseRoomForCode"));
       return;
     }
 
     const validRoomIds = new Set(rooms.map((room) => room.id));
 
     if (selectedRoomIds.some((roomId) => !validRoomIds.has(roomId))) {
-      setCodesError("Una dintre salile alese nu mai exista.");
+      setCodesError(msg("msg.roomNoLongerExists"));
       return;
     }
 
@@ -450,7 +452,7 @@ export function useAccessCodes({
     setCodesMessage("");
 
     if (!item.active && item.role === "manager" && currentLocationManagerCapacityUsed >= currentLocationManagerLimit) {
-      setCodesError(`Aceasta locatie are deja limita de ${currentLocationManagerLimit} administratori sau invitatii active de administrator.`);
+      setCodesError(msg("msg.managerLimit", { count: currentLocationManagerLimit }));
       return;
     }
 
@@ -479,10 +481,10 @@ export function useAccessCodes({
         updatedAt: Timestamp.now(),
       });
       await recordAuditLog("accessCode", "update", item.id, item, updatedCode, item.locationId, item.locationName || locationName);
-      setCodesMessage("Rolul codului a fost actualizat.");
+      setCodesMessage(msg("msg.codeRoleUpdated"));
     } catch (error) {
       console.error("Codul nu a putut fi actualizat:", error);
-      setCodesError("Codul nu a putut fi actualizat. Verifica regulile Firebase.");
+      setCodesError(msg("msg.codeUpdateFailed"));
     }
   }
 
@@ -519,10 +521,10 @@ export function useAccessCodes({
         updatedAt: Timestamp.now(),
       });
       await recordAuditLog("accessCode", "update", item.id, item, updatedCode, item.locationId, item.locationName || locationName);
-      setCodesMessage(!item.active ? "Codul a fost activat." : "Codul a fost oprit.");
+      setCodesMessage(!item.active ? msg("msg.codeActivated") : msg("msg.codeStopped"));
     } catch (error) {
       console.error("Codul nu a putut fi schimbat:", error);
-      setCodesError("Codul nu a putut fi schimbat. Verifica regulile Firebase.");
+      setCodesError(msg("msg.codeToggleFailed"));
     }
   }
 
@@ -557,10 +559,10 @@ export function useAccessCodes({
         updatedAt: Timestamp.now(),
       });
       await recordAuditLog("accessCode", "update", item.id, item, updatedCode, item.locationId, item.locationName || locationName);
-      setCodesMessage(`Codul a fost prelungit cu ${accessCodeExpiryDays} zile.`);
+      setCodesMessage(msg("msg.codeExtended", { days: accessCodeExpiryDays }));
     } catch (error) {
       console.error("Codul nu a putut fi prelungit:", error);
-      setCodesError("Codul nu a putut fi prelungit. Verifica regulile Firebase.");
+      setCodesError(msg("msg.codeExtendFailed"));
     }
   }
 
@@ -578,13 +580,13 @@ export function useAccessCodes({
       await updateLocationCounterSafely(db, item.locationId, "accessCodeCount", -1);
       await recordAuditLog("accessCode", "delete", item.id, item, { ...item, ...deletedPayload }, item.locationId, item.locationName || locationName);
       pushToast({
-        message: "Codul a fost șters",
-        actionLabel: "Anulează",
+        message: msg("msg.codeDeleted"),
+        actionLabel: msg("msg.undo"),
         onAction: () => restoreAccessCode(item),
       });
     } catch (error) {
       console.error("Codul nu a putut fi sters:", error);
-      setCodesError("Codul nu a putut fi sters. Verifica regulile Firebase.");
+      setCodesError(msg("msg.codeDeleteFailed"));
     }
   }
 
@@ -604,7 +606,7 @@ export function useAccessCodes({
       await recordAuditLog("accessCode", "update", item.id, { ...item, deleted: true }, { ...item, ...restoredPayload }, item.locationId, item.locationName || locationName);
     } catch (error) {
       console.error("Anularea ștergerii nu a reușit:", error);
-      setCodesError("Anularea ștergerii nu a reușit. Reîncarcă și încearcă din nou.");
+      setCodesError(msg("msg.undoFailed"));
     }
   }
 

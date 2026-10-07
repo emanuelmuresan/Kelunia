@@ -29,7 +29,6 @@ export const defaultListViewTitle = "Listă programări";
 export const defaultResourcesSectionTitle = "Spații și grupuri";
 export const defaultRoomsLabel = "Săli";
 export const defaultGroupsLabel = "Grupuri";
-export const offlineReadOnlyMessage = "Ești offline. Poți vedea datele deja încărcate, dar modificările se fac când revine internetul.";
 
 export const defaultRooms: RoomItem[] = [];
 export const defaultGroups: GroupItem[] = [];

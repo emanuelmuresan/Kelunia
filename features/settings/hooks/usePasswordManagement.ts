@@ -1,5 +1,6 @@
 "use client";
 
+import { useAppText } from "@/features/shell/hooks/useAppText";
 import { useState } from "react";
 import type { User } from "firebase/auth";
 import {
@@ -58,6 +59,7 @@ export function usePasswordManagement({
   setIsOnline,
   user,
 }: UsePasswordManagementParams) {
+  const msg = useAppText();
   const [passwordModal, setPasswordModal] = useState(false);
   const [passwordDraft, setPasswordDraft] = useState<PasswordDraft>(emptyPasswordDraft);
   const [passwordError, setPasswordError] = useState("");
@@ -102,7 +104,7 @@ export function usePasswordManagement({
     }
 
     if (passwordDraft.next !== passwordDraft.confirm) {
-      setPasswordError("Confirmarea parolei nu se potrivește.");
+      setPasswordError(msg("msg.passwordMismatch"));
       return;
     }
 
@@ -119,11 +121,11 @@ export function usePasswordManagement({
         profile?.locationId || currentLocationId || "owner",
         profile?.locationName || locationName
       );
-      setPasswordMessage("Parola a fost schimbată.");
+      setPasswordMessage(msg("msg.passwordChanged"));
       setPasswordDraft(emptyPasswordDraft);
     } catch (error) {
       console.error("Parola nu a putut fi schimbată:", error);
-      setPasswordError("Parola nu a putut fi schimbată. Verifică parola actuală sau folosește emailul de resetare.");
+      setPasswordError(msg("msg.passwordChangeFailed"));
     }
   }
 
@@ -140,10 +142,10 @@ export function usePasswordManagement({
 
     try {
       await sendCustomPasswordResetEmail(user.email, profile?.language ?? "ro");
-      setPasswordMessage("Ți-am trimis emailul pentru resetarea parolei.");
+      setPasswordMessage(msg("msg.resetEmailSent"));
     } catch (error) {
       console.error("Emailul de resetare nu a putut fi trimis:", error);
-      setPasswordError("Emailul de resetare nu a putut fi trimis.");
+      setPasswordError(msg("msg.resetEmailFailed"));
     }
   }
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { useAppText } from "@/features/shell/hooks/useAppText";
 import { useState } from "react";
 import type { User } from "firebase/auth";
 import { addDoc, collection, doc, Timestamp, updateDoc, type Firestore } from "firebase/firestore";
@@ -42,6 +43,7 @@ export function useFixedScheduleEditor({
   pushToast,
   setSettingsMessage,
 }: UseFixedScheduleEditorParams) {
+  const msg = useAppText();
   const [showFixedManager, setShowFixedManager] = useState(false);
   const [showFixedForm, setShowFixedForm] = useState(false);
   const [fixedEditingId, setFixedEditingId] = useState<string | null>(null);
@@ -115,12 +117,12 @@ export function useFixedScheduleEditor({
       !fixedDraft.endTime ||
       !fixedDraft.title.trim()
     ) {
-      setFixedError("Completează ziua, grupul, sala, orele și numele.");
+      setFixedError(msg("msg.fixedFillAll"));
       return;
     }
 
     if (timeToMinutes(fixedDraft.endTime) <= timeToMinutes(fixedDraft.startTime)) {
-      setFixedError("Ora de final trebuie să fie după ora de început.");
+      setFixedError(msg("msg.endTimeAfterStart"));
       return;
     }
 
@@ -153,10 +155,10 @@ export function useFixedScheduleEditor({
       setFixedEditingId(null);
       setShowFixedForm(false);
       setFixedError("");
-      setSettingsMessage(fixedEditingId ? "Programul a fost actualizat." : "Programul a fost adăugat.");
+      setSettingsMessage(fixedEditingId ? msg("msg.fixedUpdated") : msg("msg.fixedAdded"));
     } catch (error) {
       console.error("Programul nu a putut fi salvat:", error);
-      setFixedError("Firebase nu permite încă salvarea programului. Actualizează regulile Firestore pentru administrator.");
+      setFixedError(msg("msg.fixedSaveFailed"));
     }
   }
 
@@ -174,13 +176,13 @@ export function useFixedScheduleEditor({
       await updateLocationCounterSafely(db, currentLocationId, "fixedScheduleCount", -1);
       await recordAuditLog("fixedSchedule", "delete", itemId, previousSchedule, previousSchedule ? { ...previousSchedule, ...deletedPayload } : deletedPayload);
       pushToast({
-        message: "Programul a fost șters",
-        actionLabel: "Anulează",
+        message: msg("msg.fixedDeleted"),
+        actionLabel: msg("msg.undo"),
         onAction: () => restoreFixedSchedule(itemId),
       });
     } catch (error) {
       console.error("Programul nu a putut fi șters:", error);
-      setFixedError("Firebase nu permite încă ștergerea programului.");
+      setFixedError(msg("msg.fixedDeleteFailed"));
     }
   }
 
@@ -197,7 +199,7 @@ export function useFixedScheduleEditor({
       await updateLocationCounterSafely(db, currentLocationId, "fixedScheduleCount", 1);
     } catch (error) {
       console.error("Anularea ștergerii nu a reușit:", error);
-      setFixedError("Anularea ștergerii nu a reușit. Reîncarcă și încearcă din nou.");
+      setFixedError(msg("msg.undoFailed"));
     }
   }
 
