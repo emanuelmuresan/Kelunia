@@ -1,6 +1,7 @@
 // Invitation email wording per language. Mirrors the `invite.*` keys of the app's
 // catalog (lib/i18n/app-copy-catalog.ts) - the functions package cannot import it,
 // so keep the two in sync when editing a sentence.
+// Tipul limbilor și structura textelor invitației.
 export type InviteLanguage = "ro" | "en" | "es" | "it" | "fr" | "pt";
 
 export type InviteCopy = {
@@ -22,7 +23,9 @@ export type InviteCopy = {
   buttonFallback: string;
 };
 
+// Textele invitației pe limbi (română, engleză, spaniolă, italiană, franceză, portugheză), folosite la emailul trimis de funcția sendAccessInviteEmail.
 export const inviteCopy: Record<InviteLanguage, InviteCopy> = {
+  // Română.
   ro: {
     dateLocale: "ro-RO",
     defaultIntro: "Ai primit o invitație pentru Kelunia, locația {{location}}.",
@@ -46,6 +49,7 @@ export const inviteCopy: Record<InviteLanguage, InviteCopy> = {
     openButton: "Deschide invitația",
     buttonFallback: "Dacă butonul nu merge, deschide acest link:",
   },
+  // Engleză.
   en: {
     dateLocale: "en-GB",
     defaultIntro: "You have received an invitation to Kelunia, location {{location}}.",
@@ -69,6 +73,7 @@ export const inviteCopy: Record<InviteLanguage, InviteCopy> = {
     openButton: "Open the invitation",
     buttonFallback: "If the button does not work, open this link:",
   },
+  // Spaniolă.
   es: {
     dateLocale: "es-ES",
     defaultIntro: "Has recibido una invitación a Kelunia, ubicación {{location}}.",
@@ -92,6 +97,7 @@ export const inviteCopy: Record<InviteLanguage, InviteCopy> = {
     openButton: "Abrir la invitación",
     buttonFallback: "Si el botón no funciona, abre este enlace:",
   },
+  // Italiană.
   it: {
     dateLocale: "it-IT",
     defaultIntro: "Hai ricevuto un invito a Kelunia, sede {{location}}.",
@@ -115,6 +121,7 @@ export const inviteCopy: Record<InviteLanguage, InviteCopy> = {
     openButton: "Apri l'invito",
     buttonFallback: "Se il pulsante non funziona, apri questo link:",
   },
+  // Franceză.
   fr: {
     dateLocale: "fr-FR",
     defaultIntro: "Vous avez reçu une invitation à Kelunia, lieu {{location}}.",
@@ -138,6 +145,7 @@ export const inviteCopy: Record<InviteLanguage, InviteCopy> = {
     openButton: "Ouvrir l'invitation",
     buttonFallback: "Si le bouton ne fonctionne pas, ouvrez ce lien :",
   },
+  // Portugheză.
   pt: {
     dateLocale: "pt-PT",
     defaultIntro: "Recebeu um convite para o Kelunia, local {{location}}.",

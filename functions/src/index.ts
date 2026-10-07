@@ -1,3 +1,7 @@
+// Funcțiile cloud Kelunia (Firebase Functions v2, regiunea europe-west1): sunt singurul loc în care se pot face operațiuni privilegiate
+// (conturi, emailuri, notificări push, ștergeri) care nu se pot încrede în client. Fișierul este organizat pe zone:
+// tipuri și ajutoare, notificări push, emailuri (invitații, licențe, newsletter, verificare, resetare), rezervări, conturi, închiderea locațiilor și sarcini programate.
+// Regulile Firestore (firestore.rules) completează aceste funcții; ambele trebuie modificate împreună.
 import { initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { FieldValue, getFirestore, Timestamp } from "firebase-admin/firestore";
@@ -14,13 +18,17 @@ import { closureEmail, closureGraceDays, purgeLocation } from "./location-closur
 import { createHash } from "node:crypto";
 import { connect } from "node:http2";
 
+// Inițializarea Admin SDK.
 initializeApp();
 
+// Regiunea implicită și un plafon de instanțe, ca un vârf de trafic sau un abuz să nu crească factura fără limită.
 // Region default for every function + a hard ceiling so a traffic spike or abuse
 // can't scale Cloud Run (and the bill) without bound. Per-function `region` options
 // below are now redundant but kept for readability.
 setGlobalOptions({ region: "europe-west1", maxInstances: 20 });
 
+// Baza de date (Admin, ocolește regulile Firestore) și parametrii de configurare: cheia Resend (secret), adresa expeditorului,
+// adresa publică a aplicației și datele pentru notificările APNs (iOS). Secretele nu se scriu în cod.
 const db = getFirestore();
 
 const resendApiKey = defineSecret("RESEND_API_KEY");
@@ -43,6 +51,7 @@ const apnsPrivateKey = defineString("APNS_PRIVATE_KEY", {
   default: "",
 });
 
+// Tipurile documentelor și ale cererilor folosite de funcții (mesaje, newsletter, licențe, coduri de acces, rezervări, profil, jetoane push).
 type CommunityMessage = {
   applicationId?: string;
   body?: string;
@@ -140,6 +149,7 @@ type NotificationTokenDocument = {
   notifyNewBookings?: boolean;
 };
 
+// Aduce rolurile vechi (superadmin, admin, colaborator...) la cele curente: manager, member, guest.
 function normalizeRole(role: unknown): UserRole {
   if (role === "manager" || role === "superadmin" || role === "administrator") {
     return "manager";
@@ -152,6 +162,7 @@ function normalizeRole(role: unknown): UserRole {
   return "guest";
 }
 
+// Ajutoare pentru texte: emailul unui răspuns Community, curățarea emailului și a textului, identificatorul unui jeton, validarea emailului și a datelor.
 function emailText(applicationId: string, message: CommunityMessage) {
   return [
     message.body ?? "",
@@ -174,6 +185,7 @@ function validEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
+// Șterge toate documentele unei interogări, în loturi de 450 (limita unui batch Firestore este 500).
 async function deleteQueryResults(query: FirebaseFirestore.Query) {
   const snapshot = await query.get();
 
@@ -198,6 +210,7 @@ async function deleteQueryResults(query: FirebaseFirestore.Query) {
   return deleted;
 }
 
+// La ștergerea unui cont, rezervările lui rămân, dar autorul devine „Cont șters” (anonimizare), ca istoricul locației să rămână coerent.
 async function anonymizeAccountBookings(uid: string, email: string) {
   const queries = [
     db.collection("events").where("authorEmail", "==", email).limit(450),
@@ -235,6 +248,7 @@ async function anonymizeAccountBookings(uid: string, email: string) {
   return updated;
 }
 
+// Validări de format pentru date și ore, și curățarea momentelor de notificare (maximum 5; 120 minute, 48 ore, 30 zile).
 function cleanText(value: unknown, maxLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
 }
@@ -277,10 +291,13 @@ function cleanNotificationOffsets(value: unknown) {
     .slice(0, 5);
 }
 
+// Textul scurt al unei notificări de rezervare: grupul, data, ora și camera.
 function bookingNotificationBody(booking: Record<string, unknown>) {
   return `${cleanText(booking.group, 120)}, ${cleanText(booking.startDate, 10)}, ${cleanText(booking.startTime, 5)}-${cleanText(booking.endTime, 5)}, ${cleanText(booking.room, 120)}`;
 }
 
+// Notificări iOS (APNs): semnează un JWT cu cheia Apple (ES256) și trimite cererea HTTP/2 către Apple.
+// Fără cheile configurate nu se trimite nimic.
 async function apnsJwt() {
   const keyId = apnsKeyId.value().trim();
   const teamId = apnsTeamId.value().trim();
@@ -300,6 +317,7 @@ async function apnsJwt() {
     .sign(key);
 }
 
+// Trimite o cerere HTTP/2 către APNs pentru un dispozitiv.
 function sendApnsRequest(host: string, token: string, jwt: string, payload: Record<string, unknown>) {
   return new Promise<{ status: number; body: string }>((resolve, reject) => {
     const client = connect(`https://${host}`);
@@ -330,6 +348,7 @@ function sendApnsRequest(host: string, token: string, jwt: string, payload: Reco
   });
 }
 
+// Trimite notificarea la fiecare dispozitiv iOS: întâi serverul de test Apple, apoi cel de producție; jetoanele invalide sunt raportate pentru ștergere.
 async function sendApnsPush(tokens: string[], bookingId: string, title: string, body: string, url: string) {
   const jwt = await apnsJwt();
 
@@ -370,6 +389,8 @@ async function sendApnsPush(tokens: string[], bookingId: string, title: string, 
   return { invalidTokens, sent };
 }
 
+// Livrează o notificare push tuturor destinatarilor: jetoane FCM (Android/web) în loturi de 500 și jetoane APNs (iOS).
+// Jetoanele care nu mai sunt valide se șterg din notificationTokens.
 type PushMessage = {
   bookingId: string;
   body: string;
@@ -453,6 +474,7 @@ async function deliverPush(recipients: NotificationTokenDocument[], message: Pus
   return { sent };
 }
 
+// Emailul proprietarului platformei: tokenii lui sunt acceptați chiar dacă nu aparține unei locații.
 const ownerAccountEmail = "emanuelmuresan@gmail.com";
 
 type PushRecipient = {
@@ -463,6 +485,8 @@ type PushRecipient = {
   wantsBookingPush: boolean;
 };
 
+// Stabilește cui aparțin cu adevărat jetoanele unei locații: rolul și grupul vin din profilul actual, nu din ce s-a reținut la înregistrare.
+// Jetoanele utilizatorilor care nu mai aparțin locației sunt eliminate.
 // Resolves who a location's push tokens really belong to *now*: role and group
 // come from the user's current profile, not from what the token stored when it
 // was registered. Tokens whose user no longer belongs to the location (removed
@@ -519,11 +543,13 @@ async function loadLocationPushRecipients(locationId: string) {
   return recipients;
 }
 
+// Un destinatar face parte din grup dacă numele grupului coincide (fără litere mari/mici).
 function isGroupRecipient(item: PushRecipient, group: string) {
   const groupKey = group.trim().toLowerCase();
   return Boolean(groupKey) && item.groupName.toLowerCase() === groupKey;
 }
 
+// Publicul unei notificări „acum”: tot grupul, persoane alese sau toată locația.
 type NowPushAudience = {
   audience: "all" | "selected";
   recipients: string[];
@@ -539,6 +565,7 @@ function nowPushCovers(item: PushRecipient, group: string, nowPush: NowPushAudie
     && (nowPush.audience !== "selected" || nowPush.recipients.includes(item.email));
 }
 
+// Notificarea „Reminder grup”, trimisă imediat la cererea unui manager.
 async function sendInstantBookingPush(
   bookingId: string,
   bookingPayload: Record<string, unknown>,
@@ -558,6 +585,7 @@ async function sendInstantBookingPush(
   });
 }
 
+// O rezervare nouă anunță administratorii locației și grupul rezervării, mai puțin autorul și cei deja anunțați prin notificarea „acum”.
 // Every new booking pings the location's administrators and the booking's group,
 // except the author and anyone the explicit "notify now" push already reached.
 async function sendNewBookingPush(
@@ -584,6 +612,7 @@ async function sendNewBookingPush(
   });
 }
 
+// Datele de rol derivate din profil (proprietar, locație, rol), folosite pentru autorizare.
 function userClaimsFromProfile(profile: UserProfile) {
   const isOwner = profile.isOwner === true;
 
@@ -595,10 +624,12 @@ function userClaimsFromProfile(profile: UserProfile) {
   };
 }
 
+// Id-ul documentului de livrare pentru un email (codificat ca să fie valid într-o cale Firestore).
 function deliveryIdForEmail(email: string) {
   return encodeURIComponent(email);
 }
 
+// Emailuri de newsletter: textul simplu și varianta HTML (cu textul scăpat de caractere speciale, ca să nu poată introduce HTML).
 function newsletterText(campaign: NewsletterCampaign) {
   return [
     campaign.body ?? "",
@@ -632,16 +663,19 @@ function newsletterHtml(campaign: NewsletterCampaign) {
   ].join("");
 }
 
+// Adresa completă a aplicației pentru linkurile din emailuri.
 function appUrl(path: string) {
   return `${appBaseUrl.value().replace(/\/$/, "")}${path}`;
 }
 
+// Limbile în care se trimit emailurile; o limbă necunoscută devine română. Subiectele și textele variază pe limbă.
 type EmailLanguage = "ro" | "en" | "es" | "it" | "fr" | "pt";
 
 function emailLanguage(value: unknown): EmailLanguage {
   return value === "en" || value === "es" || value === "it" || value === "fr" || value === "pt" ? value : "ro";
 }
 
+// Subiectul emailului după tip (verificare, resetare, licență, invitație) și limbă.
 function emailSubject(key: "verify" | "reset" | "license" | "invite", languageValue: unknown) {
   const language = emailLanguage(languageValue);
   const subjects = {
@@ -686,6 +720,7 @@ function emailSubject(key: "verify" | "reset" | "license" | "invite", languageVa
   return subjects[language][key];
 }
 
+// Emailul cu codul de licență, în română: variantă text și variantă HTML (valorile scrise de utilizator sunt scăpate de caractere speciale).
 function licenseEmailText(request: LicenseEmailRequest) {
   const code = request.code ?? request.licenseId ?? "";
   const link = appUrl(`/login?code=${encodeURIComponent(code)}`);
@@ -741,6 +776,7 @@ function licenseEmailHtml(request: LicenseEmailRequest) {
   ].join("");
 }
 
+// Emailul de verificare a adresei: text și HTML, cu linkul generat de Firebase Auth.
 function verificationEmailText(link: string) {
   return [
     "Bun venit în Kelunia.",
@@ -767,6 +803,7 @@ function verificationEmailHtml(link: string) {
   ].join("");
 }
 
+// Emailul de resetare a parolei: text și HTML, cu linkul generat de Firebase Auth.
 function passwordResetEmailText(link: string) {
   return [
     "Ai cerut resetarea parolei pentru contul Kelunia.",
@@ -793,6 +830,7 @@ function passwordResetEmailHtml(link: string) {
   ].join("");
 }
 
+// Emailul de invitație cu cod de acces: eticheta rolului, data expirării, textul simplu și HTML-ul, în limba aleasă (textele sunt în invite-i18n.ts).
 function inviteRoleLabel(role: UserRole, copy: InviteCopy) {
   if (role === "manager") {
     return copy.roleManager;
@@ -877,6 +915,8 @@ function accessInviteHtml(request: AccessInviteEmailRequest, accessCode: AccessC
   ].join("");
 }
 
+// Funcția sendAuthVerificationEmail: trimite emailul de verificare (prin Resend) utilizatorului conectat, dacă adresa nu e deja verificată.
+// Nu retrimite mai des de 2 minute și tratează limita impusă de Firebase Auth ca „trimis recent”, nu ca eroare.
 export const sendAuthVerificationEmail = onCall(
   {
     region: "europe-west1",
@@ -898,6 +938,7 @@ export const sendAuthVerificationEmail = onCall(
       return { alreadyVerified: true, sent: false };
     }
 
+    // Evită trimiterile repetate: în primele 2 minute după ultimul email răspunde că a fost deja trimis.
     // Logging in with an unverified account re-sends the email. Do not pile up
     // sends: within a couple of minutes of the last one, say so instead.
     const lastSentAt = (await getFirestore().doc(`users/${user.uid}`).get()).data()?.verificationEmailSentAt as
@@ -916,6 +957,7 @@ export const sendAuthVerificationEmail = onCall(
         handleCodeInApp: false,
       });
     } catch (error) {
+      // Firebase Auth limitează linkurile de verificare pe cont; nu e o problemă de configurare, deci nu se raportează ca eșec.
       // Firebase Auth rate-limits verification links per account. That is not a
       // configuration problem, so report it as "sent recently", not as a failure.
       if (String((error as { message?: string }).message ?? "").includes("TOO_MANY_ATTEMPTS_TRY_LATER")) {
@@ -955,6 +997,8 @@ export const sendAuthVerificationEmail = onCall(
   }
 );
 
+// Funcția sendAuthPasswordResetEmail: trimite emailul de resetare a parolei.
+// Pentru o adresă fără cont răspunde la fel ca la succes, ca să nu se poată afla ce adrese există.
 export const sendAuthPasswordResetEmail = onCall(
   {
     region: "europe-west1",
@@ -1005,6 +1049,8 @@ export const sendAuthPasswordResetEmail = onCall(
   }
 );
 
+// Funcția sendAccessInviteEmail: trimite pe email invitația cu un cod de acces. Verifică emailul destinatarului, formatul codului,
+// că codul este activ și neexpirat și că utilizatorul este proprietar sau manager al locației codului; apoi reține cine și când a trimis invitația.
 export const sendAccessInviteEmail = onCall(
   {
     region: "europe-west1",
@@ -1102,6 +1148,8 @@ export const sendAccessInviteEmail = onCall(
   }
 );
 
+// Funcția registerNotificationToken: reține jetonul push al unui dispozitiv (document notificationTokens, cu id derivat din jeton).
+// Doar pentru utilizatori cu email verificat, și doar pentru locația lor (proprietarul poate pentru oricare).
 export const registerNotificationToken = onCall(
   {
     region: "europe-west1",
@@ -1149,6 +1197,9 @@ export const registerNotificationToken = onCall(
   }
 );
 
+// Funcția deleteMyAccount: șterge contul utilizatorului conectat, după ce acesta scrie emailul contului ca să confirme.
+// Ultimul administrator al unei locații nu poate pleca (dacă locația nu se închide); jetoanele push se șterg, rezervările se anonimizează,
+// abonarea la newsletter și profilul se șterg, se scrie o cerere de ștergere „completed” și, la final, contul Firebase Auth.
 export const deleteMyAccount = onCall(
   {
     region: "europe-west1",
@@ -1233,6 +1284,9 @@ export const deleteMyAccount = onCall(
   }
 );
 
+// Funcția saveBooking: creează sau modifică o rezervare. Este singura cale prin care clienții scriu în colecția events,
+// deci aici se aplică regulile de autorizare: email verificat, locația utilizatorului, rolul (oaspetele nu poate), grupul colaboratorului,
+// accesul la camere și starea licenței locației.
 export const saveBooking = onCall(
   {
     region: "europe-west1",
@@ -1243,6 +1297,7 @@ export const saveBooking = onCall(
       throw new HttpsError("unauthenticated", "Trebuie să fii autentificat cu email verificat.");
     }
 
+    // Profilul și rolul utilizatorului sunt citite din Firestore, nu din cerere.
     const db = getFirestore();
     const userSnapshot = await db.doc(`users/${request.auth.uid}`).get();
     const userProfile = userSnapshot.exists ? userSnapshot.data() as UserProfile & {
@@ -1255,6 +1310,7 @@ export const saveBooking = onCall(
     } : null;
     const isOwner = userProfile?.isOwner === true || request.auth.token.email === "emanuelmuresan@gmail.com";
     const role = normalizeRole(userProfile?.role ?? request.auth.token.role);
+    // Datele din cerere sunt curățate și limitate ca lungime; formatul datelor și orelor este validat.
     const payload = request.data as SaveBookingRequest;
     const editingId = cleanText(payload.editingId, 160);
     const locationId = cleanText(payload.locationId, 160);
@@ -1272,6 +1328,7 @@ export const saveBooking = onCall(
       throw new HttpsError("invalid-argument", "Programarea nu are toate câmpurile obligatorii.");
     }
 
+    // Autorizare: doar locația proprie (proprietarul oricare), nu oaspete, colaboratorul doar pentru grupul lui, doar camerele permise.
     if (!isOwner && userProfile?.locationId !== locationId) {
       throw new HttpsError("permission-denied", "Nu ai acces la această locație.");
     }
@@ -1288,6 +1345,7 @@ export const saveBooking = onCall(
       throw new HttpsError("permission-denied", "Nu ai acces la sala aleasă.");
     }
 
+    // Locația trebuie să permită scrierea: facturare activă sau în probă și probă neexpirată.
     const locationSnapshot = await db.doc(`locations/${locationId}`).get();
 
     if (!locationSnapshot.exists && !isOwner) {
@@ -1306,6 +1364,7 @@ export const saveBooking = onCall(
       throw new HttpsError("failed-precondition", "Trialul locației a expirat.");
     }
 
+    // Datele rezervării, inclusiv câmpurile vechi (congregatie, orar, motiv, location) păstrate pentru compatibilitate.
     const notifyOffsets = payload.notifyOnThisBooking ? cleanNotificationOffsets(payload.notifyOffsets) : [];
     const notifyGroupOffsets = payload.notifyGroupOnThisBooking ? cleanNotificationOffsets(payload.notifyGroupOffsets) : [];
     const now = FieldValue.serverTimestamp();
@@ -1340,6 +1399,7 @@ export const saveBooking = onCall(
         : [];
     }
 
+    // Colaboratorii pot anunța doar propriul grup; publicul extins și destinatarii alese sunt doar pentru manageri și proprietar.
     // Collaborators can only ping their own group; the whole-location scope and
     // hand-picked recipients are administrator features, enforced here.
     const canNotifyBeyondGroup = isOwner || role === "manager";
@@ -1361,6 +1421,7 @@ export const saveBooking = onCall(
 
     let pushResult = { sent: 0 };
 
+    // Modificare: rezervarea trebuie să existe, iar un colaborator o poate modifica doar dacă este autorul; apoi se trimite, la cerere, notificarea „acum”.
     if (editingId) {
       const ref = db.doc(`events/${editingId}`);
       const beforeSnapshot = await ref.get();
@@ -1384,6 +1445,7 @@ export const saveBooking = onCall(
       return { id: editingId, pushSent: pushResult.sent, saved: true };
     }
 
+    // Creare: se adaugă autorul și data, se crește contorul locației și se trimit notificările push ale unei rezervări noi.
     bookingPayload.authorEmail = request.auth.token.email || "";
     bookingPayload.authorName = userProfile?.displayName || request.auth.token.email || "Utilizator";
     bookingPayload.createdAt = now;
@@ -1422,6 +1484,8 @@ export const saveBooking = onCall(
   }
 );
 
+// Funcția syncUserSecurityClaims: la fiecare modificare a unui profil users/{uid} copiază rolul, locația și apartenența de proprietar
+// în claim-urile contului Firebase Auth (folosite de funcții), doar dacă s-a schimbat ceva relevant.
 export const syncUserSecurityClaims = onDocumentWritten(
   {
     document: "users/{userId}",
@@ -1460,6 +1524,7 @@ export const syncUserSecurityClaims = onDocumentWritten(
   }
 );
 
+// Destinatarii newsletter-ului: abonații activi și, pentru compatibilitate, cei veniți ca mesaje din pagina publică; opțional un singur destinatar.
 async function newsletterRecipients(recipientEmail = "") {
   const db = getFirestore();
   const recipients = new Map<string, NewsletterRecipient>();
@@ -1496,6 +1561,7 @@ async function newsletterRecipients(recipientEmail = "") {
     : allRecipients;
 }
 
+// Declanșator: la crearea unui răspuns într-o cerere Community îl trimite pe email (Resend) și marchează livrarea („sent” sau „failed”).
 export const sendCommunityApplicationReply = onDocumentCreated(
   {
     document: "communityApplications/{applicationId}/messages/{messageId}",
@@ -1572,6 +1638,8 @@ export const sendCommunityApplicationReply = onDocumentCreated(
   }
 );
 
+// Declanșator: la crearea unei campanii newsletter o trimite abonaților, câte un email, și reține starea fiecărei livrări; campania
+// devine „sent”, „partial” sau „failed”. Poate dura mult, de aceea timeout-ul este 540 de secunde.
 export const sendNewsletterCampaign = onDocumentCreated(
   {
     document: "newsletterCampaigns/{campaignId}",
@@ -1680,6 +1748,7 @@ export const sendNewsletterCampaign = onDocumentCreated(
   }
 );
 
+// Declanșator: la crearea unei cereri de email pentru licență trimite codul pe email și marchează cererea „sent” sau „failed”.
 export const sendLicenseEmail = onDocumentCreated(
   {
     document: "licenseEmailRequests/{requestId}",
@@ -1745,8 +1814,10 @@ export const sendLicenseEmail = onDocumentCreated(
   }
 );
 
+// Funcțiile PIN sunt definite în pin.ts.
 export { setPin, verifyPin, disablePin } from "./pin";
 
+// Sarcină programată: la prânz, în ultima zi de valabilitate, administratorii locației primesc o notificare pentru grupurile și camerele provizorii care expiră.
 // Temporary groups/rooms carry activeUntil (YYYY-MM-DD) and drop out of the
 // pickers at midnight after that day. At noon on the last day the location's
 // administrators get a push so they can extend it from Settings.
@@ -1798,10 +1869,12 @@ export const notifySpaceExpiry = onSchedule(
   }
 );
 
+// Închiderea unei locații: doar citire pe durata perioadei de grație (closureGraceDays), apoi ștergere definitivă (vezi location-closure.ts).
 // ---------------------------------------------------------------------------
 // Closing a location: read-only for closureGraceDays, then purged for good.
 // ---------------------------------------------------------------------------
 
+// Doar proprietarul sau un manager al locației poate cere sau anula închiderea.
 async function requireLocationAdmin(request: CallableRequest, locationId: string) {
   if (!request.auth?.uid || request.auth.token.email_verified !== true) {
     throw new HttpsError("unauthenticated", "Trebuie să fii autentificat cu email verificat.");
@@ -1834,6 +1907,7 @@ async function linkedBillingDocuments(locationId: string) {
   };
 }
 
+// Textul despre documentele de facturare care rămân păstrate pentru evidență.
 function billingDocumentLines(documents: { licenseCodes: string[]; subscriptionCount: number }) {
   return [
     "Rămân păstrate pentru audit contabil (nu se șterg): înregistrarea locației cu datele de facturare (arhivată în closedLocations), jurnalul de audit pentru locație și licențe, plus:",
@@ -1859,6 +1933,8 @@ async function notifyOwner(subject: string, lines: string[], pushBody: string) {
   ).catch((error) => logger.warn("Owner notice push failed", { subject, error }));
 }
 
+// Funcția requestLocationClosure: închide o locație după ce se scrie numele ei; locația devine „canceled”, se programează ștergerea
+// după perioada de grație, membrii locației și proprietarul sunt anunțați; un email eșuat nu anulează închiderea.
 export const requestLocationClosure = onCall(
   {
     region: "europe-west1",
@@ -1956,6 +2032,7 @@ export const requestLocationClosure = onCall(
   }
 );
 
+// Funcția cancelLocationClosure: redeschide o locație în perioada de grație, readucând starea de facturare de dinainte.
 export const cancelLocationClosure = onCall(
   {
     region: "europe-west1",
@@ -2005,6 +2082,8 @@ export const cancelLocationClosure = onCall(
   }
 );
 
+// Sarcină programată (zilnic la 03:00, ora României): șterge definitiv locațiile al căror termen de grație a trecut,
+// doar cele care au trecut cu adevărat prin fluxul de închidere; anunță proprietarul după fiecare ștergere.
 export const purgeClosedLocations = onSchedule(
   {
     region: "europe-west1",

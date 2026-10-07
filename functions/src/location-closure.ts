@@ -1,11 +1,15 @@
+// Închiderea locațiilor: textul emailului de anunț în șase limbi și ștergerea definitivă a datelor unei locații după perioada de grație.
+// Ștergerea este apelată de funcția programată purgeClosedLocations din index.ts.
 import type { Auth } from "firebase-admin/auth";
 import { Timestamp, type Firestore } from "firebase-admin/firestore";
 
 // A closed location keeps its data read-only for this many days, then is purged.
 export const closureGraceDays = 30;
 
+// Limbile emailului de închidere.
 export type ClosureLanguage = "ro" | "en" | "es" | "it" | "fr" | "pt";
 
+// Textul emailului: formatul datei, subiectul și corpul, cu {{location}}, {{admin}} și {{date}} înlocuite la trimitere.
 type ClosureCopy = {
   dateLocale: string;
   subject: string;
@@ -46,6 +50,7 @@ const closureCopy: Record<ClosureLanguage, ClosureCopy> = {
   },
 };
 
+// Scapă caracterele speciale HTML din valorile inserate în email.
 function escapeForHtml(value: string) {
   return value
     .replace(/&/g, "&amp;")
@@ -54,6 +59,7 @@ function escapeForHtml(value: string) {
     .replace(/"/g, "&quot;");
 }
 
+// Construiește emailul de închidere (subiect, text și HTML) în limba membrului, cu numele locației, administratorul și data ștergerii.
 export function closureEmail(
   language: ClosureLanguage,
   params: { location: string; admin: string; scheduledFor: Date }
@@ -74,6 +80,7 @@ export function closureEmail(
   };
 }
 
+// Colecțiile ale căror documente aparțin locației (după câmpul locationId) și se șterg la purjare.
 const locationScopedCollections = ["events", "groups", "rooms", "fixedSchedules", "accessCodes", "notificationTokens"];
 
 // What an accounting audit still needs after a purge: the licence/subscription
@@ -81,6 +88,7 @@ const locationScopedCollections = ["events", "groups", "rooms", "fixedSchedules"
 // in closedLocations/{id}, and the audit trail of location and licence changes stays.
 const retainedAuditEntityTypes = new Set(["location", "license"]);
 
+// Șterge, în loturi de 450, toate documentele unei colecții cu o anumită valoare într-un câmp.
 async function deleteWhere(db: Firestore, collection: string, field: string, value: string) {
   let deleted = 0;
 
@@ -136,6 +144,7 @@ async function deleteOperationalAuditLogs(db: Firestore, locationId: string) {
  * (which also frees the location id for a later, brand-new location).
  */
 export async function purgeLocation(db: Firestore, auth: Auth, locationId: string, ownerEmail: string) {
+  // Pentru fiecare membru care nu este proprietar: șterge jetoanele push, abonarea newsletter, profilul (cu subcolecțiile) și contul Firebase Auth.
   const members = await db.collection("users").where("locationId", "==", locationId).get();
   let accountsDeleted = 0;
 
@@ -164,6 +173,7 @@ export async function purgeLocation(db: Firestore, auth: Auth, locationId: strin
     accountsDeleted += 1;
   }
 
+  // Șterge datele operaționale ale locației, istoricul operațional și documentul de setări.
   const removed: Record<string, number> = {};
 
   for (const collection of locationScopedCollections) {
@@ -174,6 +184,7 @@ export async function purgeLocation(db: Firestore, auth: Auth, locationId: strin
 
   await db.doc(`settings/calendar_${locationId}`).delete();
 
+  // Arhivează înregistrarea locației (fără contoarele de utilizare) în closedLocations, apoi șterge documentul locației.
   const locationRef = db.doc(`locations/${locationId}`);
   const locationSnapshot = await locationRef.get();
 

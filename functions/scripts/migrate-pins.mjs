@@ -15,9 +15,12 @@
  *   - set GOOGLE_APPLICATION_CREDENTIALS to a service-account key file, or
  *   - run `gcloud auth application-default login` for project kelunia-890fe.
  */
+// Migrare unică: elimină din toate documentele users/* PIN-ul vechi (hash fără sare), care nu poate fi recalculat; utilizatorii își aleg un PIN nou.
+// Rulează cu credențialele implicite Google; cu --dry-run doar afișează ce ar modifica.
 import { initializeApp, applicationDefault } from "firebase-admin/app";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 
+// Modul de probă și proiectul Firebase țintă.
 const DRY_RUN = process.argv.includes("--dry-run");
 const PROJECT_ID = process.env.GCLOUD_PROJECT || "kelunia-890fe";
 
@@ -25,6 +28,7 @@ initializeApp({ credential: applicationDefault(), projectId: PROJECT_ID });
 
 const db = getFirestore();
 
+// Parcurge toți utilizatorii; pentru cei cu PIN vechi scrie noile câmpuri (PIN dezactivat, resetare cerută) și șterge pinHash.
 async function run() {
   const snapshot = await db.collection("users").get();
   let scanned = 0;
@@ -64,6 +68,7 @@ async function run() {
   );
 }
 
+// Rulează migrarea și închide procesul cu codul potrivit.
 run().then(
   () => process.exit(0),
   (error) => {

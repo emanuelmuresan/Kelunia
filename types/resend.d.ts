@@ -1,3 +1,4 @@
+// Declarații de tipuri minimale pentru pachetul „resend” (doar ce folosesc funcțiile cloud: trimiterea unui email și răspunsul ei).
 declare module "resend" {
   type ResendEmailOptions = {
     from: string;
