@@ -48,6 +48,13 @@ export function UpcomingTicker({ bookings, today, settings, language = "ro", onS
     () => upcomingForTicker(bookings, today, settings.leadDays),
     [bookings, today, settings.leadDays]
   );
+  const emptyMessage =
+    upcoming.length === 0
+      ? appText(language, settings.leadDays === 1 ? "calendar.tickerEmptyOne" : "calendar.tickerEmpty").replace(
+          "{{days}}",
+          String(settings.leadDays)
+        )
+      : "";
   const bandRef = useRef<HTMLDivElement | null>(null);
   const setRef = useRef<HTMLDivElement | null>(null);
   const [flow, setFlow] = useState({ copies: 2, setWidth: 0 });
@@ -77,7 +84,7 @@ export function UpcomingTicker({ bookings, today, settings, language = "ro", onS
     observer.observe(set);
 
     return () => observer.disconnect();
-  }, [upcoming, settings.enabled]);
+  }, [upcoming, emptyMessage, settings.enabled]);
 
   if (!settings.enabled) {
     return null;
@@ -88,20 +95,10 @@ export function UpcomingTicker({ bookings, today, settings, language = "ro", onS
     ["--ticker-text" as string]: tickerTextColor(settings),
   };
 
-  if (upcoming.length === 0) {
-    const emptyKey = settings.leadDays === 1 ? "calendar.tickerEmptyOne" : "calendar.tickerEmpty";
-
-    return (
-      <div className="upcoming-ticker upcoming-ticker-empty" style={palette}>
-        <span>{appText(language, emptyKey).replace("{{days}}", String(settings.leadDays))}</span>
-      </div>
-    );
-  }
-
   const durationSeconds = Math.max(8, flow.setWidth / pixelsPerSecond);
 
   return (
-    <div className="upcoming-ticker" ref={bandRef} style={palette} aria-label="Evenimente viitoare">
+    <div className={`upcoming-ticker ${emptyMessage ? "upcoming-ticker-empty" : ""}`} ref={bandRef} style={palette} aria-label="Evenimente viitoare">
       <div
         className="upcoming-ticker-track"
         style={{
@@ -116,6 +113,7 @@ export function UpcomingTicker({ bookings, today, settings, language = "ro", onS
             key={copyIndex}
             ref={copyIndex === 0 ? setRef : undefined}
           >
+            {emptyMessage && <span className="upcoming-ticker-item upcoming-ticker-message">{emptyMessage}</span>}
             {upcoming.map((booking) => (
               <button
                 className="upcoming-ticker-item"

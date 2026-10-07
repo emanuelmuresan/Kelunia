@@ -131,6 +131,25 @@ for (const reducedMotion of ["no-preference", "reduce"] as const) {
   });
 }
 
+test("the empty-state message flows on one line instead of wrapping", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => {
+    localStorage.setItem("kelunia.upcomingTicker", JSON.stringify({ enabled: true, color: "#1787ff", textColor: "", leadDays: 1 }));
+  });
+  await loginAsAdmin(page);
+  await page.getByRole("button", { name: /Calendar/ }).first().click();
+
+  const band = page.locator(".upcoming-ticker");
+  await expect(band.locator(".upcoming-ticker-message").first()).toContainText("Nu sunt programări active");
+  expect((await band.boundingBox())!.height).toBeLessThan(48);
+
+  const track = band.locator(".upcoming-ticker-track");
+  const position = () => track.evaluate((node) => new DOMMatrixReadOnly(getComputedStyle(node).transform).m41);
+  const first = await position();
+  await page.waitForTimeout(900);
+  expect(await position()).toBeLessThan(first);
+});
+
 // Runs last: it switches the seeded admin to English.
 test("messages follow the chosen language", async ({ page }) => {
   await loginAsAdmin(page);

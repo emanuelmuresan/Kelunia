@@ -4760,10 +4760,9 @@ img {
   overflow: hidden;
 }
 
-.upcoming-ticker-empty {
-  padding: 8px 12px;
-  font-size: 0.86rem;
+.upcoming-ticker-message {
   font-weight: 650;
+  cursor: default;
 }
 
 .upcoming-ticker-track {
