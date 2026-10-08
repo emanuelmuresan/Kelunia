@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 
 import type { AppLanguage } from "@/context/AuthContext";
 import { appText, type UiCopyKey } from "@/lib/i18n/app-copy-catalog";
-import { billingStatusLabel, dateFromFirestoreValue, planLabel } from "@/lib/licensing";
+import { billingStatusLabel, dateFromFirestoreValue, isLifetimeDate, planLabel } from "@/lib/licensing";
 import type { LocationItem } from "@/lib/types/domain";
 
 // Textul scurt despre expirarea unei locații: după data de probă sau de abonament.
@@ -16,6 +16,10 @@ function locationExpiryLabel(location: LocationItem) {
 
   if (!endDate) {
     return "fara data";
+  }
+
+  if (isLifetimeDate(endDate)) {
+    return "pe viață";
   }
 
   const days = Math.ceil((endDate.getTime() - Date.now()) / (24 * 60 * 60 * 1000));
@@ -106,6 +110,9 @@ export function OwnerLocationsCard({
           <span className="eyebrow">{t("role.owner")}</span>
           <h2>{t("settings.locations")}</h2>
         </div>
+        <button className="secondary-button compact" onClick={() => onOpenLocationEditor()} type="button">
+          {t("settings.addLocation")}
+        </button>
       </div>
 
       <p className="muted-note">{locations.length} locatii in workspace.</p>

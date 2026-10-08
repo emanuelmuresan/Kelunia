@@ -208,6 +208,9 @@ export interface LocationEditor {
   plan: LocationPlan | "";
   billingStatus: BillingStatus | "";
   durationDays: string;
+  // Adresa (doar la o locație nouă) și licența fără expirare.
+  address: string;
+  lifetime: boolean;
 }
 
 // Rezervarea așa cum e citită din Firestore și forma ei din formular, cu opțiunile de notificare.

@@ -13,6 +13,8 @@ import type {
 import {
   billingStatusLabel,
   dateFromFirestoreValue,
+  isLifetimeDate,
+  lifetimeExpiryKey,
   planLabel,
 } from "@/lib/licensing";
 import { appText, type SupportedLocale, type UiCopyKey } from "@/lib/i18n/app-copy-catalog";
@@ -102,6 +104,10 @@ function formatDate(value: Date | null) {
     return "data nespecificata";
   }
 
+  if (isLifetimeDate(value)) {
+    return "pe viață";
+  }
+
   return value.toLocaleDateString("ro-RO", {
     day: "2-digit",
     month: "short",
@@ -126,6 +132,10 @@ function formatRemaining(item: LicenseCodeItem, location?: LocationItem) {
 
   if (!date) {
     return "nespecificat";
+  }
+
+  if (isLifetimeDate(date)) {
+    return "pe viață";
   }
 
   const days = Math.ceil((date.getTime() - Date.now()) / (24 * 60 * 60 * 1000));
@@ -354,7 +364,7 @@ export function LicenseCodesModal({
                     value={draft.plan}
                     onChange={(event) => {
                       const nextPlan = event.target.value as LocationPlan | "";
-                      onChange({ ...draft, plan: nextPlan, durationDays: "" });
+                      onChange({ ...draft, plan: nextPlan, durationDays: "", lifetime: nextPlan === "trial" ? false : draft.lifetime });
                     }}
                   >
                     <option value="">{t("settings.plan")}</option>
@@ -368,10 +378,22 @@ export function LicenseCodesModal({
                   {t("settings.validity")}
                   <input
                     inputMode="numeric"
+                    disabled={draft.lifetime}
                     value={draft.durationDays}
                     onChange={(event) => onChange({ ...draft, durationDays: event.target.value })}
                     placeholder="14 sau 365"
                   />
+                </label>
+
+                {/* „Pe viață”: fără dată de expirare. */}
+                <label className="toggle-row">
+                  <input
+                    type="checkbox"
+                    checked={draft.lifetime && draft.plan !== "trial"}
+                    disabled={draft.plan === "trial"}
+                    onChange={(event) => onChange({ ...draft, lifetime: event.target.checked })}
+                  />
+                  {t("settings.lifetime")}
                 </label>
 
                 <label>
@@ -537,8 +559,20 @@ export function LicenseCodesModal({
                 <input
                   type="date"
                   value={editDraft.expiryDate}
+                  disabled={editDraft.expiryDate === lifetimeExpiryKey}
                   onChange={(event) => setEditDraft({ ...editDraft, expiryDate: event.target.value })}
                 />
+              </label>
+
+              {/* „Pe viață”: data de expirare devine 1 ianuarie 2100. */}
+              <label className="toggle-row">
+                <input
+                  type="checkbox"
+                  checked={editDraft.expiryDate === lifetimeExpiryKey}
+                  disabled={editDraft.billingStatus === "trialing"}
+                  onChange={(event) => setEditDraft({ ...editDraft, expiryDate: event.target.checked ? lifetimeExpiryKey : "" })}
+                />
+                {t("settings.lifetime")}
               </label>
 
               <label className="toggle-row">

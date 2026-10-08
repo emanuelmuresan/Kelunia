@@ -22,7 +22,7 @@ import {
   type Firestore,
 } from "firebase/firestore";
 
-import { normalizeLicenseCode } from "@/lib/licensing";
+import { lifetimeExpiryDate, normalizeLicenseCode } from "@/lib/licensing";
 import type { SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 import type { BillingStatus, LicenseCodeItem, LocationPlan } from "@/lib/types/domain";
 
@@ -32,6 +32,8 @@ export type LicenseCodeDraft = {
   locationName: string;
   address: string;
   durationDays: string;
+  // Licență fără expirare (nu are sens la planul de probă).
+  lifetime: boolean;
 };
 
 // Ciorna modificării unei licențe existente (plan, stare, locație, adresă, data expirării, activ).
@@ -71,6 +73,7 @@ const defaultDraft: LicenseCodeDraft = {
   locationName: "",
   address: "",
   durationDays: "",
+  lifetime: false,
 };
 
 // Cod aleatoriu de forma LIC-XXXXX-XXXXX, generat cu generatorul criptografic al browserului.
@@ -215,13 +218,15 @@ export function useLicenseCodes({ db, isOwner, user, language = "ro" }: UseLicen
       return;
     }
 
-    if (!Number.isFinite(durationDays) || durationDays < 1 || durationDays > 3660) {
+    const lifetimeRequested = licenseDraft.lifetime && selectedPlan !== "trial";
+
+    if (!lifetimeRequested && (!Number.isFinite(durationDays) || durationDays < 1 || durationDays > 3660)) {
       setLicenseError("Valabilitatea trebuie sa fie intre 1 si 3660 zile.");
       return;
     }
 
     const now = new Date();
-    const expiresAt = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
+    const expiresAt = lifetimeRequested ? lifetimeExpiryDate() : new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
     const billingStatus = billingStatusForPlan(selectedPlan);
 
     setLicenseError("");

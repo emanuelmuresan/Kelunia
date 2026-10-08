@@ -88,6 +88,8 @@ export interface LocationLicenseAccess {
   message: string;
   trialEndsAt: Date | null;
   daysRemaining: number | null;
+  // Licență fără expirare (data de expirare este în 2099 sau mai târziu).
+  isLifetime: boolean;
 }
 
 // Normalizează contoarele și limitele citite din Firestore (valori lipsă sau invalide devin 0/implicit).
@@ -149,6 +151,19 @@ export function normalizeBillingStatus(value: unknown): BillingStatus {
 }
 
 // Calculează sfârșitul perioadei de probă (14 zile) și al unui abonament anual (365 zile).
+// Licență „pe viață”: nu există un câmp separat, ci o dată de expirare foarte îndepărtată (1 ianuarie 2100).
+// Astfel toate verificările de expirare (interfață, funcții cloud, reguli) rămân neschimbate.
+export const lifetimeExpiryKey = "2100-01-01";
+
+export function lifetimeExpiryDate() {
+  return new Date(`${lifetimeExpiryKey}T12:00:00`);
+}
+
+// O dată de la 2099 încolo este tratată ca „pe viață”.
+export function isLifetimeDate(date: Date | null) {
+  return date !== null && date.getFullYear() >= 2099;
+}
+
 export function trialEndsAtDate(now = new Date()) {
   return new Date(now.getTime() + trialDays * 24 * 60 * 60 * 1000);
 }
@@ -315,7 +330,8 @@ export function locationLicenseAccess(location?: LocationItem | null, now = new 
   const trialEndsAt = trialEndsAtFromLocation(location);
   const subscriptionExpiresAt = dateFromFirestoreValue(location?.subscriptionExpiresAt);
   const activeUntil = status === "trialing" ? trialEndsAt : subscriptionExpiresAt;
-  const daysRemaining = activeUntil ? Math.ceil((activeUntil.getTime() - now.getTime()) / (24 * 60 * 60 * 1000)) : null;
+  const isLifetime = status === "active" && isLifetimeDate(subscriptionExpiresAt);
+  const daysRemaining = activeUntil && !isLifetime ? Math.ceil((activeUntil.getTime() - now.getTime()) / (24 * 60 * 60 * 1000)) : null;
   const trialExpired = status === "trialing" && Boolean(trialEndsAt) && trialEndsAt!.getTime() < now.getTime();
   const subscriptionExpired = status === "active" && Boolean(subscriptionExpiresAt) && subscriptionExpiresAt!.getTime() < now.getTime();
   const blockedStatus = status === "past_due" || status === "paused" || status === "canceled" || status === "expired";
@@ -336,6 +352,7 @@ export function locationLicenseAccess(location?: LocationItem | null, now = new 
       : appText(language, "license.readOnlyMessage").replace("{{plan}}", label).replace("{{status}}", statusLabel.toLowerCase()),
     trialEndsAt,
     daysRemaining,
+    isLifetime,
   };
 }
 

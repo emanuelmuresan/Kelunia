@@ -125,6 +125,8 @@ export default function KeluniaPage() {
   const [calendarMode, setCalendarMode] = useState<CalendarMode>("month");
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const [activeLocationId, setActiveLocationId] = useState("");
+  // Locația nou creată de proprietar, pentru care se deschide imediat invitația administratorului.
+  const [pendingInviteLocationId, setPendingInviteLocationId] = useState("");
   const [listFilter, setListFilter] = useState<ListFilter>("future");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
@@ -676,6 +678,7 @@ export default function KeluniaPage() {
     requireOnline,
     recordAuditLog,
     setActiveLocationId,
+    onLocationCreated: setPendingInviteLocationId,
     setSettingsError,
     setSettingsMessage,
   });
@@ -738,6 +741,28 @@ export default function KeluniaPage() {
     user,
     language,
   });
+
+  // După ce proprietarul creează o locație, se deschide fereastra codurilor cu rolul Administrator ales, gata de trimis.
+  useEffect(() => {
+    if (!pendingInviteLocationId || currentLocationId !== pendingInviteLocationId) {
+      return;
+    }
+
+    if (!locations.some((item) => item.id === pendingInviteLocationId)) {
+      return;
+    }
+
+    openCodesEditor();
+    setCodeGenerator({
+      role: "manager",
+      groupName: "",
+      locationId: pendingInviteLocationId,
+      roomAccess: "all",
+      allowedRoomIds: [],
+      inviteEmail: "",
+    });
+    setPendingInviteLocationId("");
+  }, [currentLocationId, locations, openCodesEditor, pendingInviteLocationId, setCodeGenerator]);
 
   // Codurile de licență (doar proprietar).
   const {

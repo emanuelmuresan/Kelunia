@@ -5,10 +5,16 @@
 import { useAppText } from "@/features/shell/hooks/useAppText";
 import { useState } from "react";
 import type { User } from "firebase/auth";
-import { addDoc, collection, doc, Timestamp, updateDoc, type Firestore } from "firebase/firestore";
+import { doc, getDoc, setDoc, Timestamp, updateDoc, type Firestore } from "firebase/firestore";
 
 import type { RecordAuditLog } from "@/lib/audit";
-import { initialLocationBillingFields } from "@/lib/licensing";
+import {
+  dateFromFirestoreValue,
+  initialLocationBillingFields,
+  isLifetimeDate,
+  lifetimeExpiryDate,
+} from "@/lib/licensing";
+import { locationDocumentId } from "@/lib/locations";
 import type { LocationEditor, LocationItem, LocationPlan, WriteTarget } from "@/lib/types/domain";
 
 // Parametrii: baza de date, rolul utilizatorului și funcțiile din dashboard.
@@ -21,6 +27,8 @@ type UseLocationEditorParams = {
   requireOnline: (target?: WriteTarget) => boolean;
   recordAuditLog: RecordAuditLog;
   setActiveLocationId: (locationId: string) => void;
+  // Apelată după crearea unei locații noi (dashboard-ul deschide invitația pentru administrator).
+  onLocationCreated?: (locationId: string) => void;
   setSettingsError: (value: string) => void;
   setSettingsMessage: (value: string) => void;
 };
@@ -40,6 +48,7 @@ export function useLocationEditor({
   requireOnline,
   recordAuditLog,
   setActiveLocationId,
+  onLocationCreated,
   setSettingsError,
   setSettingsMessage,
 }: UseLocationEditorParams) {
@@ -54,12 +63,15 @@ export function useLocationEditor({
       return;
     }
 
+    // O locație nouă pornește cu planul Pro pe 365 de zile; una existentă își păstrează valorile.
     setLocationEditor({
       id: item?.id ?? null,
       name: item?.name ?? "",
-      plan: item?.plan ?? "",
+      plan: item?.plan ?? (item ? "" : "pro"),
       billingStatus: item?.billingStatus ?? "",
-      durationDays: "",
+      durationDays: item ? "" : "365",
+      address: item?.address ?? "",
+      lifetime: item ? isLifetimeDate(dateFromFirestoreValue(item.subscriptionExpiresAt)) : false,
     });
     setLocationError("");
     setSettingsMessage("");
@@ -97,13 +109,25 @@ export function useLocationEditor({
         // Doar proprietarul poate schimba planul, starea de facturare și valabilitatea (1-3660 zile) a unei locații.
         if (isOwner) {
           const selectedPlan = (locationEditor.plan || previousLocation?.plan || "standard") as LocationPlan;
-          const selectedStatus = locationEditor.billingStatus || (selectedPlan === "trial" ? "trialing" : "active");
+          const lifetimeRequested = locationEditor.lifetime && selectedPlan !== "trial";
+          const selectedStatus = lifetimeRequested
+            ? "active"
+            : locationEditor.billingStatus || (selectedPlan === "trial" ? "trialing" : "active");
           updatedLocation.plan = selectedPlan;
           updatedLocation.billingStatus = selectedStatus;
 
           const durationText = locationEditor.durationDays.trim();
+          const wasLifetime = isLifetimeDate(dateFromFirestoreValue(previousLocation?.subscriptionExpiresAt));
 
-          if (durationText) {
+          if (lifetimeRequested) {
+            // „Pe viață”: expirare în 2100, fără dată de probă.
+            updatedLocation.subscriptionExpiresAt = Timestamp.fromDate(lifetimeExpiryDate());
+            updatedLocation.trialEndsAt = null;
+          } else if (!durationText && wasLifetime) {
+            // S-a debifat „pe viață”: trebuie aleasă o valabilitate nouă.
+            setLocationError(msg("msg.durationRange"));
+            return;
+          } else if (durationText) {
             const durationDays = Number.parseInt(durationText, 10);
 
             if (!Number.isFinite(durationDays) || durationDays < 1 || durationDays > 3660) {
@@ -126,18 +150,55 @@ export function useLocationEditor({
         await updateDoc(doc(db, "locations", locationEditor.id), updatedLocation);
         await recordAuditLog("location", "update", locationEditor.id, previousLocation, updatedLocation, locationEditor.id, name);
       } else {
-        // Locație nouă: cu planul și starea de facturare inițiale; devine locația aleasă de proprietar.
+        // Locație nouă creată de proprietar, fără administrator: nume, adresă, plan și valabilitate (sau „pe viață”).
+        // Identificatorul vine din adresă (ca la configurarea făcută de un manager), deci aceeași adresă nu poate apărea de două ori.
+        const address = locationEditor.address.trim();
+
+        if (!address) {
+          setLocationError(msg("msg.locationAddressRequired"));
+          return;
+        }
+
+        const plan = (locationEditor.plan || "pro") as LocationPlan;
+        const lifetimeRequested = locationEditor.lifetime && plan !== "trial";
+        const durationDays = Number.parseInt(locationEditor.durationDays, 10);
+
+        if (!lifetimeRequested && (!Number.isFinite(durationDays) || durationDays < 1 || durationDays > 3660)) {
+          setLocationError(msg("msg.durationRange"));
+          return;
+        }
+
+        const createdId = locationDocumentId("", address, name);
+        const createdRef = doc(db, "locations", createdId);
+
+        if ((await getDoc(createdRef)).exists()) {
+          setLocationError(msg("msg.locationExists"));
+          return;
+        }
+
+        const expiresAt = lifetimeRequested
+          ? Timestamp.fromDate(lifetimeExpiryDate())
+          : Timestamp.fromDate(new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000));
+        const trialing = plan === "trial";
         const createdPayload = {
           name,
+          address,
+          officialAddress: address,
+          placeId: "",
           ownerEmail: user?.email ?? "",
           createdBy: user?.email ?? "",
           createdAt: Timestamp.now(),
           deleted: false,
           ...initialLocationBillingFields(),
+          plan,
+          billingStatus: trialing ? "trialing" : "active",
+          trialEndsAt: trialing ? expiresAt : null,
+          subscriptionExpiresAt: trialing ? null : expiresAt,
         };
-        const created = await addDoc(collection(db, "locations"), createdPayload);
-        await recordAuditLog("location", "create", created.id, null, createdPayload, created.id, name);
-        setActiveLocationId(created.id);
+        await setDoc(createdRef, createdPayload);
+        await recordAuditLog("location", "create", createdId, null, createdPayload, createdId, name);
+        setActiveLocationId(createdId);
+        onLocationCreated?.(createdId);
       }
 
       setLocationEditor(null);

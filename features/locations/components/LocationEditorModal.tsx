@@ -98,8 +98,19 @@ export function LocationEditorModal({
             />
           </label>
 
-          {/* Blocul de licență, doar pentru proprietar și doar la o locație existentă; schimbarea planului ajustează starea implicită. */}
-          {isOwner && locationEditor.id && (
+          {/* Adresa, doar la o locație nouă (identificatorul locației se formează din ea). */}
+          {!locationEditor.id && (
+            <label>
+              {appText(language, "settings.locationAddress")}
+              <input
+                value={locationEditor.address}
+                onChange={(event) => onChange({ ...locationEditor, address: event.target.value })}
+              />
+            </label>
+          )}
+
+          {/* Blocul de licență, doar pentru proprietar (la o locație nouă și la una existentă); schimbarea planului ajustează starea implicită. */}
+          {isOwner && (
             <SettingsBlock title={appText(language, "settings.blockLicense")}>
               <label>
                 {appText(language, "settings.licenseType")}
@@ -123,6 +134,7 @@ export function LocationEditorModal({
                 </select>
               </label>
 
+              {locationEditor.id && (
               <label>
                 {appText(language, "settings.licenseStatus")}
                 <select
@@ -142,11 +154,13 @@ export function LocationEditorModal({
                   ))}
                 </select>
               </label>
+              )}
 
               <label>
                 {appText(language, "settings.newDuration")}
                 <input
                   inputMode="numeric"
+                  disabled={locationEditor.lifetime && locationEditor.plan !== "trial"}
                   value={locationEditor.durationDays}
                   placeholder={appText(language, "settings.durationPlaceholder")}
                   onChange={(event) =>
@@ -158,9 +172,22 @@ export function LocationEditorModal({
                 />
               </label>
 
-              <p className="muted-note">
-                {appText(language, "settings.durationHint")}
-              </p>
+              {/* „Pe viață”: fără dată de expirare (nu are sens la planul de probă). */}
+              <label className="toggle-row">
+                <input
+                  type="checkbox"
+                  checked={locationEditor.lifetime && locationEditor.plan !== "trial"}
+                  disabled={locationEditor.plan === "trial"}
+                  onChange={(event) => onChange({ ...locationEditor, lifetime: event.target.checked })}
+                />
+                {appText(language, "settings.lifetime")}
+              </label>
+
+              {locationEditor.id && (
+                <p className="muted-note">
+                  {appText(language, "settings.durationHint")}
+                </p>
+              )}
             </SettingsBlock>
           )}
 

@@ -94,6 +94,13 @@ export function AccessCodesModal({
   const [codeDrafts, setCodeDrafts] = useState<Record<string, AccessCodeDraft>>({});
 
   // La închiderea ferestrei se resetează tot ce era în curs.
+  // Dacă fereastra se deschide cu un rol deja ales (invitația unui administrator nou), formularul de generare este deschis.
+  useEffect(() => {
+    if (open && codeGenerator.role) {
+      setShowCreateForm(true);
+    }
+  }, [open, codeGenerator.role]);
+
   useEffect(() => {
     if (!open) {
       setShowCreateForm(false);

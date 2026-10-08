@@ -12,10 +12,15 @@ export type LicenseAccess = {
   statusLabel: string;
   status: string;
   daysRemaining: number | null;
+  isLifetime?: boolean;
 };
 
 // Textul valabilității: expirată, fără dată, expiră azi/mâine sau în N zile.
 function licenseRemainingLabel(licenseAccess: LicenseAccess, t: (key: UiCopyKey) => string) {
+  if (licenseAccess.isLifetime) {
+    return t("license.lifetime");
+  }
+
   if (licenseAccess.status === "expired") {
     return t("settings.licenseExpired");
   }
