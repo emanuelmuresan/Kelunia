@@ -1,11 +1,13 @@
 "use client";
 
-// Acțiuni asupra utilizatorilor locației din Setări: schimbarea rolului, accesul la camere și ștergerea profilului.
+// Acțiuni asupra utilizatorilor locației din Setări: schimbarea rolului, accesul la camere și ștergerea completă a contului.
 // Proprietarul și propriul cont nu pot fi modificate de aici; fiecare acțiune cere drepturi și rețea, iar cele riscante cer confirmare.
 import { useAuth } from "@/context/AuthContext";
 import { useAppText } from "@/features/shell/hooks/useAppText";
 import { useConfirm } from "@/features/shell/components/ConfirmDialog";
-import { deleteDoc, doc, updateDoc, type Firestore } from "firebase/firestore";
+import { doc, updateDoc, type Firestore } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
+import { cloudFunctions } from "@/lib/firebase";
 
 import type { UserRole } from "@/context/AuthContext";
 import type { RecordAuditLog } from "@/lib/audit";
@@ -165,7 +167,8 @@ export function useManagedUserActions({
     }
   }
 
-  // Șterge documentul de profil al utilizatorului (deleteDoc), după confirmare; nu poate șterge propriul cont. Nu șterge contul Firebase Auth.
+  // Șterge complet contul unui utilizator, după o confirmare cu avertisment, prin funcția cloud removeLocationUser: profil, cont Firebase Auth și jetoane push.
+  // Nu poate șterge propriul cont; după ștergere emailul poate fi folosit din nou.
   async function removeManagedUser(managedUser: ManagedUser) {
     if (
       !canManageMembers ||
@@ -192,7 +195,8 @@ export function useManagedUserActions({
     }
 
     try {
-      await deleteDoc(doc(db, "users", managedUser.id));
+      // Funcția cloud șterge profilul, contul de autentificare și jetoanele; emailul poate fi folosit din nou.
+      await httpsCallable(cloudFunctions, "removeLocationUser")({ userId: managedUser.id });
       await recordAuditLog("user", "delete", managedUser.id, managedUser, null, managedUser.locationId, managedUser.locationName || locationName);
       setSettingsMessage(msg("msg.accountDeleted"));
     } catch (error) {

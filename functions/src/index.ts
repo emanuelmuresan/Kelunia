@@ -961,7 +961,8 @@ export const sendAuthVerificationEmail = onCall(
     // Evită trimiterile repetate: în primele 2 minute după ultimul email răspunde că a fost deja trimis.
     // Logging in with an unverified account re-sends the email. Do not pile up
     // sends: within a couple of minutes of the last one, say so instead.
-    const lastSentAt = (await getFirestore().doc(`users/${user.uid}`).get()).data()?.verificationEmailSentAt as
+    const profileSnapshot = await getFirestore().doc(`users/${user.uid}`).get();
+    const lastSentAt = profileSnapshot.data()?.verificationEmailSentAt as
       | { toMillis?: () => number }
       | undefined;
 
@@ -1008,12 +1009,15 @@ export const sendAuthVerificationEmail = onCall(
       throw new HttpsError("internal", result.error.message);
     }
 
-    await getFirestore().doc(`users/${user.uid}`).set(
-      {
-        verificationEmailSentAt: FieldValue.serverTimestamp(),
-      },
-      { merge: true }
-    );
+    // Se reține momentul doar dacă profilul există; altfel s-ar crea un document gol pentru un cont fără profil.
+    if (profileSnapshot.exists) {
+      await profileSnapshot.ref.set(
+        {
+          verificationEmailSentAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
+    }
 
     return { alreadyVerified: false, sent: true };
   }
@@ -1305,6 +1309,91 @@ export const deleteMyAccount = onCall(
       tokensDeleted: tokensByUid + tokensByEmail,
       bookingsAnonymized: anonymizedBookings,
     };
+  }
+);
+
+// Funcția removeLocationUser: un administrator (sau proprietarul) șterge complet contul unui utilizator al locației:
+// profilul, contul Firebase Auth (emailul poate fi folosit din nou oriunde), jetoanele push; rezervările lui rămân, anonimizate.
+// Fără contul Auth, emailul ar rămâne „ocupat” după ștergerea profilului. Proprietarul platformei și propriul cont nu se pot șterge de aici.
+export const removeLocationUser = onCall(
+  {
+    region: "europe-west1",
+    enforceAppCheck: true,
+  },
+  async (request) => {
+    if (!request.auth?.uid || request.auth.token.email_verified !== true) {
+      throw new HttpsError("unauthenticated", "Trebuie să fii autentificat cu email verificat.");
+    }
+
+    const targetUid = cleanText((request.data as { userId?: string } | undefined)?.userId, 128);
+
+    if (!targetUid) {
+      throw new HttpsError("invalid-argument", "Utilizatorul lipsește.");
+    }
+
+    if (targetUid === request.auth.uid) {
+      throw new HttpsError("failed-precondition", "Nu îți poți șterge propriul cont de aici.", { reason: "self" });
+    }
+
+    const [callerSnapshot, targetSnapshot] = await Promise.all([
+      db.doc(`users/${request.auth.uid}`).get(),
+      db.doc(`users/${targetUid}`).get(),
+    ]);
+    const caller = callerSnapshot.exists ? callerSnapshot.data() as UserProfile : null;
+    const target = targetSnapshot.exists ? targetSnapshot.data() as UserProfile : null;
+    const callerIsOwner = caller?.isOwner === true || cleanEmail(request.auth.token.email) === ownerAccountEmail;
+
+    if (target?.isOwner === true || cleanEmail(target?.email) === ownerAccountEmail) {
+      throw new HttpsError("permission-denied", "Contul proprietarului nu se poate șterge de aici.");
+    }
+
+    // Managerul poate șterge doar utilizatori din propria locație; doar proprietarul poate curăța și conturi fără profil.
+    if (!callerIsOwner) {
+      const callerLocationId = cleanText(caller?.locationId, 160);
+
+      if (normalizeRole(caller?.role) !== "manager" || !callerLocationId || cleanText(target?.locationId, 160) !== callerLocationId) {
+        throw new HttpsError("permission-denied", "Poți șterge doar utilizatori din locația ta.");
+      }
+    }
+
+    let accountEmail = cleanEmail(target?.email);
+
+    if (!accountEmail) {
+      accountEmail = cleanEmail((await getAuth().getUser(targetUid).catch(() => null))?.email);
+    }
+
+    const [tokensByUid, tokensByEmail, anonymizedBookings] = await Promise.all([
+      deleteQueryResults(db.collection("notificationTokens").where("uid", "==", targetUid).limit(450)),
+      accountEmail
+        ? deleteQueryResults(db.collection("notificationTokens").where("email", "==", accountEmail).limit(450))
+        : Promise.resolve(0),
+      accountEmail ? anonymizeAccountBookings(targetUid, accountEmail) : Promise.resolve(0),
+    ]);
+
+    // Profilul și subcolecțiile lui (inclusiv documentul privat cu PIN-ul).
+    await db.recursiveDelete(db.doc(`users/${targetUid}`));
+
+    try {
+      await getAuth().deleteUser(targetUid);
+    } catch (error) {
+      if ((error as { code?: string }).code !== "auth/user-not-found") {
+        throw error;
+      }
+    }
+
+    await db.collection("accountDeletionRequests").add({
+      uid: targetUid,
+      email: accountEmail,
+      status: "completed",
+      requestedBy: cleanEmail(request.auth.token.email),
+      tokensDeleted: tokensByUid + tokensByEmail,
+      bookingsAnonymized: anonymizedBookings,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+
+    logger.info("Removed location user", { targetUid, by: request.auth.uid });
+
+    return { deleted: true };
   }
 );
 
