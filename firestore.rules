@@ -1450,11 +1450,13 @@ service cloud.firestore {
           "code",
           "toEmail",
           "message",
+          "language",
           "status",
           "createdAt",
           "createdBy",
           "createdByUid"
         ])
+        && (!hasKey(data, "language") || validLanguage(data.language))
         && validText(data.licenseId, 80)
         && validText(data.code, 80)
         && data.licenseId == data.code

@@ -12,7 +12,7 @@
 // Mediul de test cu regulile din firestore.rules și identitățile folosite: manager, manager din altă locație, membru și proprietar.
 import { readFileSync } from "node:fs";
 import { initializeTestEnvironment } from "@firebase/rules-unit-testing";
-import { doc, getDoc, getDocs, setDoc, updateDoc, addDoc, deleteDoc, collection, increment, runTransaction, Timestamp } from "firebase/firestore";
+import { doc, getDoc, getDocs, setDoc, updateDoc, addDoc, deleteDoc, collection, increment, runTransaction, serverTimestamp, Timestamp } from "firebase/firestore";
 
 // Identificatori de test și emailul proprietarului platformei.
 const LOC = "place_loc1";
@@ -143,6 +143,37 @@ await chk("settings: member reads own-location settings when doc is absent", "AL
 await chk("settings: member cannot read another location's settings", "DENY", () => getDoc(doc(dbMember(), "settings", "calendar_place_other")));
 
 // Rapoartele de probleme: orice utilizator conectat poate trimite unul (cu propriul uid, nerezolvat); doar proprietarul le citește și le marchează rezolvate.
+// Cereri de email pentru licență: forma exactă trimisă de useLicenseCodes (inclusiv limba emailului).
+console.log("\n--- licenseEmailRequests ---");
+const seedLicense = () => te.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), "licenses", "LIC-T1"), { code: "LIC-T1", active: true, claimed: false, used: false, deleted: false }));
+const licenseRequest = (over = {}) => ({
+  licenseId: "LIC-T1", code: "LIC-T1", toEmail: "client@x.com", message: "Salut", language: "ro",
+  status: "pending", createdAt: serverTimestamp(), createdBy: OWNER_EMAIL, createdByUid: OWNER, ...over,
+});
+await chk("licenseEmailRequests: owner sends a license email (with language)", "ALLOW", async () => {
+  await seedLicense();
+  await addDoc(collection(dbOwner(), "licenseEmailRequests"), licenseRequest());
+});
+await chk("licenseEmailRequests: a request without language still works", "ALLOW", async () => {
+  await seedLicense();
+  const { language: _language, ...withoutLanguage } = licenseRequest();
+  void _language;
+  await addDoc(collection(dbOwner(), "licenseEmailRequests"), withoutLanguage);
+});
+await chk("licenseEmailRequests: unsupported language is denied", "DENY", async () => {
+  await seedLicense();
+  await addDoc(collection(dbOwner(), "licenseEmailRequests"), licenseRequest({ language: "xx" }));
+});
+await chk("licenseEmailRequests: unknown extra field is denied", "DENY", async () => {
+  await seedLicense();
+  await addDoc(collection(dbOwner(), "licenseEmailRequests"), licenseRequest({ extra: 1 }));
+});
+await chk("licenseEmailRequests: a manager cannot send one", "DENY", async () => {
+  await seedLicense();
+  await addDoc(collection(dbMgr(), "licenseEmailRequests"), licenseRequest({ createdBy: "m@x.com", createdByUid: MGR }));
+});
+
+
 console.log("\n--- errorReports ---");
 const errReport = (over = {}) => ({
   message: "TypeError: x is undefined", componentStack: "at Foo", userMessage: "s-a blocat calendarul",
