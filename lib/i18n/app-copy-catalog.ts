@@ -280,6 +280,7 @@ const uiCopy = {
     "msg.closureNameMismatch": "Numele scris nu se potrivește cu numele locației.",
     "msg.reopenFailed": "Locația nu a putut fi redeschisă. Încearcă din nou.",
     "settings.colorHex": "Cod culoare (#RRGGBB)",
+    "settings.colorBrightness": "Luminozitate",
     // Zona „msg” - mesaje afișate din hook-uri și pagini (notificări mici, erori).
     "msg.selfRoleChange": "Nu îți poți schimba singur rolul. Cere altui administrator să o facă.",
     "msg.confirmDemoteAdmin": "Retragi drepturile de administrator ale lui {{name}}? Nu va mai putea gestiona locația.",
@@ -812,6 +813,7 @@ const uiCopy = {
     "msg.closureNameMismatch": "The name you typed does not match the location name.",
     "msg.reopenFailed": "The location could not be reopened. Try again.",
     "settings.colorHex": "Colour code (#RRGGBB)",
+    "settings.colorBrightness": "Brightness",
     // Zona „msg” - mesaje afișate din hook-uri și pagini (notificări mici, erori).
     "msg.selfRoleChange": "You cannot change your own role. Ask another administrator to do it.",
     "msg.confirmDemoteAdmin": "Remove the administrator rights of {{name}}? They will no longer be able to manage the location.",
@@ -1344,6 +1346,7 @@ const uiCopy = {
     "msg.closureNameMismatch": "El nombre escrito no coincide con el de la ubicación.",
     "msg.reopenFailed": "No se pudo reabrir la ubicación. Inténtalo de nuevo.",
     "settings.colorHex": "Código de color (#RRGGBB)",
+    "settings.colorBrightness": "Brillo",
     // Zona „msg” - mesaje afișate din hook-uri și pagini (notificări mici, erori).
     "msg.selfRoleChange": "No puedes cambiar tu propio rol. Pide a otro administrador que lo haga.",
     "msg.confirmDemoteAdmin": "¿Retirar los derechos de administrador de {{name}}? Ya no podrá gestionar la ubicación.",
@@ -1876,6 +1879,7 @@ const uiCopy = {
     "msg.closureNameMismatch": "Il nome scritto non corrisponde a quello della sede.",
     "msg.reopenFailed": "Impossibile riaprire la sede. Riprova.",
     "settings.colorHex": "Codice colore (#RRGGBB)",
+    "settings.colorBrightness": "Luminosità",
     // Zona „msg” - mesaje afișate din hook-uri și pagini (notificări mici, erori).
     "msg.selfRoleChange": "Non puoi cambiare il tuo ruolo. Chiedi a un altro amministratore di farlo.",
     "msg.confirmDemoteAdmin": "Rimuovere i diritti di amministratore di {{name}}? Non potrà più gestire la sede.",
@@ -2408,6 +2412,7 @@ const uiCopy = {
     "msg.closureNameMismatch": "Le nom saisi ne correspond pas à celui du lieu.",
     "msg.reopenFailed": "Le lieu n'a pas pu être rouvert. Réessayez.",
     "settings.colorHex": "Code couleur (#RRGGBB)",
+    "settings.colorBrightness": "Luminosité",
     // Zona „msg” - mesaje afișate din hook-uri și pagini (notificări mici, erori).
     "msg.selfRoleChange": "Vous ne pouvez pas changer votre propre rôle. Demandez à un autre administrateur de le faire.",
     "msg.confirmDemoteAdmin": "Retirer les droits d'administrateur de {{name}} ? Cette personne ne pourra plus gérer le lieu.",
@@ -2940,6 +2945,7 @@ const uiCopy = {
     "msg.closureNameMismatch": "O nome escrito não coincide com o nome do local.",
     "msg.reopenFailed": "Não foi possível reabrir o local. Tente novamente.",
     "settings.colorHex": "Código de cor (#RRGGBB)",
+    "settings.colorBrightness": "Brilho",
     // Zona „msg” - mesaje afișate din hook-uri și pagini (notificări mici, erori).
     "msg.selfRoleChange": "Não pode alterar a sua própria função. Peça a outro administrador que o faça.",
     "msg.confirmDemoteAdmin": "Retirar os direitos de administrador de {{name}}? Deixará de poder gerir o local.",

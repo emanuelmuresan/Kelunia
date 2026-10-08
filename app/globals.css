@@ -5161,6 +5161,64 @@ img {
   cursor: not-allowed;
 }
 
+/* Roata de culori: nuanța după unghi, saturația după distanța de centru; glisorul alăturat reglează luminozitatea. */
+.color-picker-wheel-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+}
+
+.color-picker-wheel {
+  position: relative;
+  width: 168px;
+  height: 168px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle closest-side, #fff, rgba(255, 255, 255, 0)),
+    conic-gradient(#f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+  box-shadow: 0 0 0 1px var(--line);
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.color-picker-wheel:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 3px;
+}
+
+.color-picker-wheel.disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.color-picker-wheel-thumb {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.35);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.color-picker-brightness {
+  display: grid;
+  flex: 1 1 140px;
+  gap: 6px;
+  min-width: 140px;
+  font-weight: 650;
+}
+
+.color-picker-brightness input[type="range"] {
+  height: 14px;
+  border-radius: 999px;
+  box-shadow: 0 0 0 1px var(--line);
+  accent-color: var(--blue);
+}
+
 .color-picker-hex {
   display: grid;
   gap: 4px;

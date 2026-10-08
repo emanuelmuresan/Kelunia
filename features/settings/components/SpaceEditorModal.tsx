@@ -89,6 +89,7 @@ export function SpaceEditorModal({
               <span>{appText(language, "settings.color")}</span>
               <ColorPicker
                 hexLabel={appText(language, "settings.colorHex")}
+                brightnessLabel={appText(language, "settings.colorBrightness")}
                 palette={groupColorPalette}
                 value={normalizeGroupColor(spaceEditor.color) || groupColorPalette[0]}
                 onChange={(color) => onChange({ ...spaceEditor, color })}

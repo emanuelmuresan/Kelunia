@@ -102,6 +102,7 @@ export function TickerEditorModal({ language, settings, onSave, onClose }: Ticke
               <ColorPicker
                 disabled={!draft.enabled}
                 hexLabel={t("settings.colorHex")}
+                brightnessLabel={t("settings.colorBrightness")}
                 palette={bandPalette}
                 value={draft.color}
                 onChange={(color) => setDraft((current) => ({ ...current, color }))}
@@ -129,6 +130,7 @@ export function TickerEditorModal({ language, settings, onSave, onClose }: Ticke
                 <ColorPicker
                   disabled={!draft.enabled}
                   hexLabel={t("settings.colorHex")}
+                brightnessLabel={t("settings.colorBrightness")}
                   palette={textPalette}
                   value={draft.textColor}
                   onChange={(textColor) => setDraft((current) => ({ ...current, textColor }))}
