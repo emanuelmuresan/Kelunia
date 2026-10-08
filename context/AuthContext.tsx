@@ -54,6 +54,9 @@ interface AuthContextType {
   isOwner: boolean;
   isViewer: boolean;
   loading: boolean;
+  // Codul erorii dacă profilul nu a putut fi citit (altfel șir gol) și funcția care reia citirea.
+  profileError: string;
+  reloadProfile: () => void;
   updateProfile: (patch: Partial<UserProfile>) => void;
 }
 
@@ -78,6 +81,8 @@ const AuthContext = createContext<AuthContextType>({
   isOwner: false,
   isViewer: true,
   loading: true,
+  profileError: "",
+  reloadProfile: () => undefined,
   updateProfile: () => undefined,
 });
 
@@ -197,6 +202,8 @@ export const AuthProvider =({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileError, setProfileError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
   const authStateResolvedRef = useRef(false);
 
   // Dacă Firebase nu răspunde în 6 secunde, aplicația continuă ca neconectată în loc să rămână blocată.
@@ -218,6 +225,7 @@ export const AuthProvider =({ children }: { children: React.ReactNode }) => {
       authStateResolvedRef.current = true;
       window.clearTimeout(authTimeout);
       setLoading(true);
+      setProfileError("");
 
       if (!userData) {
         setUser(null);
@@ -381,6 +389,7 @@ export const AuthProvider =({ children }: { children: React.ReactNode }) => {
       // La eroare de citire se folosește profilul minimal, ca aplicația să rămână utilizabilă.
       } catch (error) {
         console.error("Eroare la citirea profilului:", error);
+        setProfileError(String((error as { code?: string }).code ?? (error as { message?: string }).message ?? "necunoscută"));
 
         // Dacă între timp sesiunea a fost închisă (jeton revocat), ascultătorul de mai sus a golit deja starea.
         if (auth.currentUser?.uid === userData.uid) {
@@ -395,7 +404,10 @@ export const AuthProvider =({ children }: { children: React.ReactNode }) => {
       window.clearTimeout(authTimeout);
       unsubscribe();
     };
-  }, []);
+  }, [reloadKey]);
+
+  // Reia citirea profilului (butonul „Reîncearcă” de pe ecranul de eroare).
+  const reloadProfile = useCallback(() => setReloadKey((current) => current + 1), []);
 
   // Rolurile derivate din profil.
   const role = profile?.role ?? "guest";
@@ -413,7 +425,7 @@ export const AuthProvider =({ children }: { children: React.ReactNode }) => {
 
   // Furnizează valorile către întreaga aplicație.
   return (
-    <AuthContext.Provider value={{ user, profile, role, isAdmin, isSuperAdmin, isOwner, isViewer, loading, updateProfile }}>
+    <AuthContext.Provider value={{ user, profile, role, isAdmin, isSuperAdmin, isOwner, isViewer, loading, profileError, reloadProfile, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );

@@ -123,7 +123,7 @@ function readableError(message: string) {
   }
 
   if (message.includes("auth/weak-password") || message.includes("auth/password-does-not-meet-requirements")) {
-    return "Parola este prea slabă. Folosește cel puțin 8 caractere, cu literă mare, literă mică și cifră.";
+    return "Parola este prea slabă. Folosește cel puțin 8 caractere, cu literă mare, literă mică, cifră și caracter special.";
   }
 
   if (message.includes("Parolele nu se potrivesc")) {

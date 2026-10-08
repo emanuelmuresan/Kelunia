@@ -116,7 +116,7 @@ const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
 // Componenta paginii dashboard.
 export default function KeluniaPage() {
   // Utilizatorul curent, profilul lui din Firestore și rolurile derivate (manager, proprietar, super-admin).
-  const { user, profile, role, isSuperAdmin, isOwner, loading: authLoading, updateProfile } = useAuth();
+  const { user, profile, role, isSuperAdmin, isOwner, loading: authLoading, updateProfile, profileError, reloadProfile } = useAuth();
   const router = useRouter();
   const language = profile?.language ?? "ro";
 
@@ -1170,6 +1170,28 @@ export default function KeluniaPage() {
       onUnlock={unlockWithPin}
     />
   ) : null;
+
+  // Profilul nu a putut fi citit: ecran de recuperare, în loc de un profil provizoriu de oaspete.
+  if (user && profileError) {
+    return (
+      <div className="loading-screen">
+        <div className="loading-logo">
+          <img src="/icon-192.png" alt="Kelunia" />
+        </div>
+        <h1>Kelunia</h1>
+        <p>{appText(language, "auth.profileLoadFailed")}</p>
+        <p className="muted-note">{profileError}</p>
+        <div className="modal-actions">
+          <button className="secondary-button" onClick={confirmSignOut} type="button">
+            {appText(language, "action.signOut")}
+          </button>
+          <button className="primary-button" onClick={reloadProfile} type="button">
+            {appText(language, "auth.profileRetry")}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Cont de manager nou: mai întâi se configurează locația.
   if (needsLocationSetup) {
