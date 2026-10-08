@@ -7,8 +7,8 @@ export function passwordSecurityError(password: string, email = "") {
     return `Parola trebuie să aibă cel puțin ${minimumPasswordLength} caractere.`;
   }
 
-  if (!/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
-    return "Parola trebuie să conțină cel puțin o literă și o cifră.";
+  if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
+    return "Parola trebuie să conțină cel puțin o literă mare, o literă mică și o cifră.";
   }
 
   const emailName = email.split("@")[0]?.trim().toLowerCase() ?? "";

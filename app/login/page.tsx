@@ -122,8 +122,8 @@ function readableError(message: string) {
     return "Există deja un cont Firebase Authentication cu acest email. Încearcă recuperarea parolei sau șterge utilizatorul din Authentication > Users, nu doar din Firestore.";
   }
 
-  if (message.includes("auth/weak-password")) {
-    return "Parola este prea slabă. Folosește cel puțin 8 caractere, cu litere și cifre.";
+  if (message.includes("auth/weak-password") || message.includes("auth/password-does-not-meet-requirements")) {
+    return "Parola este prea slabă. Folosește cel puțin 8 caractere, cu literă mare, literă mică și cifră.";
   }
 
   if (message.includes("Parolele nu se potrivesc")) {

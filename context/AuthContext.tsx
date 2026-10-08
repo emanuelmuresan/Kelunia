@@ -4,7 +4,7 @@
 // Folosit în toată aplicația prin hook-ul useAuth().
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { appCheckReadyPromise, auth, db } from "@/lib/firebase";
-import { onAuthStateChanged, User } from "firebase/auth";
+import { onAuthStateChanged, signOut, User } from "firebase/auth";
 import { doc, getDoc, setDoc, type DocumentData, type DocumentReference } from "firebase/firestore";
 import { normalizeSupportedLocale, type SupportedLocale } from "@/lib/i18n/app-copy-catalog";
 import { normalizeAllowedRoomIds, normalizeRoomAccessMode } from "@/lib/room-access";
@@ -161,7 +161,39 @@ async function waitForUserDocument(userDocRef: DocumentReference<DocumentData>) 
 }
 
 // Provider: urmărește starea autentificării și încarcă profilul.
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+// Citește profilul propriu. Dacă Firestore îl refuză (jeton vechi sau invalidat, de exemplu după resetarea parolei,
+// sau o cerere trimisă înainte ca App Check să fie gata), reîmprospătează jetonul și încearcă din nou de câteva ori
+// înainte de a renunța; dacă jetonul nu se mai poate reîmprospăta (sesiune revocată), utilizatorul este deconectat.
+async function readUserDocument(userData: User, userDocRef: DocumentReference<DocumentData>) {
+  const retryableCodes = ["permission-denied", "unauthenticated", "unavailable"];
+  const revokedTokenCodes = ["auth/user-token-expired", "auth/invalid-user-token", "auth/user-disabled", "auth/user-not-found"];
+
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await getDoc(userDocRef);
+    } catch (error) {
+      const code = String((error as { code?: string }).code ?? "");
+
+      if (attempt >= 3 || !retryableCodes.includes(code)) {
+        throw error;
+      }
+
+      try {
+        await userData.getIdToken(true);
+      } catch (tokenError) {
+        if (revokedTokenCodes.includes(String((tokenError as { code?: string }).code ?? ""))) {
+          await signOut(auth).catch(() => undefined);
+        }
+
+        throw error;
+      }
+
+      await wait(500 * (attempt + 1));
+    }
+  }
+}
+
+export const AuthProvider =({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -205,7 +237,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         // Profilul se citește după ce App Check este gata, altfel Firestore respinge cererea.
         const userDocRef = doc(db, "users", userData.uid);
-        let userSnap = await getDoc(userDocRef);
+        let userSnap = await readUserDocument(userData, userDocRef);
         const fallback = buildFallbackProfile(userData);
 
         // Profil lipsă: proprietarul configurat este recreat automat; ceilalți așteaptă puțin și apoi primesc profilul minimal.
@@ -349,7 +381,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       // La eroare de citire se folosește profilul minimal, ca aplicația să rămână utilizabilă.
       } catch (error) {
         console.error("Eroare la citirea profilului:", error);
-        setProfile(buildFallbackProfile(userData));
+
+        // Dacă între timp sesiunea a fost închisă (jeton revocat), ascultătorul de mai sus a golit deja starea.
+        if (auth.currentUser?.uid === userData.uid) {
+          setProfile(buildFallbackProfile(userData));
+        }
       } finally {
         setLoading(false);
       }
