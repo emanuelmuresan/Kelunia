@@ -42,7 +42,7 @@ export function useBookingDeepLink({
 
       if (!booking) {
         try {
-          const snapshot = await getDoc(doc(db, "bookings", bookingId));
+          const snapshot = await getDoc(doc(db, "events", bookingId));
 
           if (snapshot.exists() && !isSoftDeleted(snapshot.data())) {
             booking = normalizeBooking(snapshot.id, snapshot.data());

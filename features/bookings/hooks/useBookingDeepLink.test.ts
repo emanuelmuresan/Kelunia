@@ -24,7 +24,7 @@ vi.mock("@/lib/soft-delete", () => ({
   isSoftDeleted: vi.fn((data: Record<string, unknown>) => data.deleted === true),
 }));
 
-const { getDoc } = await import("firebase/firestore");
+const { doc, getDoc } = await import("firebase/firestore");
 
 // Ajutor: montează hook-ul cu funcții simulate și întoarce funcțiile apelate.
 type Params = Parameters<typeof useBookingDeepLink>[0];
@@ -81,6 +81,8 @@ describe("useBookingDeepLink", () => {
     const { setActiveView, setSelectedBooking } = renderWith({ bookings: [] });
 
     await waitFor(() => expect(setSelectedBooking).toHaveBeenCalledWith({ id: "b2", startDate: "2026-03-03", deleted: false }));
+    // Rezervările sunt în colecția events.
+    expect(doc).toHaveBeenCalledWith(expect.anything(), "events", "b2");
     expect(setActiveView).toHaveBeenCalledWith("calendar");
   });
 

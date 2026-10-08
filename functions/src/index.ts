@@ -1456,6 +1456,18 @@ export const saveBooking = onCall(
 
       const before = beforeSnapshot.data() ?? {};
 
+      // O rezervare ștearsă logic nu se mai modifică, iar una existentă rămâne în locația ei: regulile Firestore cer
+      // același lucru clienților, dar funcțiile folosesc Admin SDK și trebuie să-l verifice singure.
+      if (before.deleted === true) {
+        throw new HttpsError("not-found", "Programarea nu mai există.");
+      }
+
+      const beforeLocationId = cleanText(before.locationId, 160);
+
+      if (beforeLocationId !== locationId && !(isOwner && !beforeLocationId)) {
+        throw new HttpsError("permission-denied", "Programarea aparține altei locații.");
+      }
+
       if (!isOwner && role !== "manager" && before.authorEmail !== request.auth.token.email) {
         throw new HttpsError("permission-denied", "Poți edita doar programările tale.");
       }
