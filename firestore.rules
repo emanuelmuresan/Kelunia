@@ -1532,18 +1532,9 @@ service cloud.firestore {
           )
         );
 
-      allow delete: if signedInVerified()
-        && resource.data.isOwner != true
-        && (
-          isOwner()
-          || (
-            // Own account goes through the deleteMyAccount function (which keeps
-            // the last administrator in place), never a direct client delete.
-            request.auth.uid != userId
-            && isLocationSuperAdmin()
-            && resource.data.locationId == userLocationId()
-          )
-        );
+      // Niciun client nu șterge direct un profil: contul propriu se șterge prin funcția deleteMyAccount (care păstrează ultimul administrator),
+      // iar un utilizator al locației prin removeLocationUser (care șterge și contul de autentificare, ca emailul să nu rămână ocupat).
+      allow delete: if false;
 
       // Documentul privat cu PIN-ul este accesibil doar funcțiilor cloud (Admin SDK).
       // PIN scrypt hash + lockout state. Written/read only by the Admin SDK in the

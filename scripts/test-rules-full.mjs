@@ -224,7 +224,8 @@ console.log("\n--- users: administrator safety ---");
 await chk("users: manager cannot change their OWN role", "DENY", () => updateDoc(doc(dbMgr(), "users", MGR), { role: "member" }));
 await chk("users: manager can change ANOTHER user's role", "ALLOW", () => updateDoc(doc(dbMgr(), "users", MEMBER), { role: "guest" }));
 await chk("users: manager cannot delete their own users doc", "DENY", () => deleteDoc(doc(dbMgr(), "users", MGR)));
-await chk("users: manager can delete another user of the location", "ALLOW", () => deleteDoc(doc(dbMgr(), "users", MEMBER)));
+await chk("users: a manager cannot delete a user doc directly (removeLocationUser does it)", "DENY", () => deleteDoc(doc(dbMgr(), "users", MEMBER)));
+await chk("users: not even the owner deletes a user doc directly", "DENY", () => deleteDoc(doc(dbOwner(), "users", MEMBER)));
 
 // Coduri de acces: ștergere logică, restaurare, creare cu expirare și prelungirea expirării.
 console.log("\n--- accessCodes ---");
