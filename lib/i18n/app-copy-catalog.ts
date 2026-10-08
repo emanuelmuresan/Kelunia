@@ -134,6 +134,7 @@ const uiCopy = {
     "auth.trialSubmit": "Începe trial",
     "auth.type": "Tip cont",
     "auth.verificationSent": "Ți-am trimis un email de verificare. Confirmă adresa, apoi intră în cont.",
+    "auth.resetSent": "Ți-am trimis emailul de resetare. Verifică inbox-ul și Spam/Promoții.",
     // Zona „booking” - rezervări: formular, detalii și notificări.
     "booking.group": "Grup",
     "booking.add": "Adaugă",
@@ -658,6 +659,7 @@ const uiCopy = {
     "auth.trialSubmit": "Start trial",
     "auth.type": "Account type",
     "auth.verificationSent": "I sent you a verification email. Confirm the address, then sign in.",
+    "auth.resetSent": "We sent the reset email. Check your inbox and Spam/Promotions.",
     // Zona „booking” - rezervări: formular, detalii și notificări.
     "booking.group": "Group",
     "booking.add": "Add",
@@ -1182,6 +1184,7 @@ const uiCopy = {
     "auth.trialSubmit": "Empezar trial",
     "auth.type": "Tipo de cuenta",
     "auth.verificationSent": "Te he enviado un email de verificación. Confirma la dirección y luego entra en la cuenta.",
+    "auth.resetSent": "Hemos enviado el email de restablecimiento. Revisa tu bandeja de entrada y Spam/Promociones.",
     // Zona „booking” - rezervări: formular, detalii și notificări.
     "booking.group": "Grupo",
     "booking.add": "Añadir",
@@ -1706,6 +1709,7 @@ const uiCopy = {
     "auth.trialSubmit": "Inizia trial",
     "auth.type": "Tipo account",
     "auth.verificationSent": "Ti ho inviato un'email di verifica. Conferma l'indirizzo, poi accedi.",
+    "auth.resetSent": "Abbiamo inviato l'email di reimpostazione. Controlla la posta in arrivo e Spam/Promozioni.",
     // Zona „booking” - rezervări: formular, detalii și notificări.
     "booking.group": "Gruppo",
     "booking.add": "Aggiungi",
@@ -2230,6 +2234,7 @@ const uiCopy = {
     "auth.trialSubmit": "Commencer le trial",
     "auth.type": "Type de compte",
     "auth.verificationSent": "Je vous ai envoyé un email de vérification. Confirmez l'adresse, puis connectez-vous.",
+    "auth.resetSent": "Nous avons envoyé l'email de réinitialisation. Vérifiez votre boîte de réception et les spams/promotions.",
     // Zona „booking” - rezervări: formular, detalii și notificări.
     "booking.group": "Groupe",
     "booking.add": "Ajouter",
@@ -2754,6 +2759,7 @@ const uiCopy = {
     "auth.trialSubmit": "Começar trial",
     "auth.type": "Tipo de conta",
     "auth.verificationSent": "Enviei-lhe um email de verificação. Confirme o endereço e depois entre na conta.",
+    "auth.resetSent": "Enviámos o email de reposição. Verifique a caixa de entrada e o Spam/Promoções.",
     // Zona „booking” - rezervări: formular, detalii și notificări.
     "booking.group": "Grupo",
     "booking.add": "Adicionar",

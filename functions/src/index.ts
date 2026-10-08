@@ -13,6 +13,7 @@ import { onDocumentCreated, onDocumentWritten } from "firebase-functions/v2/fire
 import { HttpsError, onCall, type CallableRequest } from "firebase-functions/v2/https";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { Resend } from "resend";
+import { authEmailCopy, type AuthEmailCopy } from "./auth-email-i18n";
 import { inviteCopy, type InviteCopy } from "./invite-i18n";
 import { closureEmail, closureGraceDays, purgeLocation } from "./location-closure";
 import { createHash } from "node:crypto";
@@ -776,61 +777,80 @@ function licenseEmailHtml(request: LicenseEmailRequest) {
   ].join("");
 }
 
-// Emailul de verificare a adresei: text și HTML, cu linkul generat de Firebase Auth.
-function verificationEmailText(link: string) {
+// Emailurile de verificare a adresei și de resetare a parolei: text și HTML, cu linkul generat de Firebase Auth,
+// în limba utilizatorului (textele sunt în auth-email-i18n.ts).
+function withFirebaseLang(link: string, language: EmailLanguage) {
+  // Pagina Firebase unde se alege parola / se confirmă emailul citește limba din parametrul lang.
+  try {
+    const url = new URL(link);
+    url.searchParams.set("lang", authEmailCopy[language].firebaseLang);
+    return url.toString();
+  } catch {
+    return link;
+  }
+}
+
+function authEmailButtonHtml(link: string, label: string) {
+  return `<p><a href="${escapeHtml(link)}" style="display:inline-block;background:#0f766e;color:#fff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:700">${escapeHtml(label)}</a></p>`;
+}
+
+function authEmailHtml(intro: string, link: string, buttonLabel: string, ignore: string, copy: AuthEmailCopy) {
   return [
-    "Bun venit în Kelunia.",
+    '<div style="font-family:Arial,sans-serif;line-height:1.6;color:#172033;max-width:640px">',
+    '<h1 style="font-size:22px;margin:0 0 18px;color:#0f766e">Kelunia</h1>',
+    `<p>${escapeHtml(intro)}.</p>`,
+    authEmailButtonHtml(link, buttonLabel),
+    `<p style="font-size:13px;color:#667085;margin-top:18px">${escapeHtml(copy.buttonFallback)} ${escapeHtml(link)}</p>`,
+    `<p style="font-size:13px;color:#667085;margin-top:18px">${escapeHtml(ignore)}</p>`,
+    `<p style="font-size:13px;color:#667085;margin-top:8px">${escapeHtml(copy.spamHint)}</p>`,
+    "</div>",
+  ].join("");
+}
+
+function verificationEmailText(link: string, language: EmailLanguage) {
+  const copy = authEmailCopy[language];
+
+  return [
+    copy.welcome,
     "",
-    "Confirmă adresa de email ca să poți intra în aplicație:",
+    `${copy.verifyIntro}:`,
     link,
     "",
-    "Dacă nu ai creat tu acest cont, poți ignora acest mesaj.",
+    copy.verifyIgnore,
+    copy.spamHint,
     "",
     "---",
     "Kelunia",
   ].join("\n");
 }
 
-function verificationEmailHtml(link: string) {
-  return [
-    '<div style="font-family:Arial,sans-serif;line-height:1.6;color:#172033;max-width:640px">',
-    '<h1 style="font-size:22px;margin:0 0 18px;color:#0f766e">Kelunia</h1>',
-    '<p>Confirmă adresa de email ca să poți intra în aplicație.</p>',
-    `<p><a href="${escapeHtml(link)}" style="display:inline-block;background:#0f766e;color:#fff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:700">Confirmă emailul</a></p>`,
-    `<p style="font-size:13px;color:#667085;margin-top:18px">Dacă butonul nu merge, deschide acest link: ${escapeHtml(link)}</p>`,
-    '<p style="font-size:13px;color:#667085;margin-top:18px">Dacă nu ai creat tu acest cont, poți ignora acest mesaj.</p>',
-    "</div>",
-  ].join("");
+function verificationEmailHtml(link: string, language: EmailLanguage) {
+  const copy = authEmailCopy[language];
+  return authEmailHtml(copy.verifyIntro, link, copy.verifyButton, copy.verifyIgnore, copy);
 }
 
-// Emailul de resetare a parolei: text și HTML, cu linkul generat de Firebase Auth.
-function passwordResetEmailText(link: string) {
+function passwordResetEmailText(link: string, language: EmailLanguage) {
+  const copy = authEmailCopy[language];
+
   return [
-    "Ai cerut resetarea parolei pentru contul Kelunia.",
+    copy.resetIntro,
     "",
-    "Alege o parolă nouă aici:",
+    `${copy.resetChoose}:`,
     link,
     "",
-    "Dacă nu ai cerut tu resetarea, poți ignora acest mesaj.",
+    copy.resetIgnore,
+    copy.spamHint,
     "",
     "---",
     "Kelunia",
   ].join("\n");
 }
 
-function passwordResetEmailHtml(link: string) {
-  return [
-    '<div style="font-family:Arial,sans-serif;line-height:1.6;color:#172033;max-width:640px">',
-    '<h1 style="font-size:22px;margin:0 0 18px;color:#0f766e">Kelunia</h1>',
-    '<p>Ai cerut resetarea parolei pentru contul Kelunia.</p>',
-    `<p><a href="${escapeHtml(link)}" style="display:inline-block;background:#0f766e;color:#fff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:700">Resetează parola</a></p>`,
-    `<p style="font-size:13px;color:#667085;margin-top:18px">Dacă butonul nu merge, deschide acest link: ${escapeHtml(link)}</p>`,
-    '<p style="font-size:13px;color:#667085;margin-top:18px">Dacă nu ai cerut tu resetarea, poți ignora acest mesaj.</p>',
-    "</div>",
-  ].join("");
+function passwordResetEmailHtml(link: string, language: EmailLanguage) {
+  const copy = authEmailCopy[language];
+  return authEmailHtml(copy.resetIntro.replace(/\.$/, ""), link, copy.resetButton, copy.resetIgnore, copy);
 }
 
-// Emailul de invitație cu cod de acces: eticheta rolului, data expirării, textul simplu și HTML-ul, în limba aleasă (textele sunt în invite-i18n.ts).
 function inviteRoleLabel(role: UserRole, copy: InviteCopy) {
   if (role === "manager") {
     return copy.roleManager;
@@ -968,13 +988,15 @@ export const sendAuthVerificationEmail = onCall(
       throw error;
     }
 
+    const language = emailLanguage(request.data?.language);
+    const localizedLink = withFirebaseLang(link, language);
     const resend = new Resend(resendApiKey.value());
     const result = await resend.emails.send({
       from: emailFrom.value(),
       to: [user.email],
-      subject: emailSubject("verify", request.data?.language),
-      text: verificationEmailText(link),
-      html: verificationEmailHtml(link),
+      subject: emailSubject("verify", language),
+      text: verificationEmailText(localizedLink, language),
+      html: verificationEmailHtml(localizedLink, language),
     });
 
     if (result.error) {
@@ -1028,13 +1050,15 @@ export const sendAuthPasswordResetEmail = onCall(
       throw new HttpsError("internal", "Linkul de resetare nu a putut fi generat.");
     }
 
+    const language = emailLanguage(request.data?.language);
+    const localizedLink = withFirebaseLang(link, language);
     const resend = new Resend(resendApiKey.value());
     const result = await resend.emails.send({
       from: emailFrom.value(),
       to: [email],
-      subject: emailSubject("reset", request.data?.language),
-      text: passwordResetEmailText(link),
-      html: passwordResetEmailHtml(link),
+      subject: emailSubject("reset", language),
+      text: passwordResetEmailText(localizedLink, language),
+      html: passwordResetEmailHtml(localizedLink, language),
     });
 
     if (result.error) {

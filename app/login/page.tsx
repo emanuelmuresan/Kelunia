@@ -583,7 +583,7 @@ export default function LoginPage() {
       // Resetare parolă: trimite emailul de resetare.
       if (mode === "reset") {
         await sendCustomPasswordResetEmail(email, language);
-        setMessage("Emailul de resetare a fost trimis.");
+        setMessage(appText(language, "auth.resetSent"));
         return;
       }
 

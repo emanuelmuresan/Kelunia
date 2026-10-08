@@ -138,3 +138,28 @@ test("logging in before verifying resends the email, or says one was just sent",
   await logIn(page);
   await expect(page.locator(".error-line")).toContainText("trimis deja de curând", { timeout: 20_000 });
 });
+
+// Resetarea parolei: mesajul de după trimitere este tradus și menționează Spam.
+test("password reset confirms in the chosen language and mentions Spam", async ({ page }) => {
+  await page.route("**/sendAuthPasswordResetEmail", (route) => {
+    const headers = {
+      "access-control-allow-origin": "*",
+      "access-control-allow-headers": "*",
+      "access-control-allow-methods": "POST, OPTIONS",
+    };
+
+    if (route.request().method() === "OPTIONS") {
+      return route.fulfill({ status: 204, headers });
+    }
+
+    return route.fulfill({ status: 200, headers, contentType: "application/json", body: JSON.stringify({ result: { sent: true } }) });
+  });
+
+  await page.goto("/login?lang=en");
+  await page.getByRole("button", { name: "Forgot password" }).click();
+  await page.locator('input[type="email"]').fill("cineva@e2e.test");
+  await page.locator('form button[type="submit"]').click();
+
+  await expect(page.locator(".success-line")).toContainText("Spam/Promotions");
+  await expect(page.locator(".success-line")).toContainText("reset email");
+});
