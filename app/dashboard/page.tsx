@@ -116,7 +116,7 @@ const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
 // Componenta paginii dashboard.
 export default function KeluniaPage() {
   // Utilizatorul curent, profilul lui din Firestore și rolurile derivate (manager, proprietar, super-admin).
-  const { user, profile, role, isSuperAdmin, isOwner, loading: authLoading, updateProfile, profileError, reloadProfile } = useAuth();
+  const { user, profile, role, isSuperAdmin, isOwner, loading: authLoading, updateProfile, profileError } = useAuth();
   const router = useRouter();
   const language = profile?.language ?? "ro";
 
@@ -1210,7 +1210,7 @@ export default function KeluniaPage() {
           <button className="secondary-button" onClick={confirmSignOut} type="button">
             {appText(language, "action.signOut")}
           </button>
-          <button className="primary-button" onClick={reloadProfile} type="button">
+          <button className="primary-button" onClick={() => window.location.reload()} type="button">
             {appText(language, "auth.profileRetry")}
           </button>
         </div>

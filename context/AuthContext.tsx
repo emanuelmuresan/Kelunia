@@ -166,6 +166,9 @@ async function waitForUserDocument(userDocRef: DocumentReference<DocumentData>) 
 }
 
 // Provider: urmărește starea autentificării și încarcă profilul.
+// Marcaj în sessionStorage: dacă citirea profilului a eșuat, pagina se reîncarcă o singură dată.
+const profileReloadKey = "kelunia-profile-reloaded";
+
 // Citește profilul propriu. Dacă Firestore îl refuză (jeton vechi sau invalidat, de exemplu după resetarea parolei,
 // sau o cerere trimisă înainte ca App Check să fie gata), reîmprospătează jetonul și încearcă din nou de câteva ori
 // înainte de a renunța; dacă jetonul nu se mai poate reîmprospăta (sesiune revocată), utilizatorul este deconectat.
@@ -347,6 +350,12 @@ export const AuthProvider =({ children }: { children: React.ReactNode }) => {
         }
 
         // Profilul final expus aplicației.
+        try {
+          window.sessionStorage.removeItem(profileReloadKey);
+        } catch {
+          // ignorat
+        }
+
         setProfile({
           uid: userData.uid,
           email,
@@ -389,6 +398,19 @@ export const AuthProvider =({ children }: { children: React.ReactNode }) => {
       // La eroare de citire se folosește profilul minimal, ca aplicația să rămână utilizabilă.
       } catch (error) {
         console.error("Eroare la citirea profilului:", error);
+
+        // O singură reîncărcare automată a paginii: un client Firestore nou preia sesiunea curentă de la zero (o stare blocată
+        // după deconectări repetate se rezolvă așa). Marcajul din sessionStorage împiedică o buclă de reîncărcări.
+        try {
+          if (window.sessionStorage.getItem(profileReloadKey) !== "1") {
+            window.sessionStorage.setItem(profileReloadKey, "1");
+            window.location.reload();
+            return;
+          }
+        } catch {
+          // fără sessionStorage nu se reîncarcă automat
+        }
+
         setProfileError(String((error as { code?: string }).code ?? (error as { message?: string }).message ?? "necunoscută"));
 
         // Dacă între timp sesiunea a fost închisă (jeton revocat), ascultătorul de mai sus a golit deja starea.
