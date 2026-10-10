@@ -73,8 +73,8 @@ export const emptyFixedDraft: FixedScheduleDraft = {
 // Etichetele rolurilor în română (pentru interfețele care nu trec prin catalogul de limbi).
 export const roleLabels: Record<UserRole, string> = {
   manager: "Administrator",
-  member: "Colaborator",
-  guest: "Oaspete",
+  member: "Responsabil",
+  guest: "Invitat",
 };
 
 // Eticheta rolului în limba utilizatorului; proprietarul are o etichetă proprie.

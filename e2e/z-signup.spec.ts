@@ -79,9 +79,9 @@ async function logIn(page: Page) {
 // Drumul complet pentru fiecare rol (administrator, colaborator, oaspete); doar administratorul vede secțiunea Acces.
 const journeys = [
   { role: "administrator", label: "Administrator", code: "KEL-E2EM-ANGR-0001", entry: "link" as const },
-  { role: "collaborator", label: "Colaborator", code: "KEL-E2EB-MEMB-0002", entry: "link" as const },
-  { role: "collaborator (code typed by hand)", label: "Colaborator", code: "KEL-E2EB-MEMB-0002", entry: "typed-code" as const },
-  { role: "guest", label: "Oaspete", code: "KEL-E2EG-GUES-0003", entry: "code-only" as const },
+  { role: "collaborator", label: "Responsabil", code: "KEL-E2EB-MEMB-0002", entry: "link" as const },
+  { role: "collaborator (code typed by hand)", label: "Responsabil", code: "KEL-E2EB-MEMB-0002", entry: "typed-code" as const },
+  { role: "guest", label: "Invitat", code: "KEL-E2EG-GUES-0003", entry: "code-only" as const },
 ];
 
 journeys.forEach(({ role, label, code, entry }, index) => {

@@ -60,7 +60,7 @@ const copy: Record<SupportedLocale, LandingCopy> = {
     // Beneficiile principale („de ce Kelunia"): titlu + descriere.
     problems: [
       ["Fără suprapuneri", "Sistemul blochează automat rezervările duble și îți arată rapid ce spațiu este liber și când."],
-      ["Transparență totală", "Toți colaboratorii văd în timp real cine ocupă spațiul, pentru ce activitate și în ce interval."],
+      ["Transparență totală", "Toți utilizatorii văd în timp real cine ocupă spațiul, pentru ce activitate și în ce interval."],
       ["Acces controlat", "Tu decizi cine poate rezerva, cine poate anula și cine are doar drept de vizualizare."],
     ],
     // Funcțiile cheie: titlu, descriere și imaginea de captură din /public.
@@ -68,7 +68,7 @@ const copy: Record<SupportedLocale, LandingCopy> = {
       ["Calendar clar", "Programări pe zi, săptămână și lună, cu vizibilitate rapidă pentru fiecare locație și spațiu.", "/calendar.png"],
       ["Săli și resurse", "Organizează totul pe locații și grupuri. Fiecare rezervare rămâne legată de spațiul, echipa și scopul potrivit.", "/list.png"],
       ["Programări recurente", "Setezi o dată întâlnirile săptămânale, cursurile fixe sau rezervările repetitive, iar Kelunia ocupă restul intervalelor.", "/fixed.png"],
-      ["Permisiuni pe roluri", "Administratorii controlează tot, colaboratorii rezervă, iar publicul poate avea doar drept de vizualizare.", "/settings.png"],
+      ["Permisiuni pe roluri", "Administratorii controlează tot, responsabilii rezervă, iar publicul poate avea doar drept de vizualizare.", "/settings.png"],
     ],
     // Publicul țintă: emoji, titlu și descriere.
     audiences: [
@@ -113,14 +113,14 @@ const copy: Record<SupportedLocale, LandingCopy> = {
     faqTitle: "Quick questions.",
     problems: [
       ["No overlaps", "The system automatically blocks double bookings and quickly shows which space is free and when."],
-      ["Full transparency", "All collaborators see in real time who is using the space, for what activity and in what interval."],
+      ["Full transparency", "All users see in real time who is using the space, for what activity and in what interval."],
       ["Controlled access", "You decide who can book, who can cancel and who can only view."],
     ],
     features: [
       ["Clear calendar", "Day, week and month bookings with quick visibility for each location and space.", "/calendar.png"],
       ["Rooms and resources", "Organize everything by locations and groups. Each booking stays tied to the right space, team and purpose.", "/list.png"],
       ["Recurring bookings", "Set weekly meetings, fixed classes or repetitive bookings once, and Kelunia fills the rest.", "/fixed.png"],
-      ["Role permissions", "Administrators control everything, collaborators book, and guests can have view-only access.", "/settings.png"],
+      ["Role permissions", "Administrators control everything, group leads book, and guests can have view-only access.", "/settings.png"],
     ],
     audiences: [
       ["🏢", "Shared rooms and spaces", "For meeting rooms, courts, training spaces or locations that need clear booking."],
@@ -162,14 +162,14 @@ const copy: Record<SupportedLocale, LandingCopy> = {
     faqTitle: "Preguntas rápidas.",
     problems: [
       ["Sin solapamientos", "El sistema bloquea automáticamente reservas dobles y muestra rápido qué espacio está libre y cuándo."],
-      ["Transparencia total", "Todos los colaboradores ven en tiempo real quién ocupa el espacio, para qué actividad y en qué intervalo."],
+      ["Transparencia total", "Todos los usuarios ven en tiempo real quién ocupa el espacio, para qué actividad y en qué intervalo."],
       ["Acceso controlado", "Tú decides quién puede reservar, quién puede cancelar y quién solo puede ver."],
     ],
     features: [
       ["Calendario claro", "Reservas por día, semana y mes, con visibilidad rápida para cada ubicación y espacio.", "/calendar.png"],
       ["Salas y recursos", "Organiza todo por ubicaciones y grupos. Cada reserva queda ligada al espacio, equipo y propósito adecuados.", "/list.png"],
       ["Reservas recurrentes", "Configura una vez reuniones semanales, clases fijas o reservas repetitivas, y Kelunia ocupa el resto.", "/fixed.png"],
-      ["Permisos por rol", "Los administradores controlan todo, los colaboradores reservan y los invitados pueden tener solo visualización.", "/settings.png"],
+      ["Permisos por rol", "Los administradores controlan todo, los responsables reservan y los invitados pueden tener solo visualización.", "/settings.png"],
     ],
     audiences: [
       ["🏢", "Salas y espacios comunes", "Para salas de reuniones, pistas, espacios de formación o lugares que necesitan reservas claras."],
@@ -218,14 +218,14 @@ copy.it = {
   faqTitle: "Domande rapide.",
   problems: [
     ["Nessuna sovrapposizione", "Il sistema blocca automaticamente le doppie prenotazioni e mostra rapidamente quale spazio è libero e quando."],
-    ["Trasparenza totale", "Tutti i collaboratori vedono in tempo reale chi occupa lo spazio, per quale attività e in quale intervallo."],
+    ["Trasparenza totale", "Tutti gli utenti vedono in tempo reale chi occupa lo spazio, per quale attività e in quale intervallo."],
     ["Accesso controllato", "Decidi tu chi può prenotare, chi può annullare e chi può solo visualizzare."],
   ],
   features: [
     ["Calendario chiaro", "Prenotazioni per giorno, settimana e mese, con visibilità rapida per ogni sede e spazio.", "/calendar.png"],
     ["Sale e risorse", "Organizza tutto per sedi e gruppi. Ogni prenotazione resta collegata allo spazio, al team e allo scopo giusto.", "/list.png"],
     ["Prenotazioni ricorrenti", "Imposti una volta riunioni settimanali, corsi fissi o prenotazioni ripetitive, e Kelunia gestisce gli altri intervalli.", "/fixed.png"],
-    ["Permessi per ruolo", "Gli amministratori controllano tutto, i collaboratori prenotano e gli ospiti possono avere solo visualizzazione.", "/settings.png"],
+    ["Permessi per ruolo", "Gli amministratori controllano tutto, i responsabili prenotano e gli invitati possono avere solo visualizzazione.", "/settings.png"],
   ],
   audiences: [
     ["🏢", "Sale e spazi comuni", "Per sale meeting, campi, spazi di formazione o sedi che devono essere prenotate con chiarezza."],
@@ -269,14 +269,14 @@ copy.fr = {
   faqTitle: "Questions rapides.",
   problems: [
     ["Aucun chevauchement", "Le système bloque automatiquement les doubles réservations et montre rapidement quel espace est libre et quand."],
-    ["Transparence totale", "Tous les collaborateurs voient en temps réel qui occupe l'espace, pour quelle activité et sur quel créneau."],
+    ["Transparence totale", "Tous les utilisateurs voient en temps réel qui occupe l'espace, pour quelle activité et sur quel créneau."],
     ["Accès contrôlé", "Vous décidez qui peut réserver, qui peut annuler et qui peut seulement consulter."],
   ],
   features: [
     ["Calendrier clair", "Réservations par jour, semaine et mois, avec une visibilité rapide pour chaque lieu et espace.", "/calendar.png"],
     ["Salles et ressources", "Organisez tout par lieux et groupes. Chaque réservation reste liée au bon espace, à la bonne équipe et au bon objectif.", "/list.png"],
     ["Réservations récurrentes", "Configurez une fois les réunions hebdomadaires, cours fixes ou réservations répétitives, et Kelunia gère le reste.", "/fixed.png"],
-    ["Permissions par rôle", "Les administrateurs contrôlent tout, les collaborateurs réservent et les invités peuvent avoir un accès en lecture seule.", "/settings.png"],
+    ["Permissions par rôle", "Les administrateurs contrôlent tout, les responsables réservent et les invités peuvent avoir un accès en lecture seule.", "/settings.png"],
   ],
   audiences: [
     ["🏢", "Salles et espaces communs", "Pour salles de réunion, terrains, espaces de formation ou lieux qui doivent être réservés clairement."],
@@ -320,14 +320,14 @@ copy.pt = {
   faqTitle: "Perguntas rápidas.",
   problems: [
     ["Sem sobreposições", "O sistema bloqueia automaticamente reservas duplicadas e mostra rapidamente que espaço está livre e quando."],
-    ["Transparência total", "Todos os colaboradores veem em tempo real quem ocupa o espaço, para que atividade e em que intervalo."],
+    ["Transparência total", "Todos os utilizadores veem em tempo real quem ocupa o espaço, para que atividade e em que intervalo."],
     ["Acesso controlado", "Decide quem pode reservar, quem pode cancelar e quem pode apenas visualizar."],
   ],
   features: [
     ["Calendário claro", "Reservas por dia, semana e mês, com visibilidade rápida para cada localização e espaço.", "/calendar.png"],
     ["Salas e recursos", "Organize tudo por localizações e grupos. Cada reserva fica ligada ao espaço, equipa e objetivo corretos.", "/list.png"],
     ["Reservas recorrentes", "Configure uma vez reuniões semanais, aulas fixas ou reservas repetitivas, e Kelunia ocupa o resto.", "/fixed.png"],
-    ["Permissões por função", "Administradores controlam tudo, colaboradores reservam e convidados podem ter apenas visualização.", "/settings.png"],
+    ["Permissões por função", "Administradores controlam tudo, responsáveis reservam e convidados podem ter apenas visualização.", "/settings.png"],
   ],
   audiences: [
     ["🏢", "Salas e espaços comuns", "Para salas de reunião, campos, espaços de formação ou localizações que precisam de reservas claras."],

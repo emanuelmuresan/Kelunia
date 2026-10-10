@@ -1449,11 +1449,11 @@ export const saveBooking = onCall(
     }
 
     if (role === "guest") {
-      throw new HttpsError("permission-denied", "Ai nevoie de rol de administrator sau colaborator.");
+      throw new HttpsError("permission-denied", "Ai nevoie de rol de administrator sau responsabil.");
     }
 
     if (!isOwner && role === "member" && cleanText(userProfile?.groupName, 120) !== group) {
-      throw new HttpsError("permission-denied", "Colaboratorii pot face programări doar pentru grupul lor.");
+      throw new HttpsError("permission-denied", "Responsabilii pot face programări doar pentru grupul lor.");
     }
 
     if (!isOwner && role !== "manager" && userProfile?.roomAccess === "selected" && !userProfile.allowedRoomIds?.includes(roomId)) {

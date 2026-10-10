@@ -33,8 +33,8 @@ export const inviteCopy: Record<InviteLanguage, InviteCopy> = {
     role: "Rol",
     group: "Grup",
     roleManager: "Administrator",
-    roleMember: "Colaborator",
-    roleGuest: "Oaspete",
+    roleMember: "Responsabil",
+    roleGuest: "Invitat",
     stepsTitle: "Pași",
     steps: [
       "Deschide linkul de mai jos pe telefon sau calculator.",
@@ -57,7 +57,7 @@ export const inviteCopy: Record<InviteLanguage, InviteCopy> = {
     role: "Role",
     group: "Group",
     roleManager: "Administrator",
-    roleMember: "Collaborator",
+    roleMember: "Group lead",
     roleGuest: "Guest",
     stepsTitle: "Steps",
     steps: [
@@ -81,7 +81,7 @@ export const inviteCopy: Record<InviteLanguage, InviteCopy> = {
     role: "Rol",
     group: "Grupo",
     roleManager: "Administrador",
-    roleMember: "Colaborador",
+    roleMember: "Responsable",
     roleGuest: "Invitado",
     stepsTitle: "Pasos",
     steps: [
@@ -105,8 +105,8 @@ export const inviteCopy: Record<InviteLanguage, InviteCopy> = {
     role: "Ruolo",
     group: "Gruppo",
     roleManager: "Amministratore",
-    roleMember: "Collaboratore",
-    roleGuest: "Ospite",
+    roleMember: "Responsabile",
+    roleGuest: "Invitato",
     stepsTitle: "Passaggi",
     steps: [
       "Apri il link qui sotto dal telefono o dal computer.",
@@ -129,7 +129,7 @@ export const inviteCopy: Record<InviteLanguage, InviteCopy> = {
     role: "Rôle",
     group: "Groupe",
     roleManager: "Administrateur",
-    roleMember: "Collaborateur",
+    roleMember: "Responsable",
     roleGuest: "Invité",
     stepsTitle: "Étapes",
     steps: [
@@ -153,7 +153,7 @@ export const inviteCopy: Record<InviteLanguage, InviteCopy> = {
     role: "Função",
     group: "Grupo",
     roleManager: "Administrador",
-    roleMember: "Colaborador",
+    roleMember: "Responsável",
     roleGuest: "Convidado",
     stepsTitle: "Passos",
     steps: [
