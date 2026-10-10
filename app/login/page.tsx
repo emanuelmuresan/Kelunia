@@ -119,7 +119,7 @@ function readableError(message: string) {
   }
 
   if (message.includes("auth/email-already-in-use")) {
-    return "Există deja un cont Firebase Authentication cu acest email. Încearcă recuperarea parolei sau șterge utilizatorul din Authentication > Users, nu doar din Firestore.";
+    return "Există deja un cont cu acest email. Intră în cont (dacă nu ți-ai confirmat emailul, îți retrimitem emailul de verificare) sau folosește „Am uitat parola”.";
   }
 
   if (message.includes("auth/weak-password") || message.includes("auth/password-does-not-meet-requirements")) {
