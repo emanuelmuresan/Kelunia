@@ -232,6 +232,8 @@ export default function LoginPage() {
   const [accessCode, setAccessCode] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  // După o conectare cu email nevalidat se oferă butonul pentru un email nou (nu se trimite automat, ca să nu invalideze linkul din ultimul email).
+  const [canResendVerification, setCanResendVerification] = useState(false);
   const [loading, setLoading] = useState(false);
   const [installedAppShell, setInstalledAppShell] = useState(false);
   const [language, setLanguage] = useState<AppLanguage>("ro");
@@ -548,11 +550,42 @@ export default function LoginPage() {
     }
   }
 
+  // Cere un email nou de verificare, la cererea utilizatorului: un link nou îl invalidează pe cel vechi, de aceea nu se trimite automat la conectare.
+  async function handleResendVerification() {
+    setError("");
+    setMessage("");
+    setLoading(true);
+    submittingRef.current = true;
+
+    try {
+      await ensureAuthPersistence();
+      const credential = await withTimeout(
+        signInWithEmailAndPassword(auth, email, password),
+        20000,
+        "Autentificarea nu a raspuns la timp."
+      );
+
+      if (credential.user.emailVerified) {
+        router.push("/dashboard");
+        return;
+      }
+
+      const outcome = await resendVerificationBeforeSignOut(language);
+      setError(appText(language, outcome === "throttled" ? "auth.unverifiedAlreadySent" : "auth.unverifiedResent"));
+    } catch (err) {
+      setError(readableError(err instanceof Error ? err.message : "A apărut o eroare."));
+    } finally {
+      submittingRef.current = false;
+      setLoading(false);
+    }
+  }
+
   // Trimiterea formularului: acțiunea depinde de modul curent.
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
     setMessage("");
+    setCanResendVerification(false);
     setLoading(true);
     // Marchează submit-ul ca activ (vezi efectul care deconectează utilizatorii neverificați).
     submittingRef.current = true;
@@ -569,10 +602,14 @@ export default function LoginPage() {
           "Autentificarea nu a raspuns la timp."
         );
 
-        // Email neverificat: se retrimite verificarea și utilizatorul este deconectat.
+        // Email neverificat: utilizatorul este deconectat și i se spune să folosească ultimul email primit; un email nou se trimite doar la cerere,
+        // fiindcă fiecare link nou îl invalidează pe cel vechi.
         if (!credential.user.emailVerified) {
-          const outcome = await resendVerificationBeforeSignOut(language);
-          setError(appText(language, outcome === "throttled" ? "auth.unverifiedAlreadySent" : "auth.unverifiedResent"));
+          await signOut(auth).catch((signOutError) => {
+            console.warn("Delogarea unui cont neverificat a eșuat:", signOutError);
+          });
+          setError(appText(language, "auth.unverifiedHint"));
+          setCanResendVerification(true);
           return;
         }
 
@@ -742,6 +779,11 @@ export default function LoginPage() {
 
         {/* Mesajele de eroare și de succes. */}
         {error && <p className="error-line">{error}</p>}
+        {canResendVerification && (
+          <button className="secondary-button" disabled={loading} onClick={handleResendVerification} type="button">
+            {appText(language, "auth.resendVerification")}
+          </button>
+        )}
         {message && <p className="success-line">{message}</p>}
 
         {/* Câmpurile se afișează în funcție de mod. */}

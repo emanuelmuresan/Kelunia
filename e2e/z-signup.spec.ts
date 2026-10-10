@@ -124,19 +124,37 @@ test("an e-mail typed with capitals still registers (it is normalised to lowerca
   await expect(page.locator(".error-line")).toHaveCount(0);
 });
 
-// Autentificarea înainte de verificare retrimite emailul sau spune că unul a fost trimis de curând.
-test("logging in before verifying resends the email, or says one was just sent", async ({ page }) => {
+// Autentificarea înainte de verificare nu trimite un email nou (ar invalida linkul din ultimul email); emailul se cere cu butonul.
+test("logging in before verifying asks for the latest email; a new one is sent only on request", async ({ page }) => {
   await register(page, "KEL-E2EG-GUES-0003", "inca.neverificat@e2e.test");
   await expect(page.locator(".success-line")).toBeVisible({ timeout: 20_000 });
 
+  let sent = 0;
+  await page.unroute("**/sendAuthVerificationEmail");
+  await page.route("**/sendAuthVerificationEmail", (route) => {
+    const headers = {
+      "access-control-allow-origin": "*",
+      "access-control-allow-headers": "*",
+      "access-control-allow-methods": "POST, OPTIONS",
+    };
+
+    if (route.request().method() === "OPTIONS") {
+      return route.fulfill({ status: 204, headers });
+    }
+
+    sent += 1;
+    return route.fulfill({ status: 200, headers, contentType: "application/json", body: JSON.stringify({ result: { sent: true } }) });
+  });
+
   // The form is back in login mode with the e-mail kept; the password was cleared.
   await logIn(page);
-  await expect(page.locator(".error-line")).toContainText("Ți-am retrimis emailul de verificare", { timeout: 20_000 });
+  await expect(page.locator(".error-line")).toContainText("Deschide ultimul email primit", { timeout: 20_000 });
+  expect(sent).toBe(0);
 
-  await page.unroute("**/sendAuthVerificationEmail");
-  await stubVerificationEmail(page, { sent: false, throttled: true });
-  await logIn(page);
-  await expect(page.locator(".error-line")).toContainText("trimis deja de curând", { timeout: 20_000 });
+  // Pe cerere se trimite unul nou, cu avertismentul că cele vechi nu mai merg.
+  await page.getByRole("button", { name: "Trimite un email nou de verificare" }).click();
+  await expect(page.locator(".error-line")).toContainText("Folosește doar ultimul email primit", { timeout: 20_000 });
+  expect(sent).toBe(1);
 });
 
 // Resetarea parolei: mesajul de după trimitere este tradus și menționează Spam.
