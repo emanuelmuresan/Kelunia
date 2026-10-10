@@ -227,6 +227,12 @@ export function SettingsView({
   const activeNewsletterSubscribers = newsletterSubscribers.filter(
     (subscriber) => subscriber.status === "active" && !subscriber.unsubscribed
   );
+  // Cei dezabonați (din linkul din email) nu mai apar în listă, nici dacă au și un mesaj vechi din pagina publică.
+  const unsubscribedEmails = new Set(
+    newsletterSubscribers
+      .filter((subscriber) => subscriber.status !== "active" || subscriber.unsubscribed)
+      .map((subscriber) => subscriber.email.trim().toLowerCase())
+  );
   const newsletterSubscriberRows = (() => {
     const rows = new Map<string, { id: string; email: string; createdAt?: unknown }>();
 
@@ -243,7 +249,7 @@ export function SettingsView({
       .forEach((application) => {
         const email = application.email.trim().toLowerCase();
 
-        if (email && !rows.has(email)) {
+        if (email && !rows.has(email) && !unsubscribedEmails.has(email)) {
           rows.set(email, {
             id: `legacy-${application.id}`,
             email,

@@ -163,3 +163,33 @@ test("password reset confirms in the chosen language and mentions Spam", async (
   await expect(page.locator(".success-line")).toContainText("Spam/Promotions");
   await expect(page.locator(".success-line")).toContainText("reset email");
 });
+
+// Dezabonarea de la newsletter: pagina publică cere confirmare și apoi apelează funcția.
+test("the unsubscribe page confirms before unsubscribing", async ({ page }) => {
+  let calls = 0;
+
+  await page.route("**/unsubscribeNewsletter**", (route) => {
+    const headers = { "access-control-allow-origin": "*", "access-control-allow-headers": "*", "access-control-allow-methods": "POST, OPTIONS" };
+
+    if (route.request().method() === "OPTIONS") {
+      return route.fulfill({ status: 204, headers });
+    }
+
+    calls += 1;
+    return route.fulfill({ status: 200, headers, contentType: "application/json", body: JSON.stringify({ ok: true }) });
+  });
+
+  await page.goto("/unsubscribe?e=cineva%40example.com&t=abc&lang=en");
+  await expect(page.getByText("cineva@example.com")).toBeVisible();
+  expect(calls).toBe(0);
+
+  await page.getByRole("button", { name: "Unsubscribe me" }).click();
+  await expect(page.getByText("you will no longer receive")).toBeVisible();
+  expect(calls).toBe(1);
+});
+
+test("the unsubscribe page rejects a link without a token", async ({ page }) => {
+  await page.goto("/unsubscribe?lang=en");
+  await expect(page.getByText("not valid")).toBeVisible();
+  await expect(page.getByRole("button", { name: /Dezabonează|Unsubscribe/ })).toHaveCount(0);
+});

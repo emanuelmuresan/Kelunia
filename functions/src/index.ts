@@ -10,10 +10,11 @@ import { logger } from "firebase-functions";
 import { defineSecret, defineString } from "firebase-functions/params";
 import { setGlobalOptions } from "firebase-functions/v2";
 import { onDocumentCreated, onDocumentWritten } from "firebase-functions/v2/firestore";
-import { HttpsError, onCall, type CallableRequest } from "firebase-functions/v2/https";
+import { HttpsError, onCall, onRequest, type CallableRequest } from "firebase-functions/v2/https";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { Resend } from "resend";
 import { authEmailCopy, type AuthEmailCopy } from "./auth-email-i18n";
+import { unsubscribeQuery, validUnsubscribeToken } from "./unsubscribe";
 import { inviteCopy, type InviteCopy } from "./invite-i18n";
 import { closureEmail, closureGraceDays, purgeLocation } from "./location-closure";
 import { createHash } from "node:crypto";
@@ -631,14 +632,15 @@ function deliveryIdForEmail(email: string) {
 }
 
 // Emailuri de newsletter: textul simplu și varianta HTML (cu textul scăpat de caractere speciale, ca să nu poată introduce HTML).
-function newsletterText(campaign: NewsletterCampaign) {
+function newsletterText(campaign: NewsletterCampaign, unsubscribeLink: string) {
   return [
     campaign.body ?? "",
     "",
     "---",
     "Kelunia",
     "Primești acest email pentru că te-ai înscris pentru actualizări Kelunia.",
-    "Pentru dezabonare, răspunde la acest email cu textul DEZABONARE.",
+    `Pentru dezabonare, deschide acest link: ${unsubscribeLink}`,
+    "Sau răspunde la acest email cu textul DEZABONARE.",
   ].join("\n");
 }
 
@@ -651,7 +653,7 @@ function escapeHtml(value: string) {
     .replace(/'/g, "&#039;");
 }
 
-function newsletterHtml(campaign: NewsletterCampaign) {
+function newsletterHtml(campaign: NewsletterCampaign, unsubscribeLink: string) {
   const body = escapeHtml(campaign.body ?? "").replace(/\n/g, "<br />");
 
   return [
@@ -659,7 +661,7 @@ function newsletterHtml(campaign: NewsletterCampaign) {
     '<h1 style="font-size:22px;margin:0 0 18px;color:#0f766e">Kelunia</h1>',
     `<div>${body}</div>`,
     '<hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0" />',
-    '<p style="font-size:13px;color:#667085;margin:0">Primești acest email pentru că te-ai înscris pentru actualizări Kelunia. Pentru dezabonare, răspunde la acest email cu textul DEZABONARE.</p>',
+    `<p style="font-size:13px;color:#667085;margin:0">Primești acest email pentru că te-ai înscris pentru actualizări Kelunia. <a href="${escapeHtml(unsubscribeLink)}" style="color:#667085">Dezabonează-te</a> sau răspunde la acest email cu textul DEZABONARE.</p>`,
     "</div>",
   ].join("");
 }
@@ -1656,6 +1658,8 @@ async function newsletterRecipients(recipientEmail = "") {
   const targetEmail = cleanEmail(recipientEmail);
 
   const subscriberSnapshot = await db.collection("newsletterSubscribers").limit(5000).get();
+  // Adresele dezabonate nu mai primesc nimic, nici dacă apar și ca mesaje vechi din pagina publică.
+  const unsubscribedEmails = new Set<string>();
 
   subscriberSnapshot.forEach((doc) => {
     const data = doc.data();
@@ -1663,6 +1667,8 @@ async function newsletterRecipients(recipientEmail = "") {
 
     if (data.status === "active" && data.unsubscribed !== true && validEmail(email)) {
       recipients.set(email, { email });
+    } else if (email) {
+      unsubscribedEmails.add(email);
     }
   });
 
@@ -1675,7 +1681,7 @@ async function newsletterRecipients(recipientEmail = "") {
   legacySnapshot.forEach((doc) => {
     const email = cleanEmail(doc.data().email);
 
-    if (validEmail(email)) {
+    if (validEmail(email) && !unsubscribedEmails.has(email)) {
       recipients.set(email, { email });
     }
   });
@@ -1685,6 +1691,58 @@ async function newsletterRecipients(recipientEmail = "") {
     ? allRecipients.filter((recipient) => recipient.email === targetEmail)
     : allRecipients;
 }
+
+// Adresa de bază a funcțiilor HTTP (folosită în antetul List-Unsubscribe).
+function functionsBaseUrl() {
+  return `https://europe-west1-${process.env.GCLOUD_PROJECT ?? "kelunia-890fe"}.cloudfunctions.net`;
+}
+
+// Funcția publică unsubscribeNewsletter: dezabonează o adresă de la newsletter, fără cont, dacă jetonul din link este valid.
+// POST (clientul de email, „un clic”, sau pagina /unsubscribe) dezabonează; GET doar trimite omul pe pagina de confirmare.
+export const unsubscribeNewsletter = onRequest(
+  {
+    region: "europe-west1",
+    invoker: "public",
+    cors: true,
+    secrets: [resendApiKey],
+    maxInstances: 5,
+  },
+  async (request, response) => {
+    const body = typeof request.body === "object" && request.body ? request.body as Record<string, unknown> : {};
+    const email = cleanEmail(request.query.e ?? body.e);
+    const token = String(request.query.t ?? body.t ?? "");
+
+    if (!validEmail(email) || !validUnsubscribeToken(email, token, resendApiKey.value())) {
+      response.status(400).json({ ok: false, error: "invalid-link" });
+      return;
+    }
+
+    if (request.method === "GET") {
+      response.redirect(302, appUrl(`/unsubscribe?${unsubscribeQuery(email, resendApiKey.value())}`));
+      return;
+    }
+
+    if (request.method !== "POST") {
+      response.status(405).json({ ok: false, error: "method-not-allowed" });
+      return;
+    }
+
+    await getFirestore().doc(`newsletterSubscribers/${encodeURIComponent(email)}`).set(
+      {
+        email,
+        emailKey: encodeURIComponent(email),
+        status: "inactive",
+        unsubscribed: true,
+        unsubscribedAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    logger.info("Newsletter unsubscribe", { subscriber: tokenDocumentId(email) });
+    response.json({ ok: true });
+  }
+);
 
 // Declanșator: la crearea unui răspuns într-o cerere Community îl trimite pe email (Resend) și marchează livrarea („sent” sau „failed”).
 export const sendCommunityApplicationReply = onDocumentCreated(
@@ -1828,11 +1886,15 @@ export const sendNewsletterCampaign = onDocumentCreated(
           from: emailFrom.value(),
           to: [recipient.email],
           replyTo: campaign.createdBy ? [campaign.createdBy] : undefined,
-          // Antet standard de dezabonare: clientul de email afișează „Dezabonează-te”; cererea ajunge pe support@.
-          headers: { "List-Unsubscribe": "<mailto:support@kelunia.com?subject=DEZABONARE>" },
+          // Antet standard de dezabonare (RFC 2369 / 8058): clientul de email afișează „Dezabonează-te”; un clic o dezabonează pe loc,
+          // fără cont; linkul mailto către support@ rămâne ca variantă de rezervă.
+          headers: {
+            "List-Unsubscribe": `<${functionsBaseUrl()}/unsubscribeNewsletter?${unsubscribeQuery(recipient.email, resendApiKey.value())}>, <mailto:support@kelunia.com?subject=DEZABONARE>`,
+            "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+          },
           subject: campaign.subject,
-          text: newsletterText(campaign),
-          html: newsletterHtml(campaign),
+          text: newsletterText(campaign, appUrl(`/unsubscribe?${unsubscribeQuery(recipient.email, resendApiKey.value())}`)),
+          html: newsletterHtml(campaign, appUrl(`/unsubscribe?${unsubscribeQuery(recipient.email, resendApiKey.value())}`)),
         });
 
         if (result.error) {
