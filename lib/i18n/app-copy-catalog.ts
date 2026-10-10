@@ -297,6 +297,8 @@ const uiCopy = {
     "msg.cannotRemoveSelf": "Contul tău nu se șterge de aici. Folosește Setări → Șterge contul.",
     // Zona „settings” - setări.
     "settings.selfRoleLocked": "Acesta este contul tău. Rolul îl poate schimba doar alt administrator.",
+    "users.emailNotVerified": "Email nevalidat încă · cont creat {{date}}",
+    "users.lastSeen": "Ultima conectare: {{date}}",
     "settings.lastAdminDeleteBlocked": "Ești singurul administrator al acestei locații. Numește mai întâi alt administrator (Utilizatori → Modifică) înainte să îți ștergi contul; altfel locația rămâne fără administrator.",
     "settings.tickerTextColor": "Culoarea textului",
     "settings.tickerTextAuto": "Automată (alb pe culori închise, negru pe culori deschise)",
@@ -841,6 +843,8 @@ const uiCopy = {
     "msg.cannotRemoveSelf": "Your own account cannot be removed from here. Use Settings → Delete account.",
     // Zona „settings” - setări.
     "settings.selfRoleLocked": "This is your account. Only another administrator can change your role.",
+    "users.emailNotVerified": "Email not verified yet · account created {{date}}",
+    "users.lastSeen": "Last seen: {{date}}",
     "settings.lastAdminDeleteBlocked": "You are the only administrator of this location. First appoint another administrator (Users → Edit) before deleting your account; otherwise the location is left without an administrator.",
     "settings.tickerTextColor": "Text color",
     "settings.tickerTextAuto": "Automatic (white on dark colors, black on light colors)",
@@ -1385,6 +1389,8 @@ const uiCopy = {
     "msg.cannotRemoveSelf": "Tu propia cuenta no se elimina desde aquí. Usa Ajustes → Eliminar cuenta.",
     // Zona „settings” - setări.
     "settings.selfRoleLocked": "Esta es tu cuenta. Solo otro administrador puede cambiar tu rol.",
+    "users.emailNotVerified": "Email aún sin validar · cuenta creada {{date}}",
+    "users.lastSeen": "Última conexión: {{date}}",
     "settings.lastAdminDeleteBlocked": "Eres el único administrador de esta ubicación. Nombra primero a otro administrador (Usuarios → Editar) antes de eliminar tu cuenta; si no, la ubicación se queda sin administrador.",
     "settings.tickerTextColor": "Color del texto",
     "settings.tickerTextAuto": "Automático (blanco sobre colores oscuros, negro sobre colores claros)",
@@ -1929,6 +1935,8 @@ const uiCopy = {
     "msg.cannotRemoveSelf": "Il tuo account non si elimina da qui. Usa Impostazioni → Elimina account.",
     // Zona „settings” - setări.
     "settings.selfRoleLocked": "Questo è il tuo account. Solo un altro amministratore può cambiare il tuo ruolo.",
+    "users.emailNotVerified": "Email non ancora verificata · account creato {{date}}",
+    "users.lastSeen": "Ultimo accesso: {{date}}",
     "settings.lastAdminDeleteBlocked": "Sei l'unico amministratore di questa sede. Nomina prima un altro amministratore (Utenti → Modifica) prima di eliminare il tuo account; altrimenti la sede resta senza amministratore.",
     "settings.tickerTextColor": "Colore del testo",
     "settings.tickerTextAuto": "Automatico (bianco su colori scuri, nero su colori chiari)",
@@ -2473,6 +2481,8 @@ const uiCopy = {
     "msg.cannotRemoveSelf": "Votre propre compte ne se supprime pas ici. Utilisez Réglages → Supprimer le compte.",
     // Zona „settings” - setări.
     "settings.selfRoleLocked": "Ceci est votre compte. Seul un autre administrateur peut changer votre rôle.",
+    "users.emailNotVerified": "Email pas encore validé · compte créé le {{date}}",
+    "users.lastSeen": "Dernière connexion : {{date}}",
     "settings.lastAdminDeleteBlocked": "Vous êtes le seul administrateur de ce lieu. Nommez d'abord un autre administrateur (Utilisateurs → Modifier) avant de supprimer votre compte ; sinon le lieu reste sans administrateur.",
     "settings.tickerTextColor": "Couleur du texte",
     "settings.tickerTextAuto": "Automatique (blanc sur les couleurs sombres, noir sur les couleurs claires)",
@@ -3017,6 +3027,8 @@ const uiCopy = {
     "msg.cannotRemoveSelf": "A sua própria conta não se elimina aqui. Use Definições → Eliminar conta.",
     // Zona „settings” - setări.
     "settings.selfRoleLocked": "Esta é a sua conta. Só outro administrador pode alterar a sua função.",
+    "users.emailNotVerified": "Email ainda não validado · conta criada em {{date}}",
+    "users.lastSeen": "Última ligação: {{date}}",
     "settings.lastAdminDeleteBlocked": "É o único administrador deste local. Nomeie primeiro outro administrador (Utilizadores → Editar) antes de eliminar a sua conta; caso contrário o local fica sem administrador.",
     "settings.tickerTextColor": "Cor do texto",
     "settings.tickerTextAuto": "Automático (branco em cores escuras, preto em cores claras)",

@@ -1314,6 +1314,59 @@ export const deleteMyAccount = onCall(
   }
 );
 
+// Funcția getLocationUsersActivity: pentru fereastra „Utilizatori”, întoarce din Firebase Auth starea conturilor unei locații:
+// dacă emailul e validat, când a fost creat contul și ultima conectare. Nu stochează nimic; proprietarul vede orice locație,
+// administratorul doar pe a lui.
+export const getLocationUsersActivity = onCall(
+  {
+    region: "europe-west1",
+    enforceAppCheck: true,
+  },
+  async (request) => {
+    if (!request.auth?.uid || request.auth.token.email_verified !== true) {
+      throw new HttpsError("unauthenticated", "Trebuie să fii autentificat cu email verificat.");
+    }
+
+    const locationId = cleanText((request.data as { locationId?: string } | undefined)?.locationId, 160);
+
+    if (!locationId) {
+      throw new HttpsError("invalid-argument", "Locația lipsește.");
+    }
+
+    const callerSnapshot = await db.doc(`users/${request.auth.uid}`).get();
+    const caller = callerSnapshot.exists ? callerSnapshot.data() as UserProfile : null;
+    const callerIsOwner = caller?.isOwner === true || cleanEmail(request.auth.token.email) === ownerAccountEmail;
+
+    if (!callerIsOwner && (normalizeRole(caller?.role) !== "manager" || cleanText(caller?.locationId, 160) !== locationId)) {
+      throw new HttpsError("permission-denied", "Poți vedea doar utilizatorii locației tale.");
+    }
+
+    const usersSnapshot = await db.collection("users").where("locationId", "==", locationId).limit(500).get();
+    const userIds = usersSnapshot.docs.map((item) => item.id);
+    const users: Record<string, { emailVerified: boolean; createdAt: number | null; lastSeenAt: number | null }> = {};
+
+    // Firebase Auth citește cel mult 100 de conturi pe cerere.
+    for (let index = 0; index < userIds.length; index += 100) {
+      const result = await getAuth().getUsers(userIds.slice(index, index + 100).map((uid) => ({ uid })));
+
+      result.users.forEach((account) => {
+        const times = [account.metadata.lastSignInTime, account.metadata.lastRefreshTime]
+          .map((value) => (value ? Date.parse(value) : Number.NaN))
+          .filter((value) => Number.isFinite(value));
+        const created = Date.parse(account.metadata.creationTime);
+
+        users[account.uid] = {
+          emailVerified: account.emailVerified,
+          createdAt: Number.isFinite(created) ? created : null,
+          lastSeenAt: times.length > 0 ? Math.max(...times) : null,
+        };
+      });
+    }
+
+    return { users };
+  }
+);
+
 // Funcția removeLocationUser: un administrator (sau proprietarul) șterge complet contul unui utilizator al locației:
 // profilul, contul Firebase Auth (emailul poate fi folosit din nou oriunde), jetoanele push; rezervările lui rămân, anonimizate.
 // Fără contul Auth, emailul ar rămâne „ocupat” după ștergerea profilului. Proprietarul platformei și propriul cont nu se pot șterge de aici.

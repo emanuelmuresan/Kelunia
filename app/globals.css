@@ -2084,6 +2084,16 @@ img {
   gap: 8px;
 }
 
+.user-activity {
+  display: block;
+  color: var(--muted);
+}
+
+.user-activity.pending {
+  color: var(--amber);
+  font-weight: 650;
+}
+
 .user-group-edit {
   display: grid;
   gap: 4px;

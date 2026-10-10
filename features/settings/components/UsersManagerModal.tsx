@@ -5,6 +5,7 @@
 import { useState } from "react";
 
 import type { AppLanguage, UserRole } from "@/context/AuthContext";
+import { useUsersActivity } from "@/features/users/hooks/useUsersActivity";
 import { appText, type UiCopyKey } from "@/lib/i18n/app-copy-catalog";
 import { roomAccessLabel } from "@/lib/room-access";
 import type { GroupItem, ManagedUser, RoomAccessMode, RoomItem } from "@/lib/types/domain";
@@ -69,6 +70,27 @@ export function UsersManagerModal({
   const t = (key: UiCopyKey) => appText(language, key);
   const [editing, setEditing] = useState<Record<string, boolean>>({});
   const [drafts, setDrafts] = useState<Record<string, ManagedUserDraft>>({});
+  const activity = useUsersActivity(currentLocationId, canManageMembers);
+
+  // Data și ora în limba interfeței.
+  function formatMoment(milliseconds: number) {
+    return new Intl.DateTimeFormat(language, { dateStyle: "medium", timeStyle: "short" }).format(new Date(milliseconds));
+  }
+
+  // Starea unui cont: emailul încă nevalidat (nu a putut intra) sau ultima conectare.
+  function activityText(userId: string) {
+    const info = activity[userId];
+
+    if (!info) {
+      return "";
+    }
+
+    if (!info.emailVerified) {
+      return t("users.emailNotVerified").replace("{{date}}", info.createdAt ? formatMoment(info.createdAt) : "-");
+    }
+
+    return info.lastSeenAt ? t("users.lastSeen").replace("{{date}}", formatMoment(info.lastSeenAt)) : "";
+  }
 
   // Ciorna unui utilizator (cea în editare sau valorile curente), deschiderea și închiderea editorului și schimbarea ciornei.
   function draftFor(managedUser: ManagedUser): ManagedUserDraft {
@@ -191,6 +213,11 @@ export function UsersManagerModal({
                   <span>
                     {managedUser.email} · {managedUser.locationName || t("settings.notSet")} · {managedUser.groupName || t("settings.notChosen")}
                   </span>
+                  {activityText(managedUser.id) && (
+                    <small className={`user-activity${activity[managedUser.id]?.emailVerified === false ? " pending" : ""}`}>
+                      {activityText(managedUser.id)}
+                    </small>
+                  )}
                   {isSelf && <small className="user-self-note">{t("settings.selfRoleLocked")}</small>}
 
                   {/* Grupul: se alege dintre grupurile locației; doar administratorii pot rămâne fără grup. */}
