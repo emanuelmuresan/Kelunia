@@ -131,8 +131,8 @@ export function UsersManagerModal({
       await onUpdateManagedUserRoomAccess({ ...managedUser, role: draft.role }, nextRoomAccess, nextAllowedRoomIds);
     }
 
-    // Grupul se schimbă la final, după rol, ca rolul nou să nu rescrie grupul vechi; administratorii nu au grup.
-    if (draft.role !== "manager" && draft.groupName !== managedUser.groupName) {
+    // Grupul se schimbă la final, după rol, ca rolul nou să nu rescrie grupul vechi.
+    if (draft.groupName !== managedUser.groupName) {
       await onUpdateManagedUserGroup({ ...managedUser, role: draft.role }, draft.groupName);
     }
 
@@ -167,7 +167,7 @@ export function UsersManagerModal({
             const draftAllowedRoomIds = draftRoomAccess === "selected" ? userDraft.allowedRoomIds : [];
             const userDraftChanged =
               draftRole !== managedUser.role ||
-              (draftRole !== "manager" && userDraft.groupName !== managedUser.groupName) ||
+              (isEditingUser && userDraft.groupName !== managedUser.groupName) ||
               draftRoomAccess !== managedUser.roomAccess ||
               !sameRoomIds(draftAllowedRoomIds, managedUser.allowedRoomIds);
             const accessDisabled =
@@ -193,8 +193,8 @@ export function UsersManagerModal({
                   </span>
                   {isSelf && <small className="user-self-note">{t("settings.selfRoleLocked")}</small>}
 
-                  {/* Grupul: se alege dintre grupurile locației (nu pentru administratori). */}
-                  {isEditingUser && draftRole !== "manager" && (
+                  {/* Grupul: se alege dintre grupurile locației; doar administratorii pot rămâne fără grup. */}
+                  {isEditingUser && (
                     <label className="user-group-edit">
                       <small>{groupsLabel}</small>
                       <select
@@ -204,7 +204,7 @@ export function UsersManagerModal({
                         {userDraft.groupName && !groups.some((group) => group.name === userDraft.groupName) && (
                           <option value={userDraft.groupName}>{userDraft.groupName}</option>
                         )}
-                        {!userDraft.groupName && <option value="">{t("settings.notChosen")}</option>}
+                        {(draftRole === "manager" || !userDraft.groupName) && <option value="">{t("settings.notChosen")}</option>}
                         {groups.map((group) => (
                           <option key={group.id} value={group.name}>{group.name}</option>
                         ))}

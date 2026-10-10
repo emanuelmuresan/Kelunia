@@ -169,9 +169,10 @@ export function useManagedUserActions({
     }
   }
 
-  // Mută un utilizator în alt grup al locației (administratorii nu au grup). Rezervările lui viitoare se fac pentru noul grup.
+  // Mută un utilizator în alt grup al locației. Administratorii pot și să nu aibă grup; ceilalți trebuie să aibă unul.
+  // Rezervările lui viitoare se fac pentru noul grup.
   async function updateManagedUserGroup(managedUser: ManagedUser, nextGroupName: string) {
-    if (!canManageMembers || managedUser.isOwner || managedUser.role === "manager" || managedUser.locationId !== currentLocationId) {
+    if (!canManageMembers || managedUser.isOwner || managedUser.locationId !== currentLocationId) {
       return;
     }
 
@@ -184,7 +185,7 @@ export function useManagedUserActions({
 
     const groupName = nextGroupName.trim();
 
-    if (!groups.some((group) => group.name === groupName)) {
+    if (!(groupName === "" && managedUser.role === "manager") && !groups.some((group) => group.name === groupName)) {
       setSettingsError(msg("msg.groupNoLongerExists"));
       return;
     }
