@@ -169,6 +169,61 @@ async function waitForUserDocument(userDocRef: DocumentReference<DocumentData>) 
 // Marcaj în sessionStorage: dacă citirea profilului a eșuat, pagina se reîncarcă o singură dată.
 const profileReloadKey = "kelunia-profile-reloaded";
 
+// Canalul prin care filele deschise ale aplicației își răspund una alteia (pentru a număra filele la diagnosticarea erorii de profil).
+const tabProbeChannelName = "kelunia-tab-probe";
+
+// Câte alte file ale aplicației sunt deschise acum (răspund în 400 ms).
+function countOtherTabs() {
+  return new Promise<number>((resolve) => {
+    if (typeof BroadcastChannel === "undefined") {
+      resolve(0);
+      return;
+    }
+
+    const channel = new BroadcastChannel(tabProbeChannelName);
+    let replies = 0;
+    channel.onmessage = (event) => {
+      if (event.data === "pong") {
+        replies += 1;
+      }
+    };
+    channel.postMessage("ping");
+    window.setTimeout(() => {
+      channel.close();
+      resolve(replies);
+    }, 400);
+  });
+}
+
+// Detalii scurte pentru ecranul de eroare al profilului, ca o problemă rară să poată fi diagnosticată dintr-o captură de ecran:
+// starea jetonului (emailul verificat în jeton), o citire directă prin API-ul REST cu același jeton (dacă reușește, clientul Firestore
+// din pagină este cel blocat, nu regulile sau jetonul) și numărul de file deschise.
+async function describeProfileFailure(userData: User) {
+  const parts = [`online=${navigator.onLine}`];
+
+  try {
+    const token = await userData.getIdTokenResult(true);
+    parts.push(`email_verified=${String(token.claims.email_verified)}`, `jeton=${token.issuedAtTime.slice(11, 19)}`);
+
+    try {
+      const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? "";
+      const response = await fetch(
+        `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${userData.uid}`,
+        { headers: { Authorization: `Bearer ${token.token}` } }
+      );
+      parts.push(`rest=${response.status}`);
+    } catch {
+      parts.push("rest=retea");
+    }
+  } catch (tokenError) {
+    parts.push(`jeton=${String((tokenError as { code?: string }).code ?? "eroare")}`);
+  }
+
+  parts.push(`file=${(await countOtherTabs()) + 1}`);
+
+  return parts.join(" · ");
+}
+
 // Citește profilul propriu. Dacă Firestore îl refuză (jeton vechi sau invalidat, de exemplu după resetarea parolei,
 // sau o cerere trimisă înainte ca App Check să fie gata), reîmprospătează jetonul și încearcă din nou de câteva ori
 // înainte de a renunța; dacă jetonul nu se mai poate reîmprospăta (sesiune revocată), utilizatorul este deconectat.
@@ -208,6 +263,22 @@ export const AuthProvider =({ children }: { children: React.ReactNode }) => {
   const [profileError, setProfileError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
   const authStateResolvedRef = useRef(false);
+
+  // Răspunde la sondajele altor file (vezi describeProfileFailure).
+  useEffect(() => {
+    if (typeof BroadcastChannel === "undefined") {
+      return;
+    }
+
+    const channel = new BroadcastChannel(tabProbeChannelName);
+    channel.onmessage = (event) => {
+      if (event.data === "ping") {
+        channel.postMessage("pong");
+      }
+    };
+
+    return () => channel.close();
+  }, []);
 
   // Dacă Firebase nu răspunde în 6 secunde, aplicația continuă ca neconectată în loc să rămână blocată.
   useEffect(() => {
@@ -411,7 +482,15 @@ export const AuthProvider =({ children }: { children: React.ReactNode }) => {
           // fără sessionStorage nu se reîncarcă automat
         }
 
-        setProfileError(String((error as { code?: string }).code ?? (error as { message?: string }).message ?? "necunoscută"));
+        const errorCode = String((error as { code?: string }).code ?? (error as { message?: string }).message ?? "necunoscută");
+        setProfileError(errorCode);
+
+        // Detaliile de diagnostic se adaugă după ce sunt calculate (câteva sute de milisecunde).
+        void describeProfileFailure(userData).then((details) => {
+          if (auth.currentUser?.uid === userData.uid) {
+            setProfileError(`${errorCode} (${details})`);
+          }
+        });
 
         // Dacă între timp sesiunea a fost închisă (jeton revocat), ascultătorul de mai sus a golit deja starea.
         if (auth.currentUser?.uid === userData.uid) {
