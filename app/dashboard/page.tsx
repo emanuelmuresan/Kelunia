@@ -781,6 +781,7 @@ export default function KeluniaPage() {
     showLicenseModal,
     toggleLicenseCodeActive,
     updateLicenseCode,
+    updateLocationLicense,
     updateLicenseDraft,
   } = useLicenseCodes({
     db,
@@ -1594,6 +1595,7 @@ export default function KeluniaPage() {
         onSendEmail={sendLicenseEmail}
         onToggleActive={toggleLicenseCodeActive}
         onUpdate={updateLicenseCode}
+        onUpdateLocation={updateLocationLicense}
         onRemove={deleteLicenseCode}
         language={language}
       />

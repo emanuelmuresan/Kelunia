@@ -37,6 +37,7 @@ interface LicenseCodesModalProps {
   onSendEmail: (item: LicenseCodeItem, toEmail: string, message: string) => Promise<void>;
   onToggleActive: (item: LicenseCodeItem) => void;
   onUpdate: (item: LicenseCodeItem, draft: LicenseCodeUpdateDraft) => Promise<void>;
+  onUpdateLocation: (location: LocationItem, draft: LicenseCodeUpdateDraft) => Promise<void>;
   onRemove: (item: LicenseCodeItem) => Promise<void>;
   language?: SupportedLocale;
 }
@@ -196,6 +197,43 @@ function emailStatusLabel(request?: LicenseEmailRequestItem) {
   return `in curs catre ${request.toEmail}`;
 }
 
+// Ciorna de editare pentru o locație fără cod de licență (datele vin direct din documentul locației).
+function locationEditDraftFor(location: LocationItem): LicenseCodeUpdateDraft {
+  const trialEnd = dateFromFirestoreValue(location.trialEndsAt);
+  const subscriptionEnd = dateFromFirestoreValue(location.subscriptionExpiresAt);
+  const end = location.billingStatus === "trialing" ? trialEnd ?? subscriptionEnd : subscriptionEnd ?? trialEnd;
+
+  return {
+    plan: location.plan ?? "trial",
+    billingStatus: location.billingStatus ?? "trialing",
+    locationName: location.name,
+    address: location.address,
+    expiryDate: dateInputValue(end),
+    active: true,
+  };
+}
+
+// Timpul rămas al unei locații fără cod de licență.
+function formatLocationRemaining(location: LocationItem) {
+  const end = locationEditDraftFor(location).expiryDate;
+
+  if (!end) {
+    return "nespecificat";
+  }
+
+  if (end === lifetimeExpiryKey) {
+    return "pe viață";
+  }
+
+  const days = Math.ceil((new Date(`${end}T12:00:00`).getTime() - Date.now()) / (24 * 60 * 60 * 1000));
+
+  if (days < 0) {
+    return Math.abs(days) === 1 ? "expirata de 1 zi" : `expirata de ${Math.abs(days)} zile`;
+  }
+
+  return days === 0 ? "expira azi" : days === 1 ? "mai are 1 zi" : `mai are ${days} zile`;
+}
+
 // Ciorna de editare, preluată din licență și din locația ei.
 function editDraftFor(item: LicenseCodeItem, location?: LocationItem): LicenseCodeUpdateDraft {
   return {
@@ -225,6 +263,7 @@ export function LicenseCodesModal({
   onSendEmail,
   onToggleActive,
   onUpdate,
+  onUpdateLocation,
   onRemove,
   language = "ro",
 }: LicenseCodesModalProps) {
@@ -238,6 +277,7 @@ export function LicenseCodesModal({
     message: "",
   });
   const [editingLicense, setEditingLicense] = useState<LicenseCodeItem | null>(null);
+  const [editingLocation, setEditingLocation] = useState<LocationItem | null>(null);
   const [editDraft, setEditDraft] = useState<LicenseCodeUpdateDraft | null>(null);
 
   // Fereastra închisă nu se randează; apoi se calculează numerele din sumar (disponibile, folosite, oprite).
@@ -248,14 +288,24 @@ export function LicenseCodesModal({
   const availableCount = licenseCodes.filter((item) => item.active && !item.claimed && !item.used).length;
   const usedCount = licenseCodes.filter((item) => item.used).length;
   const inactiveCount = licenseCodes.filter((item) => !item.active).length;
+  // Locațiile deschise direct de proprietar nu au un document în licenses; le arătăm separat, ca să nu lipsească din control.
+  const licensedLocationIds = new Set(licenseCodes.map((item) => item.locationId).filter(Boolean));
+  const locationsWithoutCode = locations.filter((location) => !licensedLocationIds.has(location.id));
 
   // Acțiuni care cer confirmare înainte de scriere: trimitere email, salvare, ștergere și generare.
   function linkedLocationFor(item: LicenseCodeItem) {
     return locations.find((location) => location.id === item.locationId);
   }
 
+  function openLocationEdit(location: LocationItem) {
+    setEditingLicense(null);
+    setEditingLocation(location);
+    setEditDraft(locationEditDraftFor(location));
+  }
+
   function openEdit(item: LicenseCodeItem) {
     const location = linkedLocationFor(item);
+    setEditingLocation(null);
     setEditingLicense(item);
     setEditDraft(editDraftFor(item, location));
   }
@@ -278,6 +328,17 @@ export function LicenseCodesModal({
   }
 
   async function saveEdit() {
+    if (editingLocation && editDraft) {
+      if (!(await confirmAction({ message: t("license.confirmSave").replace("{{code}}", editingLocation.name) }))) {
+        return;
+      }
+
+      await onUpdateLocation(editingLocation, editDraft);
+      setEditingLocation(null);
+      setEditDraft(null);
+      return;
+    }
+
     if (!editingLicense || !editDraft) {
       return;
     }
@@ -481,6 +542,34 @@ export function LicenseCodesModal({
             )}
           </div>
 
+          {/* Locațiile fără cod de licență (deschise direct de proprietar). */}
+          {locationsWithoutCode.length > 0 && (
+            <>
+              <div className="mini-section-head code-list-head">
+                <h3>{t("license.noCodeLocations")}</h3>
+              </div>
+              <p className="empty-line">{t("license.noCodeLocationsHint")}</p>
+              <div className="mini-list license-list">
+                {locationsWithoutCode.map((location) => (
+                  <div className="license-row compact-license-row" key={location.id}>
+                    <div className="license-row-main">
+                      <strong>{location.name}</strong>
+                      <small>{location.address || "fara adresa"}</small>
+                      <small>
+                        {planLabel(location.plan ?? "trial")} · {billingStatusLabel(location.billingStatus ?? "trialing")} · {formatLocationRemaining(location)}
+                      </small>
+                    </div>
+                    <div className="license-row-actions">
+                      <button className="primary-button compact" onClick={() => openLocationEdit(location)} type="button">
+                        {t("settings.edit")}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
           {/* Mesajele de eroare sau succes. */}
           {error && <p className="error-line manager-alert">{error}</p>}
           {message && <p className="success-line manager-alert">{message}</p>}
@@ -493,8 +582,8 @@ export function LicenseCodesModal({
       </div>
 
       {/* Fereastra de modificare a licenței. */}
-      {editingLicense && editDraft && (
-        <div className="modal-backdrop modal-backdrop-nested" role="presentation" onMouseDown={() => setEditingLicense(null)}>
+      {(editingLicense || editingLocation) && editDraft && (
+        <div className="modal-backdrop modal-backdrop-nested" role="presentation" onMouseDown={() => { setEditingLicense(null); setEditingLocation(null); }}>
           <section
             className="modal-card small-card"
             role="dialog"
@@ -505,9 +594,9 @@ export function LicenseCodesModal({
             <div className="section-heading">
               <div>
                 <span className="eyebrow">{t("license.title")}</span>
-                <h2>{editingLicense.code}</h2>
+                <h2>{editingLicense?.code ?? editingLocation?.name}</h2>
               </div>
-              <button className="icon-button" onClick={() => setEditingLicense(null)} type="button" aria-label={t("booking.close")}>
+              <button className="icon-button" onClick={() => { setEditingLicense(null); setEditingLocation(null); }} type="button" aria-label={t("booking.close")}>
                 x
               </button>
             </div>
@@ -575,51 +664,59 @@ export function LicenseCodesModal({
                 {t("settings.lifetime")}
               </label>
 
-              <label className="toggle-row">
-                <input
-                  type="checkbox"
-                  checked={editDraft.active}
-                  onChange={(event) => setEditDraft({ ...editDraft, active: event.target.checked })}
-                />
-                {t("settings.active")}
-              </label>
+              {editingLicense && (
+                <label className="toggle-row">
+                  <input
+                    type="checkbox"
+                    checked={editDraft.active}
+                    onChange={(event) => setEditDraft({ ...editDraft, active: event.target.checked })}
+                  />
+                  {t("settings.active")}
+                </label>
+              )}
             </div>
 
-            {/* Date doar pentru citire: cod, client, expirare. */}
-            <div className="settings-summary-list compact-summary-list">
-              <div>
-                <span>{t("settings.codes")}</span>
-                <strong>{editingLicense.code}</strong>
+            {/* Date doar pentru citire: cod, client, expirare (doar pentru licențe cu cod). */}
+            {editingLicense && (
+              <div className="settings-summary-list compact-summary-list">
+                <div>
+                  <span>{t("settings.codes")}</span>
+                  <strong>{editingLicense.code}</strong>
+                </div>
+                <div>
+                  <span>{t("license.client")}</span>
+                  <strong>{editingLicense.usedBy || editingLicense.claimedBy || t("license.noneAssigned")}</strong>
+                </div>
+                <div>
+                  <span>{t("license.expires")}</span>
+                  <strong>{formatDate(endDateForLicense(editingLicense, linkedLocationFor(editingLicense)))}</strong>
+                </div>
               </div>
-              <div>
-                <span>{t("license.client")}</span>
-                <strong>{editingLicense.usedBy || editingLicense.claimedBy || t("license.noneAssigned")}</strong>
-              </div>
-              <div>
-                <span>{t("license.expires")}</span>
-                <strong>{formatDate(endDateForLicense(editingLicense, linkedLocationFor(editingLicense)))}</strong>
-              </div>
-            </div>
+            )}
 
             {/* Ștergere, oprire/pornire (o licență folosită nu mai poate fi oprită) și salvare. */}
             <div className="modal-actions split-actions">
-              <button className="danger-button" disabled={working} onClick={() => removeLicense(editingLicense)} type="button">
-                {t("action.delete")}
-              </button>
-              <button
-                className="secondary-button"
-                disabled={working || editingLicense.used}
-                onClick={async () => {
-                  if (await confirmAction({ message: `${editingLicense.active ? "Oprești" : "Activezi"} licența ${editingLicense.code}?` })) {
-                    onToggleActive(editingLicense);
-                    setEditingLicense(null);
-                    setEditDraft(null);
-                  }
-                }}
-                type="button"
-              >
-                {editingLicense.active ? t("action.deactivate") : t("action.activate")}
-              </button>
+              {editingLicense && (
+                <>
+                  <button className="danger-button" disabled={working} onClick={() => removeLicense(editingLicense)} type="button">
+                    {t("action.delete")}
+                  </button>
+                  <button
+                    className="secondary-button"
+                    disabled={working || editingLicense.used}
+                    onClick={async () => {
+                      if (await confirmAction({ message: `${editingLicense.active ? "Oprești" : "Activezi"} licența ${editingLicense.code}?` })) {
+                        onToggleActive(editingLicense);
+                        setEditingLicense(null);
+                        setEditDraft(null);
+                      }
+                    }}
+                    type="button"
+                  >
+                    {editingLicense.active ? t("action.deactivate") : t("action.activate")}
+                  </button>
+                </>
+              )}
               <button className="primary-button" disabled={working} onClick={saveEdit} type="button">
                 {t("action.save")}
               </button>

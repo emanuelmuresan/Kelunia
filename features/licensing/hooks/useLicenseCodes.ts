@@ -24,7 +24,7 @@ import {
 
 import { lifetimeExpiryDate, normalizeLicenseCode } from "@/lib/licensing";
 import type { SupportedLocale } from "@/lib/i18n/app-copy-catalog";
-import type { BillingStatus, LicenseCodeItem, LocationPlan } from "@/lib/types/domain";
+import type { BillingStatus, LicenseCodeItem, LocationItem, LocationPlan } from "@/lib/types/domain";
 
 // Ciorna unui cod nou: plan, locație, adresă și valabilitate în zile.
 export type LicenseCodeDraft = {
@@ -398,6 +398,56 @@ export function useLicenseCodes({ db, isOwner, user, language = "ro" }: UseLicen
     }
   }
 
+  // Modifică licența unei locații deschise direct de proprietar (fără cod de licență): scrie doar pe documentul locației.
+  async function updateLocationLicense(location: LocationItem, draft: LicenseCodeUpdateDraft) {
+    if (!isOwner || !user) {
+      return;
+    }
+
+    const locationName = draft.locationName.trim();
+    const address = draft.address.trim();
+    const expiresAt = draft.expiryDate ? new Date(`${draft.expiryDate}T12:00:00`) : null;
+
+    if (!locationName) {
+      setLicenseError("Scrie numele locatiei.");
+      return;
+    }
+
+    if (!address) {
+      setLicenseError("Scrie adresa locatiei.");
+      return;
+    }
+
+    if (expiresAt && Number.isNaN(expiresAt.getTime())) {
+      setLicenseError("Data de expirare nu este valida.");
+      return;
+    }
+
+    setLicenseError("");
+    setLicenseMessage("");
+    setLicenseWorking(true);
+
+    try {
+      await updateDoc(doc(db, "locations", location.id), {
+        name: locationName,
+        address,
+        officialAddress: address,
+        plan: draft.plan,
+        billingStatus: draft.billingStatus,
+        trialEndsAt: draft.billingStatus === "trialing" && expiresAt ? Timestamp.fromDate(expiresAt) : null,
+        subscriptionExpiresAt: draft.billingStatus !== "trialing" && expiresAt ? Timestamp.fromDate(expiresAt) : null,
+        updatedBy: user.email ?? "",
+        updatedAt: Timestamp.now(),
+      });
+      setLicenseMessage("Licenta locatiei a fost actualizata.");
+    } catch (error) {
+      console.error("Licenta locatiei nu a putut fi actualizata:", error);
+      setLicenseError("Licenta locatiei nu a putut fi actualizata. Verifica regulile Firebase.");
+    } finally {
+      setLicenseWorking(false);
+    }
+  }
+
   // Șterge definitiv documentul licenței (deleteDoc), spre deosebire de restul datelor care se șterg logic; doar proprietarul.
   async function deleteLicenseCode(item: LicenseCodeItem) {
     if (!isOwner) {
@@ -476,6 +526,7 @@ export function useLicenseCodes({ db, isOwner, user, language = "ro" }: UseLicen
     showLicenseModal,
     toggleLicenseCodeActive,
     updateLicenseCode,
+    updateLocationLicense,
     deleteLicenseCode,
     updateLicenseDraft,
   };

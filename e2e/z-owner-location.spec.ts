@@ -46,4 +46,14 @@ test("the owner opens a location without an administrator and can invite one rig
   await expect(codes).toBeVisible();
   await expect(codes.locator("select").nth(1)).toHaveValue("manager");
   await expect(codes.getByPlaceholder(/email/i).first()).toBeVisible();
+
+  // Locația fără cod apare în Control licențe, în secțiunea ei, și licența i se poate modifica de acolo.
+  await codes.getByRole("button", { name: /Gata|Închide|Anulează/ }).last().click();
+  await page.locator(".owner-tool-card", { hasText: "Control licente" }).getByRole("button", { name: "Deschide" }).click();
+  const licenses = page.locator('[aria-label="Licențe"]');
+  await expect(licenses.getByText("Locații fără cod de licență")).toBeVisible();
+  const row = licenses.locator(".license-row", { hasText: "Sala Noua E2E" });
+  await expect(row).toContainText("pe viață");
+  await row.getByRole("button", { name: "Modifică" }).click();
+  await expect(page.locator('[aria-label="Modifică licența"]')).toBeVisible();
 });
