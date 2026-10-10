@@ -1,6 +1,8 @@
 // Teste e2e pentru comportamente comune ale interfeței: ștergere cu „Anulează”, confirmare la renunțarea la modificări, limba invitației,
 // drepturile administratorului, banda de evenimente, închiderea locației, blocurile din „Pagini”, ascunderea listei și traducerea mesajelor.
 import { expect, test, type Page } from "@playwright/test";
+import { getApps, initializeApp } from "firebase-admin/app";
+import { getFirestore } from "firebase-admin/firestore";
 
 import { blockOf, openSettingsSection } from "./helpers";
 
@@ -263,4 +265,34 @@ test("messages follow the chosen language", async ({ page }) => {
   const toast = page.locator(".toast", { hasText: "The group was deleted" });
   await expect(toast).toBeVisible();
   await expect(toast.getByRole("button", { name: "Undo" })).toBeVisible();
+});
+
+// Administratorul poate muta un utilizator în alt grup al locației (e verificat în baza de date, apoi grupul se pune la loc).
+test("an administrator can move a user to another group", async ({ page }) => {
+  const db = getFirestore(getApps()[0] ?? initializeApp({ projectId: "demo-kelunia" }));
+  const memberRef = db.collection("users").doc("e2e-member-uid-000000000001");
+  const before = (await memberRef.get()).data()?.groupName as string;
+
+  // Un grup propriu testului (un test anterior poate șterge grupurile din seed).
+  const groupRef = db.collection("groups").doc("e2e-group-move");
+  await groupRef.set({ name: "Grupa Mutare", locationId: "loc-e2e", locationName: "Sala E2E", color: "#1d4ed8", createdAt: new Date(), createdBy: "seed@e2e.test" });
+
+  // Testele dinaintea acestuia pot lăsa administratorul pe altă limbă; textele de aici sunt în română.
+  await db.collection("users").doc("e2e-admin-uid-0000000000001").update({ language: "ro" });
+  await loginAsAdmin(page);
+  const access = await openSettingsSection(page, "Acces");
+  await blockOf(access, "Utilizatori").getByRole("button", { name: "Deschide" }).click();
+
+  const dialog = page.locator('[aria-labelledby="users-manager-title"]');
+  const row = dialog.locator(".user-row", { hasText: "member@e2e.test" });
+  await row.getByRole("button", { name: "Modifică" }).click();
+  await row.locator(".user-group-edit select").selectOption("Grupa Mutare");
+  await row.getByRole("button", { name: "Salvează" }).click();
+
+  try {
+    await expect.poll(async () => (await memberRef.get()).data()?.groupName).toBe("Grupa Mutare");
+  } finally {
+    await memberRef.update({ groupName: before, group: before });
+    await groupRef.delete();
+  }
 });

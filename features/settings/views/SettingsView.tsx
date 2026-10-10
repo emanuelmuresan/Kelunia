@@ -107,6 +107,7 @@ type SettingsViewProps = {
   onRemoveSpaceItem: (kind: SpaceKind, itemId: string) => void;
   onUpdateManagedUserRole: (managedUser: ManagedUser, role: UserRole) => void | Promise<void>;
   onUpdateManagedUserRoomAccess: (managedUser: ManagedUser, roomAccess: RoomAccessMode, allowedRoomIds: string[]) => void | Promise<void>;
+  onUpdateManagedUserGroup: (managedUser: ManagedUser, groupName: string) => void | Promise<void>;
   onRemoveManagedUser: (managedUser: ManagedUser) => void;
   onMarkCommunityApplicationReviewed: (applicationId: string) => void;
   onSendCommunityApplicationReply: (application: CommunityApplication, body: string) => Promise<void>;
@@ -180,6 +181,7 @@ export function SettingsView({
   onRemoveSpaceItem,
   onUpdateManagedUserRole,
   onUpdateManagedUserRoomAccess,
+  onUpdateManagedUserGroup,
   onRemoveManagedUser,
   onMarkCommunityApplicationReviewed,
   onSendCommunityApplicationReply,
@@ -508,11 +510,14 @@ export function SettingsView({
         managedUsers={visibleManagedUsers}
         currentUserId={user?.uid ?? ""}
         rooms={rooms}
+        groups={groups}
+        groupsLabel={groupsLabel}
         canManageMembers={canManageMembers}
         currentLocationId={currentLocationId}
         onClose={() => setUsersManagerOpen(false)}
         onUpdateManagedUserRole={onUpdateManagedUserRole}
         onUpdateManagedUserRoomAccess={onUpdateManagedUserRoomAccess}
+        onUpdateManagedUserGroup={onUpdateManagedUserGroup}
         onRemoveManagedUser={onRemoveManagedUser}
       />
     )}

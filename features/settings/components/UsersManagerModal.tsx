@@ -1,17 +1,18 @@
 "use client";
 
-// Fereastra „Utilizatori” din Setări > Acces: tabelul utilizatorilor locației, cu schimbarea rolului, a accesului la camere și ștergerea profilului.
+// Fereastra „Utilizatori” din Setări > Acces: tabelul utilizatorilor locației, cu schimbarea rolului, a grupului, a accesului la camere și ștergerea profilului.
 // Proprietarul și propriul cont nu pot fi modificate; scrierile sunt făcute de useManagedUserActions.
 import { useState } from "react";
 
 import type { AppLanguage, UserRole } from "@/context/AuthContext";
 import { appText, type UiCopyKey } from "@/lib/i18n/app-copy-catalog";
 import { roomAccessLabel } from "@/lib/room-access";
-import type { ManagedUser, RoomAccessMode, RoomItem } from "@/lib/types/domain";
+import type { GroupItem, ManagedUser, RoomAccessMode, RoomItem } from "@/lib/types/domain";
 
-// Ciorna modificărilor unui utilizator: rol și acces la camere.
+// Ciorna modificărilor unui utilizator: rol, grup și acces la camere.
 type ManagedUserDraft = {
   role: UserRole;
+  groupName: string;
   roomAccess: RoomAccessMode;
   allowedRoomIds: string[];
 };
@@ -22,6 +23,8 @@ type UsersManagerModalProps = {
   managedUsers: ManagedUser[];
   currentUserId: string;
   rooms: RoomItem[];
+  groups: GroupItem[];
+  groupsLabel: string;
   canManageMembers: boolean;
   currentLocationId: string;
   onClose: () => void;
@@ -31,6 +34,7 @@ type UsersManagerModalProps = {
     roomAccess: RoomAccessMode,
     allowedRoomIds: string[]
   ) => void | Promise<void>;
+  onUpdateManagedUserGroup: (managedUser: ManagedUser, groupName: string) => void | Promise<void>;
   onRemoveManagedUser: (managedUser: ManagedUser) => void;
 };
 
@@ -51,11 +55,14 @@ export function UsersManagerModal({
   managedUsers,
   currentUserId,
   rooms,
+  groups,
+  groupsLabel,
   canManageMembers,
   currentLocationId,
   onClose,
   onUpdateManagedUserRole,
   onUpdateManagedUserRoomAccess,
+  onUpdateManagedUserGroup,
   onRemoveManagedUser,
 }: UsersManagerModalProps) {
   // Starea: ce utilizatori sunt în editare și ciornele lor.
@@ -67,6 +74,7 @@ export function UsersManagerModal({
   function draftFor(managedUser: ManagedUser): ManagedUserDraft {
     return drafts[managedUser.id] ?? {
       role: managedUser.role,
+      groupName: managedUser.groupName,
       roomAccess: managedUser.role === "manager" ? "all" : managedUser.roomAccess,
       allowedRoomIds: managedUser.role === "manager" ? [] : managedUser.allowedRoomIds,
     };
@@ -77,6 +85,7 @@ export function UsersManagerModal({
       ...current,
       [managedUser.id]: {
         role: managedUser.role,
+        groupName: managedUser.groupName,
         roomAccess: managedUser.role === "manager" ? "all" : managedUser.roomAccess,
         allowedRoomIds: managedUser.role === "manager" ? [] : managedUser.allowedRoomIds,
       },
@@ -122,6 +131,11 @@ export function UsersManagerModal({
       await onUpdateManagedUserRoomAccess({ ...managedUser, role: draft.role }, nextRoomAccess, nextAllowedRoomIds);
     }
 
+    // Grupul se schimbă la final, după rol, ca rolul nou să nu rescrie grupul vechi; administratorii nu au grup.
+    if (draft.role !== "manager" && draft.groupName !== managedUser.groupName) {
+      await onUpdateManagedUserGroup({ ...managedUser, role: draft.role }, draft.groupName);
+    }
+
     closeEditor(managedUser.id);
   }
 
@@ -153,6 +167,7 @@ export function UsersManagerModal({
             const draftAllowedRoomIds = draftRoomAccess === "selected" ? userDraft.allowedRoomIds : [];
             const userDraftChanged =
               draftRole !== managedUser.role ||
+              (draftRole !== "manager" && userDraft.groupName !== managedUser.groupName) ||
               draftRoomAccess !== managedUser.roomAccess ||
               !sameRoomIds(draftAllowedRoomIds, managedUser.allowedRoomIds);
             const accessDisabled =
@@ -177,6 +192,25 @@ export function UsersManagerModal({
                     {managedUser.email} · {managedUser.locationName || t("settings.notSet")} · {managedUser.groupName || t("settings.notChosen")}
                   </span>
                   {isSelf && <small className="user-self-note">{t("settings.selfRoleLocked")}</small>}
+
+                  {/* Grupul: se alege dintre grupurile locației (nu pentru administratori). */}
+                  {isEditingUser && draftRole !== "manager" && (
+                    <label className="user-group-edit">
+                      <small>{groupsLabel}</small>
+                      <select
+                        value={userDraft.groupName}
+                        onChange={(event) => setDraft(managedUser, { ...userDraft, groupName: event.target.value })}
+                      >
+                        {userDraft.groupName && !groups.some((group) => group.name === userDraft.groupName) && (
+                          <option value={userDraft.groupName}>{userDraft.groupName}</option>
+                        )}
+                        {!userDraft.groupName && <option value="">{t("settings.notChosen")}</option>}
+                        {groups.map((group) => (
+                          <option key={group.id} value={group.name}>{group.name}</option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
                 </div>
 
                 <select
@@ -185,6 +219,7 @@ export function UsersManagerModal({
                     const nextRole = event.target.value as UserRole;
                     setDraft(managedUser, {
                       role: nextRole,
+                      groupName: userDraft.groupName,
                       roomAccess: nextRole === "manager" ? "all" : managedUser.roomAccess,
                       allowedRoomIds: nextRole === "manager" || managedUser.roomAccess === "all" ? [] : managedUser.allowedRoomIds,
                     });

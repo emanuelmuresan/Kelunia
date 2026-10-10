@@ -2084,6 +2084,12 @@ img {
   gap: 8px;
 }
 
+.user-group-edit {
+  display: grid;
+  gap: 4px;
+  margin-top: 8px;
+}
+
 .users-table {
   display: grid;
   gap: 8px;

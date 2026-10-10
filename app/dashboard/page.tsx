@@ -647,10 +647,11 @@ export default function KeluniaPage() {
   const currentLocationManagerLimit = currentLocation?.planLimits?.maxManagers ?? 2;
 
   // Acțiuni asupra utilizatorilor: schimbarea rolului, accesul la camere, eliminarea.
-  const { updateManagedUserRole, updateManagedUserRoomAccess, removeManagedUser } = useManagedUserActions({
+  const { updateManagedUserRole, updateManagedUserGroup, updateManagedUserRoomAccess, removeManagedUser } = useManagedUserActions({
     db,
     managedUsers,
     rooms,
+    groups: selectableGroups,
     currentLocationId,
     locationName,
     canManageMembers,
@@ -1493,6 +1494,7 @@ export default function KeluniaPage() {
         onRemoveSpaceItem={removeSpaceItem}
         onUpdateManagedUserRole={updateManagedUserRole}
         onUpdateManagedUserRoomAccess={updateManagedUserRoomAccess}
+        onUpdateManagedUserGroup={updateManagedUserGroup}
         onRemoveManagedUser={removeManagedUser}
         onMarkCommunityApplicationReviewed={markCommunityApplicationReviewed}
         onSendCommunityApplicationReply={sendCommunityApplicationReply}

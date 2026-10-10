@@ -1,6 +1,6 @@
 "use client";
 
-// Acțiuni asupra utilizatorilor locației din Setări: schimbarea rolului, accesul la camere și ștergerea completă a contului.
+// Acțiuni asupra utilizatorilor locației din Setări: schimbarea rolului, a grupului, accesul la camere și ștergerea completă a contului.
 // Proprietarul și propriul cont nu pot fi modificate de aici; fiecare acțiune cere drepturi și rețea, iar cele riscante cer confirmare.
 import { useAuth } from "@/context/AuthContext";
 import { useAppText } from "@/features/shell/hooks/useAppText";
@@ -12,13 +12,14 @@ import { cloudFunctions } from "@/lib/firebase";
 import type { UserRole } from "@/context/AuthContext";
 import type { RecordAuditLog } from "@/lib/audit";
 import { normalizeAllowedRoomIds, normalizeRoomAccessMode } from "@/lib/room-access";
-import type { ManagedUser, RoomAccessMode, RoomItem, WriteTarget } from "@/lib/types/domain";
+import type { GroupItem, ManagedUser, RoomAccessMode, RoomItem, WriteTarget } from "@/lib/types/domain";
 
 // Parametrii: utilizatorii, camerele, limita de manageri și funcțiile din dashboard.
 type UseManagedUserActionsParams = {
   db: Firestore;
   managedUsers: ManagedUser[];
   rooms: RoomItem[];
+  groups: GroupItem[];
   currentLocationId: string;
   locationName: string;
   canManageMembers: boolean;
@@ -39,6 +40,7 @@ export function useManagedUserActions({
   db,
   managedUsers,
   rooms,
+  groups,
   currentLocationId,
   locationName,
   canManageMembers,
@@ -167,6 +169,37 @@ export function useManagedUserActions({
     }
   }
 
+  // Mută un utilizator în alt grup al locației (administratorii nu au grup). Rezervările lui viitoare se fac pentru noul grup.
+  async function updateManagedUserGroup(managedUser: ManagedUser, nextGroupName: string) {
+    if (!canManageMembers || managedUser.isOwner || managedUser.role === "manager" || managedUser.locationId !== currentLocationId) {
+      return;
+    }
+
+    setSettingsError("");
+    setSettingsMessage("");
+
+    if (!requireOnline("settings")) {
+      return;
+    }
+
+    const groupName = nextGroupName.trim();
+
+    if (!groups.some((group) => group.name === groupName)) {
+      setSettingsError(msg("msg.groupNoLongerExists"));
+      return;
+    }
+
+    try {
+      const updatedUser = { ...managedUser, groupName };
+      await updateDoc(doc(db, "users", managedUser.id), { groupName, group: groupName });
+      await recordAuditLog("user", "update", managedUser.id, managedUser, updatedUser, managedUser.locationId, managedUser.locationName || locationName);
+      setSettingsMessage(msg("msg.groupUpdated"));
+    } catch (error) {
+      console.error("Grupul nu a putut fi actualizat:", error);
+      setSettingsError(msg("msg.groupUpdateFailed"));
+    }
+  }
+
   // Șterge complet contul unui utilizator, după o confirmare cu avertisment, prin funcția cloud removeLocationUser: profil, cont Firebase Auth și jetoane push.
   // Nu poate șterge propriul cont; după ștergere emailul poate fi folosit din nou.
   async function removeManagedUser(managedUser: ManagedUser) {
@@ -206,5 +239,5 @@ export function useManagedUserActions({
   }
 
   // Acțiunile expuse dashboard-ului.
-  return { updateManagedUserRole, updateManagedUserRoomAccess, removeManagedUser };
+  return { updateManagedUserRole, updateManagedUserGroup, updateManagedUserRoomAccess, removeManagedUser };
 }
