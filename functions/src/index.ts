@@ -1828,6 +1828,8 @@ export const sendNewsletterCampaign = onDocumentCreated(
           from: emailFrom.value(),
           to: [recipient.email],
           replyTo: campaign.createdBy ? [campaign.createdBy] : undefined,
+          // Antet standard de dezabonare: clientul de email afișează „Dezabonează-te”; cererea ajunge pe support@.
+          headers: { "List-Unsubscribe": "<mailto:support@kelunia.com?subject=DEZABONARE>" },
           subject: campaign.subject,
           text: newsletterText(campaign),
           html: newsletterHtml(campaign),

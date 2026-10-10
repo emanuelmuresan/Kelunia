@@ -7,6 +7,7 @@ declare module "resend" {
     html?: string;
     text?: string;
     replyTo?: string | string[];
+    headers?: Record<string, string>;
   };
 
   type ResendEmailResponse = {
