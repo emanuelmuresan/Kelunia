@@ -14,6 +14,7 @@ import { HttpsError, onCall, onRequest, type CallableRequest } from "firebase-fu
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { Resend } from "resend";
 import { authEmailCopy, type AuthEmailCopy } from "./auth-email-i18n";
+import { brandedActionLink } from "./action-link";
 import { unsubscribeQuery, validUnsubscribeToken } from "./unsubscribe";
 import { inviteCopy, type InviteCopy } from "./invite-i18n";
 import { closureEmail, closureGraceDays, purgeLocation } from "./location-closure";
@@ -779,19 +780,8 @@ function licenseEmailHtml(request: LicenseEmailRequest) {
   ].join("");
 }
 
-// Emailurile de verificare a adresei și de resetare a parolei: text și HTML, cu linkul generat de Firebase Auth,
+// Emailurile de verificare a adresei și de resetare a parolei: text și HTML, cu linkul către pagina /auth/action a aplicației (vezi action-link.ts),
 // în limba utilizatorului (textele sunt în auth-email-i18n.ts).
-function withFirebaseLang(link: string, language: EmailLanguage) {
-  // Pagina Firebase unde se alege parola / se confirmă emailul citește limba din parametrul lang.
-  try {
-    const url = new URL(link);
-    url.searchParams.set("lang", authEmailCopy[language].firebaseLang);
-    return url.toString();
-  } catch {
-    return link;
-  }
-}
-
 function authEmailButtonHtml(link: string, label: string) {
   return `<p><a href="${escapeHtml(link)}" style="display:inline-block;background:#0f766e;color:#fff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:700">${escapeHtml(label)}</a></p>`;
 }
@@ -992,7 +982,7 @@ export const sendAuthVerificationEmail = onCall(
     }
 
     const language = emailLanguage(request.data?.language);
-    const localizedLink = withFirebaseLang(link, language);
+    const localizedLink = brandedActionLink(link, appUrl("/auth/action"), language);
     const resend = new Resend(resendApiKey.value());
     const result = await resend.emails.send({
       from: emailFrom.value(),
@@ -1057,7 +1047,7 @@ export const sendAuthPasswordResetEmail = onCall(
     }
 
     const language = emailLanguage(request.data?.language);
-    const localizedLink = withFirebaseLang(link, language);
+    const localizedLink = brandedActionLink(link, appUrl("/auth/action"), language);
     const resend = new Resend(resendApiKey.value());
     const result = await resend.emails.send({
       from: emailFrom.value(),
